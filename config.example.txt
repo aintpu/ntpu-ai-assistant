@@ -1,0 +1,5 @@
+OPENAI_API_KEY=sk-proj-your-openai-key-here
+MISTRAL_API_KEY=your-mistral-key-here
+NVIDIA_API_KEY=nvapi-your-nvidia-key-here
+NVIDIA_MODEL=mistralai/mistral-large-3-675b-instruct-2512
+GOOGLE_API_KEY=your-google-key-here

@@ -1,0 +1,49 @@
+# Secrets & local config (NEVER commit)
+config.txt
+front_end/sports-ai-chat/.env.local
+
+# User data (privacy)
+chat_logs.csv
+chat_logs_advanced.csv
+
+# Security reports
+gitleaks_report.json
+trivy_report.txt
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# FAISS cache (binary, regenerable)
+faiss_index_cache/
+.faiss_cache/
+
+# IDE
+.vscode/
+
+# Large crawler data (regenerable from scraping)
+all_content_v2.md
+all_content_en_v2.md
+ALL_files.md
+ALL_files_2.md
+grades.md
+
+# Baseline results (large JSON, regenerable)
+evaluate/results/
+
+# Logs
+*.log
+evaluate/results/*.log
+
+# Generated Excel / outputs
+evaluate/*.xlsx
+
+# Frontend dependencies
+front_end/sports-ai-chat/node_modules/
+front_end/sports-ai-chat/.next/
+
+# OS
+.DS_Store
+Thumbs.db
