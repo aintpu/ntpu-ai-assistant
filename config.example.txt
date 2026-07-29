@@ -1,5 +1,7 @@
-OPENAI_API_KEY=sk-proj-your-openai-key-here
-MISTRAL_API_KEY=your-mistral-key-here
-NVIDIA_API_KEY=nvapi-your-nvidia-key-here
-NVIDIA_MODEL=mistralai/mistral-large-3-675b-instruct-2512
-GOOGLE_API_KEY=your-google-key-here
+OPENROUTER_API_KEY=your-openrouter-key-here
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+MODEL_BIG=openai/gpt-5.4-mini
+MODEL_SMALL=openai/gpt-4o-mini
+EMBEDDING_MODEL=openai/text-embedding-3-small
+# Optional: only required for Whisper transcription and text-to-speech.
+OPENAI_API_KEY=your-openai-key-here

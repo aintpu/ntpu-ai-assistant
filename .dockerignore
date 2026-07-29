@@ -1,0 +1,9 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+.faiss_cache
+chat_logs*.csv
+evaluate
+front_end

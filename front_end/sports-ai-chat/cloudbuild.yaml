@@ -1,0 +1,15 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --build-arg
+      - NEXT_PUBLIC_API_URL=${_API_URL}
+      - --tag
+      - asia-east1-docker.pkg.dev/$PROJECT_ID/aia/aia-web:latest
+      - .
+images:
+  - asia-east1-docker.pkg.dev/$PROJECT_ID/aia/aia-web:latest
+substitutions:
+  _API_URL: https://example.invalid
+options:
+  logging: CLOUD_LOGGING_ONLY

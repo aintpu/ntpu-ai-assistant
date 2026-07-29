@@ -80,7 +80,11 @@ if os.path.exists(config_path):
                 key, val = line.strip().split("=", 1)
                 os.environ[key.strip()] = val.strip()
 
-openai_api_key = os.getenv("OPENAI_API_KEY", "")
+provider_api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+provider_base_url = os.getenv(
+    "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
+).rstrip("/")
+openai_audio_key = os.getenv("OPENAI_API_KEY", "").strip()
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
 NIM_INVOKE_URL = os.getenv("NVIDIA_API_URL", "https://integrate.api.nvidia.com/v1/chat/completions")
 NIM_MODEL_MAIN = os.getenv("NVIDIA_MODEL", "mistralai/mistral-large-3-675b-instruct-2512")
@@ -92,17 +96,18 @@ VISION_MODEL = "gemma-3-27b-it-litert-preview"
 MAX_B64_SIZE = 3_500_000
 MIN_EDGE_LIMIT = 640
 
-if not openai_api_key:
-    print("[警告] 尚未設定 OPENAI_API_KEY，系統將無法運行。")
+if not provider_api_key:
+    print("[警告] 尚未設定 OPENROUTER_API_KEY，系統將無法運行。")
 
-client = OpenAI(api_key=openai_api_key)
+client = OpenAI(api_key=provider_api_key, base_url=provider_base_url)
+audio_client = OpenAI(api_key=openai_audio_key) if openai_audio_key else None
 
-FILE_PATH_ZH = "all_content_v2.md"
-FILE_PATH_EN = "all_content_en_v2.md"
-REGULATIONS_PATH = "ALL_files_2.md"
-FILE_INDEX_PATH = "file_index.json"
 # 取得目前檔案所在目錄
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FILE_PATH_ZH = os.path.join(BASE_DIR, "all_content_v2.md")
+FILE_PATH_EN = os.path.join(BASE_DIR, "all_content_en_v2.md")
+REGULATIONS_PATH = os.path.join(BASE_DIR, "ALL_files_2.md")
+FILE_INDEX_PATH = os.path.join(BASE_DIR, "file_index.json")
 
 # 多處室資料來源（dept 代碼, 爬蟲檔路徑）
 DEPT_NAMES = {"ope": "體育室", "ge": "通識教育中心", "lc": "語言中心"}
@@ -112,8 +117,8 @@ FAQ_PAGE_URLS = {
     "lc":  "https://lc.ntpu.edu.tw",
 }
 CRAWLER_SOURCES = [
-    ("ge", os.path.join(BASE_DIR, "..", "crawler_data", "cge_content.md")),
-    ("lc", os.path.join(BASE_DIR, "..", "crawler_data", "lc_content.md")),
+    ("ge", os.path.join(BASE_DIR, "crawler_data", "cge_content.md")),
+    ("lc", os.path.join(BASE_DIR, "crawler_data", "lc_content.md")),
 ]
 AVATAR_PATH = os.path.join(BASE_DIR, "avatar.jpg")
 
@@ -369,7 +374,7 @@ def parse_regulations_content(md_text: str) -> List[Document]:
 # md 檔有法規全文（## 檔名 + ### Page N）但缺 metadata；
 # 同學彙整的 xlsx 有 title/tags/file_url/updated_date 但缺全文。
 # 以「正規化標題」join 兩者，得到與 ALL_files_2.md 同等品質的法規文件。
-REGULATION_XLSX = os.path.join(BASE_DIR, "..", "crawler_data", "北大學術單位法規彙整.xlsx")
+REGULATION_XLSX = os.path.join(BASE_DIR, "crawler_data", "北大學術單位法規彙整.xlsx")
 DEPT_XLSX_SHEET = {"ge": "通識教育中心", "lc": "語言中心"}
 
 def _norm_reg_title(t: str) -> str:
@@ -533,7 +538,9 @@ class OPEIndex:
         
         # 👇 找到這一行，加上 chunk_size=100 (或是 250) 👇
         self.embeddings = OpenAIEmbeddings(
-            model="text-embedding-3-small",
+            model=os.getenv("EMBEDDING_MODEL", "openai/text-embedding-3-small"),
+            api_key=provider_api_key,
+            base_url=provider_base_url,
             chunk_size=100  # 限制每次批次只傳送 100 個文件區塊給 OpenAI，避免 Token 爆表
         )
 
@@ -1756,8 +1763,10 @@ def synthesize_agentic_answer_stream(user_query: str, language: str, history: li
 # ==========================================
 def transcribe_audio(audio_path: str) -> str:
     try:
+        if audio_client is None:
+            raise RuntimeError("語音功能尚未設定獨立的 OPENAI_API_KEY")
         with open(audio_path, "rb") as f:
-            tr = client.audio.transcriptions.create(model="whisper-1", file=f)
+            tr = audio_client.audio.transcriptions.create(model="whisper-1", file=f)
         return tr.text
     except Exception as e:
         print(f"Whisper 錯誤: {e}")
@@ -1789,7 +1798,9 @@ def synthesize_speech(text: str, lang: str) -> Optional[str]:
     """將文字合成語音 MP3，回傳暫存檔路徑；失敗回傳 None"""
     voice = "nova" if lang == "zh-TW" else "alloy"
     try:
-        response = client.audio.speech.create(model="tts-1", voice=voice, input=text, speed=1.2)
+        if audio_client is None:
+            raise RuntimeError("語音功能尚未設定獨立的 OPENAI_API_KEY")
+        response = audio_client.audio.speech.create(model="tts-1", voice=voice, input=text, speed=1.2)
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
         response.stream_to_file(tmp.name)
         print(f"[TTS] 語音合成成功：{tmp.name}")
@@ -1833,7 +1844,7 @@ def analyze_image(img_path: str) -> str:
         
         # answer = f"## 🖼️ 圖片內容分析\n\n{resp.json()['choices'][0]['message']['content'].strip()}"
         resp = client.chat.completions.create(
-            model="gpt-4o",
+            model=os.getenv("VISION_MODEL", "openai/gpt-4o"),
             messages=[{"role": "user", "content": [
                 {"type": "text", "text": prompt},
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
@@ -1904,7 +1915,7 @@ def analyze_image_with_question(img_path: str, question: str, prev_analysis: str
 
         # answer = f"## 🖼️ 圖片追問回覆\n\n{resp.json()['choices'][0]['message']['content'].strip()}"
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=os.getenv("VISION_FOLLOWUP_MODEL", "openai/gpt-4o-mini"),
             messages=[{"role": "user", "content": [
                 {"type": "text", "text": prompt},
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
@@ -2001,7 +2012,8 @@ def classify_department(query: str, history: list = None) -> str:
     )
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o-mini", temperature=0, max_tokens=10,
+            model=os.getenv("CLASSIFIER_MODEL", "openai/gpt-4o-mini"),
+            temperature=0, max_tokens=10,
             messages=[{"role": "user", "content": p}]
         )
         code = resp.choices[0].message.content.strip().upper()
@@ -2018,9 +2030,14 @@ def classify_department(query: str, history: list = None) -> str:
 # ==========================================
 
 app = FastAPI(title="NTPU AI Assistant API")
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "https://aia.ntpu.ai").split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+    allow_origins=allowed_origins, allow_methods=["*"], allow_headers=["*"]
 )
 
 _RATE_MSG = "您的提問頻率過高，請稍候再試（每分鐘最多 15 次）。"
