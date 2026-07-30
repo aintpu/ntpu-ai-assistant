@@ -80,11 +80,10 @@ if os.path.exists(config_path):
                 key, val = line.strip().split("=", 1)
                 os.environ[key.strip()] = val.strip()
 
-provider_api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+provider_api_key = os.getenv("OPENAI_API_KEY", "").strip()
 provider_base_url = os.getenv(
-    "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
+    "OPENAI_BASE_URL", "https://api.openai.com/v1"
 ).rstrip("/")
-openai_audio_key = os.getenv("OPENAI_API_KEY", "").strip()
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
 NIM_INVOKE_URL = os.getenv("NVIDIA_API_URL", "https://integrate.api.nvidia.com/v1/chat/completions")
 NIM_MODEL_MAIN = os.getenv("NVIDIA_MODEL", "mistralai/mistral-large-3-675b-instruct-2512")
@@ -97,10 +96,10 @@ MAX_B64_SIZE = 3_500_000
 MIN_EDGE_LIMIT = 640
 
 if not provider_api_key:
-    print("[警告] 尚未設定 OPENROUTER_API_KEY，系統將無法運行。")
+    print("[警告] 尚未設定 OPENAI_API_KEY，系統將無法運行。")
 
 client = OpenAI(api_key=provider_api_key, base_url=provider_base_url)
-audio_client = OpenAI(api_key=openai_audio_key) if openai_audio_key else None
+audio_client = client
 
 # 取得目前檔案所在目錄
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -538,7 +537,7 @@ class OPEIndex:
         
         # 👇 找到這一行，加上 chunk_size=100 (或是 250) 👇
         self.embeddings = OpenAIEmbeddings(
-            model=os.getenv("EMBEDDING_MODEL", "openai/text-embedding-3-small"),
+            model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
             api_key=provider_api_key,
             base_url=provider_base_url,
             chunk_size=100  # 限制每次批次只傳送 100 個文件區塊給 OpenAI，避免 Token 爆表
@@ -1844,7 +1843,7 @@ def analyze_image(img_path: str) -> str:
         
         # answer = f"## 🖼️ 圖片內容分析\n\n{resp.json()['choices'][0]['message']['content'].strip()}"
         resp = client.chat.completions.create(
-            model=os.getenv("VISION_MODEL", "openai/gpt-4o"),
+            model=os.getenv("VISION_MODEL", "gpt-4o"),
             messages=[{"role": "user", "content": [
                 {"type": "text", "text": prompt},
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
@@ -1915,7 +1914,7 @@ def analyze_image_with_question(img_path: str, question: str, prev_analysis: str
 
         # answer = f"## 🖼️ 圖片追問回覆\n\n{resp.json()['choices'][0]['message']['content'].strip()}"
         resp = client.chat.completions.create(
-            model=os.getenv("VISION_FOLLOWUP_MODEL", "openai/gpt-4o-mini"),
+            model=os.getenv("VISION_FOLLOWUP_MODEL", "gpt-4o-mini"),
             messages=[{"role": "user", "content": [
                 {"type": "text", "text": prompt},
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
@@ -2012,7 +2011,7 @@ def classify_department(query: str, history: list = None) -> str:
     )
     try:
         resp = client.chat.completions.create(
-            model=os.getenv("CLASSIFIER_MODEL", "openai/gpt-4o-mini"),
+            model=os.getenv("CLASSIFIER_MODEL", "gpt-4o-mini"),
             temperature=0, max_tokens=10,
             messages=[{"role": "user", "content": p}]
         )

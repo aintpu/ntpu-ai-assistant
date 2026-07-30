@@ -49,13 +49,13 @@ if PROVIDER == "ollama":
     SUPPORTS_REASONING = False   # 開源模型無 reasoning_effort 參數
 else:
     PROVIDER = "openai"
-    _api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    _api_key = os.getenv("OPENAI_API_KEY", "").strip()
     _base_url = os.getenv(
-        "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
+        "OPENAI_BASE_URL", "https://api.openai.com/v1"
     ).rstrip("/")
     client = OpenAI(api_key=_api_key, base_url=_base_url)
-    MODEL_BIG = os.getenv("MODEL_BIG", "openai/gpt-5.4-mini")
-    MODEL_SMALL = os.getenv("MODEL_SMALL", "openai/gpt-4o-mini")
+    MODEL_BIG = os.getenv("MODEL_BIG", "gpt-5.4-mini")
+    MODEL_SMALL = os.getenv("MODEL_SMALL", "gpt-4o-mini")
     SUPPORTS_STREAMING = True
     SUPPORTS_REASONING = True
 

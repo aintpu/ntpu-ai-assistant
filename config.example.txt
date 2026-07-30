@@ -1,7 +1,5 @@
-OPENROUTER_API_KEY=your-openrouter-key-here
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-MODEL_BIG=openai/gpt-5.4-mini
-MODEL_SMALL=openai/gpt-4o-mini
-EMBEDDING_MODEL=openai/text-embedding-3-small
-# Optional: only required for Whisper transcription and text-to-speech.
 OPENAI_API_KEY=your-openai-key-here
+OPENAI_BASE_URL=https://api.openai.com/v1
+MODEL_BIG=gpt-5.4-mini
+MODEL_SMALL=gpt-4o-mini
+EMBEDDING_MODEL=text-embedding-3-small
