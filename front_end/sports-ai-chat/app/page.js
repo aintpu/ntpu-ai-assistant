@@ -199,6 +199,22 @@ function PlusIcon({ className }) {
   );
 }
 
+function MenuIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
+function CloseIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
 function SendIcon({ className }) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -253,7 +269,7 @@ function MessageBubble({ msg, lang, T }) {
   if (msg.role === "user") {
     return (
       <div className="flex justify-end mb-4">
-        <div className="max-w-[75%]">
+        <div className="max-w-[88%] sm:max-w-[75%]">
           {msg.imagePreview && (
             <div className="mb-1 flex justify-end">
               <img src={msg.imagePreview} alt="uploaded" className="max-h-40 rounded-xl border border-blue-300/40" />
@@ -276,7 +292,7 @@ function MessageBubble({ msg, lang, T }) {
   if (msg.status === "ok") {
     return (
       <div className="flex justify-start mb-4">
-        <div className="max-w-[78%]">
+        <div className="min-w-0 max-w-[92%] sm:max-w-[78%]">
           <div className={`rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed break-words markdown-body ${T.bubbleAi}`}>
             {msg.content ? (
               <ReactMarkdown
@@ -323,7 +339,7 @@ function MessageBubble({ msg, lang, T }) {
   if (msg.status === "error") {
     return (
       <div className="flex justify-start mb-4">
-        <div className={`rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[75%] text-sm leading-relaxed break-words ${T.bubbleError}`}>
+        <div className={`rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[92%] sm:max-w-[75%] text-sm leading-relaxed break-words ${T.bubbleError}`}>
           ⚠️ {msg.content}
         </div>
       </div>
@@ -332,7 +348,7 @@ function MessageBubble({ msg, lang, T }) {
 
   return (
     <div className="flex justify-start mb-4">
-      <div className={`rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[75%] text-sm leading-relaxed italic break-words ${T.bubbleAi} opacity-70`}>
+      <div className={`rounded-2xl rounded-tl-sm px-4 py-2.5 max-w-[92%] sm:max-w-[75%] text-sm leading-relaxed italic break-words ${T.bubbleAi} opacity-70`}>
         {msg.content}
       </div>
     </div>
@@ -357,6 +373,7 @@ export default function ChatPage() {
   const [lang, setLang] = useState("zh");
   const [isDark, setIsDark] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -389,6 +406,15 @@ export default function ChatPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, [showSettings]);
 
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const handler = (e) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [sidebarOpen]);
+
   const buildHistory = (msgs) =>
     msgs.map((m) => ({ role: m.role, content: m.role === "user" ? m.content : (m.rawAnswer ?? m.content) }));
 
@@ -408,6 +434,7 @@ export default function ChatPage() {
     setMessages([]);
     setInput("");
     clearImage();
+    setSidebarOpen(false);
   };
 
   const sendMessage = async (overrideText, isVoice = false, voiceBase64 = null) => {
@@ -420,6 +447,7 @@ export default function ChatPage() {
     setInput("");
     clearImage();
     setLoading(true);
+    let responseMessages = nextMessages;
 
     try {
       let data;
@@ -432,8 +460,10 @@ export default function ChatPage() {
         });
         data = await res.json();
         if (data.question) {
-          nextMessages[nextMessages.length - 1].content = data.question;
-          setMessages([...nextMessages]);
+          responseMessages = nextMessages.map((message, index) =>
+            index === nextMessages.length - 1 ? { ...message, content: data.question } : message
+          );
+          setMessages(responseMessages);
         }
       } else if (imageBase64) {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat`, {
@@ -489,9 +519,9 @@ export default function ChatPage() {
       } else {
         aiMsg = { role: "assistant", status: data.status, content: data.message ?? "發生未知錯誤。" };
       }
-      setMessages([...nextMessages, aiMsg]);
+      setMessages([...responseMessages, aiMsg]);
     } catch {
-      setMessages([...nextMessages, { role: "assistant", status: "error", content: labels.connError }]);
+      setMessages([...responseMessages, { role: "assistant", status: "error", content: labels.connError }]);
     } finally {
       setLoading(false);
     }
@@ -531,16 +561,37 @@ export default function ChatPage() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className={`flex h-full ${T.root}${isDark ? " dark" : ""}`} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+    <div className={`relative flex h-full min-h-0 overflow-hidden ${T.root}${isDark ? " dark" : ""}`} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+
+      {sidebarOpen && (
+        <button
+          type="button"
+          aria-label={lang === "zh" ? "關閉側邊選單" : "Close sidebar"}
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[1px] md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* ── 左側 Sidebar ── */}
-      <aside className={`w-64 border-r flex flex-col shrink-0 ${T.sidebar}`}>
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-[min(18rem,85vw)] shrink-0 flex-col border-r transition-transform duration-200 ease-out md:static md:z-auto md:w-64 md:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } ${T.sidebar}`}
+      >
 
         {/* NTPU AI Assistant 標題區 */}
         <div className={`p-4 border-b ${T.sidebarBorder}`}>
-          <div className="flex items-center gap-2.5 mb-3">
+          <div className="mb-3 flex items-center gap-2.5">
             <NtpuLogo />
-            <span className="font-semibold text-sm leading-tight">{labels.title}</span>
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight">{labels.title}</span>
+            <button
+              type="button"
+              aria-label={lang === "zh" ? "關閉側邊選單" : "Close sidebar"}
+              className={`rounded-lg p-2 transition-colors md:hidden ${T.sidebarBtn}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <CloseIcon className="h-5 w-5" />
+            </button>
           </div>
           <button
             onClick={handleNewChat}
@@ -599,30 +650,39 @@ export default function ChatPage() {
       </aside>
 
       {/* ── 主內容區 ── */}
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col">
 
         {/* 頂部 Header（主內容區只顯示標題文字，logo 在 sidebar） */}
-        <header className={`px-5 py-3 border-b flex items-center gap-2.5 shrink-0 ${T.header}`}>
+        <header className={`flex shrink-0 items-center gap-2.5 border-b px-3 py-3 sm:px-5 ${T.header}`}>
+          <button
+            type="button"
+            aria-label={lang === "zh" ? "開啟側邊選單" : "Open sidebar"}
+            aria-expanded={sidebarOpen}
+            className={`rounded-lg p-2 transition-colors md:hidden ${T.sidebarBtn}`}
+            onClick={() => setSidebarOpen(true)}
+          >
+            <MenuIcon className="h-5 w-5" />
+          </button>
           <NtpuLogo />
-          <span className={`font-semibold ${T.headerText}`}>{labels.title}</span>
+          <span className={`min-w-0 truncate font-semibold ${T.headerText}`}>{labels.title}</span>
         </header>
 
         {/* 對話紀錄區 */}
         <main className={`flex-1 overflow-y-auto ${T.main}`}>
           {messages.length === 0 ? (
             /* 歡迎畫面 */
-            <div className="flex flex-col items-center justify-center h-full gap-6 px-4">
-              <div className="text-center">
-                <h2 className={`text-2xl font-semibold ${T.welcomeTitle}`}>{labels.welcome}</h2>
-                <p className={`text-sm mt-2 ${T.welcomeSub}`}>{labels.welcomeSub}</p>
+            <div className="flex min-h-full flex-col items-center justify-center gap-5 px-4 py-8 sm:gap-6 sm:px-6">
+              <div className="min-w-0 max-w-full text-center">
+                <h2 className={`text-xl font-semibold sm:text-2xl ${T.welcomeTitle}`}>{labels.welcome}</h2>
+                <p className={`mt-2 break-words text-sm ${T.welcomeSub}`}>{labels.welcomeSub}</p>
               </div>
-              <div className="flex flex-wrap gap-2 justify-center max-w-xl">
+              <div className="flex w-full max-w-xl flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
                 {QUICK_QUESTIONS[lang].map((q, i) => (
                   <button
                     key={i}
                     onClick={() => sendMessage(q)}
                     disabled={loading}
-                    className={`text-sm border px-4 py-2 rounded-full transition-colors disabled:opacity-40 ${T.quickBtn}`}
+                    className={`w-full rounded-2xl border px-4 py-2 text-left text-sm transition-colors disabled:opacity-40 sm:w-auto sm:rounded-full sm:text-center ${T.quickBtn}`}
                   >
                     {q}
                   </button>
@@ -631,7 +691,7 @@ export default function ChatPage() {
             </div>
           ) : (
             /* 訊息列表 */
-            <div className="max-w-3xl mx-auto px-4 py-6">
+            <div className="mx-auto max-w-3xl px-3 py-4 sm:px-4 sm:py-6">
               {messages.map((msg, i) => (
                 <MessageBubble key={i} msg={msg} lang={lang} T={T} />
               ))}
@@ -642,7 +702,7 @@ export default function ChatPage() {
         </main>
 
         {/* 底部輸入區 */}
-        <footer className={`border-t shrink-0 px-4 py-3 ${T.footer}`}>
+        <footer className={`safe-bottom shrink-0 border-t px-2.5 pt-2 sm:px-4 sm:py-3 ${T.footer}`}>
           <div className="max-w-3xl mx-auto">
             {/* 圖片預覽 */}
             {imagePreview && (
@@ -660,7 +720,7 @@ export default function ChatPage() {
             )}
 
             {/* 輸入列 */}
-            <div className="flex gap-2 items-end">
+            <div className="flex items-end gap-1 sm:gap-2">
               {/* 圖片上傳 */}
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -685,7 +745,7 @@ export default function ChatPage() {
               {/* 文字輸入框 */}
               <textarea
                 rows={1}
-                className={`flex-1 resize-none border rounded-xl px-3 py-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:border-transparent transition-colors ${T.inputBorder} ${T.inputBg} ${T.inputText} ${T.inputFocus} ${T.placeholder} ${loading || isRecording ? T.inputDisabled : ""}`}
+                className={`max-h-32 min-w-0 flex-1 resize-none rounded-xl border px-3 py-2.5 text-base leading-relaxed transition-colors focus:border-transparent focus:outline-none focus:ring-2 sm:text-sm ${T.inputBorder} ${T.inputBg} ${T.inputText} ${T.inputFocus} ${T.placeholder} ${loading || isRecording ? T.inputDisabled : ""}`}
                 placeholder={isRecording ? labels.recording : labels.placeholder}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -707,7 +767,7 @@ export default function ChatPage() {
             </div>
 
             {/* 免責聲明 */}
-            <p className={`mt-2 text-center text-xs ${T.disclaimer}`}>{labels.disclaimer}</p>
+            <p className={`mt-1.5 break-words px-1 text-center text-[10px] leading-tight sm:mt-2 sm:text-xs ${T.disclaimer}`}>{labels.disclaimer}</p>
           </div>
         </footer>
       </div>

@@ -8,6 +8,22 @@ body {
   background: #ffffff;
   color: #171717;
   font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+.safe-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.markdown-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.markdown-body pre,
+.markdown-body table {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 /* AI 回答的 Markdown 排版（Tailwind preflight 會清掉預設樣式，這裡補回） */
