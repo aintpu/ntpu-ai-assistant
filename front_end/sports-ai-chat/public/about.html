@@ -163,8 +163,9 @@
   .feat .ic svg{width:24px;height:24px}
 
   /* ---------- how to use : steps ---------- */
-  .steps{display:grid;grid-template-columns:1.05fr .95fr;gap:52px;align-items:start}
-  .step-list{display:flex;flex-direction:column;gap:8px}
+  /* 原為「步驟清單 + 截圖」兩欄；截圖移除後改為步驟自行排成 2×2，避免右半留白 */
+  .steps{display:block}
+  .step-list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .step{
     display:flex;gap:20px;padding:22px;border-radius:var(--r);border:1px solid transparent;
     transition:background .2s,border-color .2s;cursor:default;
@@ -177,15 +178,6 @@
   .step:hover .num{background:var(--plum)}
   .step h4{font-size:16.5px;font-weight:700;margin-bottom:5px}
   .step p{font-size:14px;color:var(--muted);line-height:1.62}
-  /* screenshot placeholder */
-  .shot{
-    position:sticky;top:88px;border:2px dashed var(--plum-soft);border-radius:var(--r);
-    background:repeating-linear-gradient(135deg,rgba(138,40,70,.03) 0 12px,transparent 12px 24px),var(--mist);
-    min-height:420px;display:grid;place-items:center;text-align:center;padding:34px;
-  }
-  .shot .badge{font-size:14px;font-weight:700;color:var(--plum);letter-spacing:.04em;margin-bottom:8px}
-  .shot .cap{font-size:12.5px;color:var(--muted);font-style:italic;max-width:30ch}
-  .shot .frame-ic{width:44px;height:44px;margin-bottom:14px;color:var(--plum-soft)}
 
   /* ---------- architecture ---------- */
   .arch{display:flex;flex-direction:column;gap:0}
@@ -270,8 +262,6 @@
     .feat-grid{grid-template-columns:1fr 1fr}
     .arch-flow{grid-template-columns:1fr 1fr}
     .node:nth-child(2)::after{display:none}
-    .steps{grid-template-columns:1fr;gap:34px}
-    .shot{position:relative;top:0;min-height:300px}
     .layers{grid-template-columns:1fr}
   }
   @media(max-width:640px){
@@ -284,7 +274,7 @@
     .nav-links a{padding:12px}
     .menu-toggle{display:grid;place-items:center}
     .langbtn{margin-left:0}
-    .feat-grid,.arch-flow{grid-template-columns:1fr}
+    .feat-grid,.arch-flow,.step-list{grid-template-columns:1fr}
     .dept{flex-basis:100%;max-width:none}
     .node::after{display:none!important}
     .notice{grid-template-columns:1fr;padding:26px}
@@ -441,13 +431,6 @@
           <div class="num">4</div>
           <div><h4><span class="zh">追問或切換語言</span><span class="en">Follow up or switch language</span></h4>
           <p><span class="zh">可接續追問，系統會參考前文；也能一鍵切換中英文介面。</span><span class="en">Ask follow-ups — it remembers context — and toggle between Chinese and English anytime.</span></p></div>
-        </div>
-      </div>
-      <div class="shot reveal">
-        <div>
-          <svg class="frame-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-          <div class="badge"><span class="zh">［ 截圖佔位 ］</span><span class="en">［ Screenshot placeholder ］</span></div>
-          <div class="cap"><span class="zh">請置入系統問答畫面截圖<br>（首頁輸入框 + 回答 + 來源連結）</span><span class="en">Insert a screenshot of the Q&amp;A screen<br>(input box + answer + source link)</span></div>
         </div>
       </div>
     </div>
