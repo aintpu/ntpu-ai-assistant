@@ -1,0 +1,17 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+chat_logs*.csv
+evaluate
+front_end
+crawler_data/review_qa_*.xlsx
+
+# .faiss_cache 刻意「不」排除：預先建好的索引隨映像檔帶上去，
+# 冷啟動由 96 秒降到 3.7 秒，也省下每次擴容的全量 embedding 費用。
+# 快取與資料檔對不上時，_data_fingerprint() 會自動改走完整重建，不會用到過期索引。
+
+# 機密：金鑰改由 Cloud Run 環境變數傳入，不可烤進 image layer
+config.txt
+config.example.txt

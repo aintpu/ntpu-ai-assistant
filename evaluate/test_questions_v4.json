@@ -1,0 +1,1820 @@
+[
+  {
+    "id": "V4001",
+    "question": "我是學士班的學生，可以去加選進修學士班的通識課程嗎？",
+    "category": "GE/FAQ/加退選",
+    "ground_truth": "自105學年度起，學士班及進修學士班學生均得相互選課，於校定期間內上網辦理選課(請參閱〈 本校學士班及進修學士班互選課程辦法 〉)。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4002",
+    "question": "如何加選沒有開放人工加簽的通識課程？",
+    "category": "GE/FAQ/加退選",
+    "ground_truth": "人工加簽僅限日間學制的課程，且需由授課教師在教師資訊系統中直接加入學生學號，學生尚需於學生資訊系統中做確認始完成加選。\n無論老師是否同意人工加簽，依學校選課規定，所有課程均適用重大事由加退選。如符合「 國立臺北大學學生選課辦法 」第五條規定之不可歸責於學生之重大事由者，得於本校規定期限內填寫「重大事由加退選申請單」，經開課單位、任課教師及學生所屬系（所）主管同意後，送交教務單位辦理。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4003",
+    "question": "雙主修、輔系的通識學分如何認定？",
+    "category": "GE/FAQ/抵免",
+    "ground_truth": "98學年度以前入學之學生，如雙主修跨學院學系者，其通識教育課程八學分仍需符合跨院選讀之規定。\n99學年度以後入學之學生，如雙主修，選修通識教育課程與所屬及雙主修學系之必修、選修課程相同或雷同者，不列入通識畢業學分數。輔系同學依原屬學系來認定。\n113學年度起，選修通識教育課程或向度通識教育課程，相同或雷同課程僅規範於 畢業時 所屬 主學系 ，雙主修學系課程不再列入排除範圍。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4004",
+    "question": "通識向度要怎麼適用、必修多少學分？",
+    "category": "GE/FAQ/學分",
+    "ground_truth": "根據入學年度依學號判定，如學號為410012345適用100學年度之規定，如學號為310312345適用103學年度之規定。\n各學年度學生必修通識教育學分之規定如下：（請參閱〈國立臺北大學通識教育課程實施辦法〉）。 (1).99至100學年度入學學生必須選修通識教育核心課程至少8學分，五大向度中任選4向度，各向度至少選1門；進階課程至少4學分，不分向度至少2門(向度名稱在課程查詢系統以「99-100向度」標示)。 (2).101至104學年度入學學生必須選修通識教育學分，課程分五大向度，任選至少4向度各1門課程，且總學分至少12學分(向度名稱在課程查詢系統以「101-102 向度」或「103-104 向度」標示)。 (3).105至106學年度入學學生必須選修向度通識教育學分，課程分六大向度，任選至少5向度各1門課程，且總學分至少18學分( 向度名稱在課程查詢系統以「105- 向度」標示) (4).107學年度以後入學學生必須選修向度通識教育學分，課程分六大向度，任選至少5向度各1門課程，且總學分至少16學分( 向度名稱在課程查詢系統以「105- 向度」標示)。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4005",
+    "question": "通識教育中心目前負責的課程有哪些？",
+    "category": "GE/FAQ/聯絡",
+    "ground_truth": "104學年度以前：全校通識教育課程必修12學分。\n105至106學年度：全校向度通識教育課程必修18學分。\n107學年度以後：全校向度通識教育課程必修16學分。\n語文通識專責單位： 大一國文：中國文學系 (文院7F；分機66708) 大學英文：語言中心 (文院3F；分機66478)",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4006",
+    "question": "我有其他問題想詢問，請問有哪些管道？",
+    "category": "GE/FAQ/聯絡",
+    "ground_truth": "可以mail至通識教育中心信箱: cge@mail.ntpu.edu.tw。\n可於上班時間(09:00-17:00)來電02-86741111轉66165、66171。\n可至三峽校區行政大樓3樓313室通識教育中心洽詢。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4007",
+    "question": "我要找通識教育課程的教師，請問要怎麼聯絡他們？",
+    "category": "GE/FAQ/聯絡",
+    "ground_truth": "請至通識教育中心網頁>師資簡介>專任/兼任/支援師資。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4008",
+    "question": "我是台北校區的學生，需要抵免通識學分、重大事由加退選，除了至三峽校區辦理外，是否有其他管道？",
+    "category": "GE/FAQ/聯絡",
+    "ground_truth": "通識中心於104-2開始試行於台北校區駐點，提供諮詢、重大事由加退選核章、抵免單協助送回三峽校區等服務。\n駐點服務時間依公告時間辦理，同學如需申請抵免向度通識學分、重大事由加退選等，須考量抵免單送回三峽校區審核的時間，是否會耽誤校內開放申請抵免學分的時間。\n郵寄掛號：寄送至三峽校區通識教育中心，並依郵戳時間為憑。\n公文交換：自行公文傳遞、自行委請各系辦同意協助公文傳遞，或自行委請進修教育組同意協助公文傳遞等方式送至三峽校區通識教育中心。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4009",
+    "question": "收到「抵免」線上申請通過的簡訊後，有什麼要注意的呢?",
+    "category": "LC/FAQ",
+    "ground_truth": "「大學英文」課程抵免註記將於下學期成績單上才會出現，所以同學在上學期成績單看不到是正常的，請不用緊張。\n\n以英檢通過抵免申請者，語言中心將直接為您辦理「外語能力指標檢核」，不須另外申請。\n\n如有興趣再進修英語或外語課程，可自由選修語言中心開設在「共同科」之英語或外語課程（課程介紹：\nhttps://lc.ntpu.edu.tw/web/course/introduce.jsp\n）。\n\n「培力英語能力檢定測驗」除了報名費全免之外，尚有測驗獎勵。若同學有計劃再考取英語檢定，請參考最新消息報名資訊（名額有限）\nhttps://tinyurl.com/9xjas4w9\n。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4010",
+    "question": "收到「免修」線上申請通過的簡訊後，有什麼要注意的呢?",
+    "category": "LC/FAQ",
+    "ground_truth": "免修的4個學分\n由各系規定補足方式，請務必與所屬學系確認\n。\n\n若大一期間取得「抵免」標準之英檢成績，可於入學學年度結束前於規定時間內申請更改為「抵免」。(請提前報考，以免逾期而無法辦理抵免申請)\n\n若大二以後取得通過抵免標準的英檢成績，亦可申請將「免修」改為「抵免」，但通過標準與大一期間有所不同，請務必確認抵免免修辦法第七條之一。\n\n因免修之學分由各學系分別規定，系統無法判別同學用哪些課程抵修，此外註冊組審核畢業學分時程為四年級下學期且以成績單審核，因此系統上「語文通識(外文)」的紅色旗子是會一直存在的。若同學不確定是否已達到畢業學分要求，建議向所屬學系助教詢問較清楚。\n\n以英檢通過免修申請者，語言中心將直接為您辦理「外語能力指標檢核」，不須另外申請。\n\n如有興趣再進修英語或外語課程，可自由選修語言中心開設在「共同科」之英語或外語課程（課程介紹：\nhttps://lc.ntpu.edu.tw/web/course/introduce.jsp\n）。\n\n「培力英語能力檢定測驗」目前已列於本校抵免/免修通過標準中，除了報名費全免之外，尚有測驗獎勵。若同學有計劃再考取英語檢定，將免修資格改為抵免，請參考最新消息報名資訊（名額有限）\nhttps://tinyurl.com/9xjas4w9\n。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4011",
+    "question": "抵免和免修的差別？",
+    "category": "LC/FAQ",
+    "ground_truth": "只要符合抵免或免修標準，不用修「大學英文」課程（上下學期各2學分，全學年共4學分）。\n\n抵免：直接取得4個學分，大一第二學期的成績單上將會註記大學英文抵免。\n\n免修：需另外再選修4個學分補回來。如何補？→各系規定不同，請詢問所屬系所助教。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4012",
+    "question": "如何申請抵免？有無時間限制？",
+    "category": "LC/FAQ",
+    "ground_truth": "到語言中心綱站下載及填寫申請單，並攜帶英檢成績單或證書正本到語言中心辦理申請。\n\n有時間限制，限入學當年度辦理（原則上下學期初各辦理一次，詳細辦理時間請留意語言中心公告）。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4013",
+    "question": "如何申請免修？有無時間限制？",
+    "category": "LC/FAQ",
+    "ground_truth": "到語言中心綱站下載及填寫申請單，並攜帶英檢成績單或證書正本先到所屬系所蓋章後，再到語言中心辦理申請。\n\n有時間限制，限入學當年度辦理（原則上下學期初各辦理一次，詳細辦理時間請留意語言中心公告）。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4014",
+    "question": "轉學生申請抵免有沒有資格限制？如何申請？有無申請時間限制？",
+    "category": "LC/FAQ",
+    "ground_truth": "有資格限制，在原校已修習過課程名稱相同或內容相近之課程者，可申請抵免大學英文課程。\n\n到語言中心綱站下載及填寫申請單，再攜帶以下資料到語言中心申請(以下缺一不可)：\n\n1. 原校課綱〈課綱內容要清楚標示\n(1)教材用書名稱 (2)評量方式或標準 (3)每週上課進度\n〉。\n2. 原校成績單。\n\n \n\n有申請時間限制，限入學當年度辦理（原則上下學期各辦理一次，詳細辦理時間請留意語言中心公告）。\n\n請注意，轉學生學分抵免之認定，以\n轉入年級所屬入學學年度\n之標準為適用準則。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4015",
+    "question": "如何申請大學英文重/補修？",
+    "category": "LC/FAQ",
+    "ground_truth": "每學期結束前，語言中心會公告下一學期重/補修登記時間及方式。\n\n登記時請選擇可修課時段即可，無需自行到選課系統選課，本中心會幫你排課。\n\n同學登記修課時段後，該時段請勿再排其他課程，以免衝堂，造成本中心無法順利進行排課作業。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4016",
+    "question": "Language Corner在哪裡?",
+    "category": "LC/FAQ",
+    "ground_truth": "Language Corner位於人文大樓4樓的418教室（入口是玻璃門的空間）",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4017",
+    "question": "Language Corner的開放時間？",
+    "category": "LC/FAQ",
+    "ground_truth": "每學期開放時段不同，每個學期初會在語言中心官網及facebook粉絲團公告開放的時間表，請務必事先查詢，以免白跑一趟。\n\n開放時間請到\n這裡\n參看最底下的開放時間表。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4018",
+    "question": "要如何在Language Corner借書？",
+    "category": "LC/FAQ",
+    "ground_truth": "第一次借書，需繳$500押金並出示學生證或職員證以利資料建檔(畢業前或是不想再借書時即可申請退還押金)。\n\n收押金主要是為保護Corner的藏書和其他借閱人的權益，若逾期沒還，將依本中心規定罰款，每本逾期1日從保證金扣除5元，逾期30日則暫停借書之權利；若遺失損壞則必須新購一本還給中心。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4019",
+    "question": "Language Corner提供什麼服務",
+    "category": "LC/FAQ",
+    "ground_truth": "提供圖書借閱﹑Study Group課程，辦理語言中心講座、工作坊等活動。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4020",
+    "question": "英文健檢的開放時間？",
+    "category": "LC/FAQ",
+    "ground_truth": "學期中每星期提供6-8個時段的英文健診，每個時段約25分鐘，健診時間表請見語言中心網站或facebook公告。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4021",
+    "question": "要如何預約英文健診？",
+    "category": "LC/FAQ",
+    "ground_truth": "請先在語言中心網站填寫預約表，並請將相關諮詢文件Email至english_clinic@mail.ntpu.edu.tw。\n\n請注意，若未事先聯絡無故不到者，一個月內不得再預約諮詢服務。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4022",
+    "question": "英文健檢提供什麼服務？",
+    "category": "LC/FAQ",
+    "ground_truth": "提供英文自傳、履歷表、讀書計畫、模擬面試(Mock Interview)、英文學習疑難問題等修改或諮詢服務，協助學生求職、升學更順利。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4023",
+    "question": "什麼是Roundtable？",
+    "category": "LC/FAQ",
+    "ground_truth": "Roundtable外語圓桌會話每次活動時長50分鐘，全程採對話形式進行，每週討論主題依各班主持老師規劃而不同。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4024",
+    "question": "Roundtable是怎麼進行的？（報名、收費、上課時間、地點）",
+    "category": "LC/FAQ",
+    "ground_truth": "預約路徑：「語言中心官網>活動專區>其他活動」報名\n\n參與對象：僅開放本校在學學生報名\n\n預約時間：每學期第二週開始活動預約\n\n活動費用：不收費\n\n上課時間：每學期不固定，按主持老師提供時間安排\n\n上課地點：Language Corner（人文大樓4F18 ）",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4025",
+    "question": "何時開放Roundtable預約以及公佈預約名單？",
+    "category": "LC/FAQ",
+    "ground_truth": "Roundtable採隔週預約，每時段限10位名額，預約表單將於每週一上午10:00至週四中午12:00開放填寫，如預約人數眾多，將視情況提前關閉表單。預約成功名單將於每週五上午於語言中心網頁及\nFacebook專頁\n公告。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4026",
+    "question": "如何取消Roundtable預約？",
+    "category": "LC/FAQ",
+    "ground_truth": "若同學欲取消預約，請於活動日前一個工作天E-mail至ntpulc418@gmail.com告知。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4027",
+    "question": "若沒有預約，是否開放Walk-in？",
+    "category": "LC/FAQ",
+    "ground_truth": "若該次預約名額未滿，歡迎同學當日walk-in參加；若預約額滿，將不開放。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4028",
+    "question": "Study Group是怎麼進行的？（報名、收費、上課時間、地點、證書）",
+    "category": "LC/FAQ",
+    "ground_truth": "報名路徑：「語言中心官網>活動專區>Study Group」報名\n\n報名對象：僅開放本校在學學生報名\n\n報名時間：每學期時間不同，請關注網站最新消息\n\n課程收費：不收費，酌收講義費或自費購買教科書\n\n上課時間：Study Group提供多元課程，因此每學期各課程的時間不固定\n\n上課地點：Language Corner（人文大樓4F18 ）\n\n結業證書：Study Group各課程都是一學期為期10堂課，只要同學參與7堂以上，就會頒發證書以茲證明。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4029",
+    "question": "Study Group的老師是誰？",
+    "category": "LC/FAQ",
+    "ground_truth": "由於每學期的課程規劃不一樣，老師不一定與上學期相同。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4030",
+    "question": "Study Group有什麼課程？",
+    "category": "LC/FAQ",
+    "ground_truth": "Study Group每學期的課程都不太一樣，一方面要和各課程老師確認方便的時間，另一方面語言中心也希望能提供更多元的課程，因此幾乎每學期開出的課程都不盡相同。例如往年有基礎德語﹑基礎法語和日語會話等課程，但其中的日語會話和英文會話是固定課程，希望本校學生在主要修習的課程之餘，也能多涉獵其他課程，拓展更大的視野。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4031",
+    "question": "若錯過Study Group報名時間是否可以補報？",
+    "category": "LC/FAQ",
+    "ground_truth": "若課程尚未滿班，語言中心將於\nStudy Group\n開課第一週再開放補報。請同學關注語言中心網站或\nFacebook專頁\n。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4032",
+    "question": "我可以申請抵免學分的身份有哪些？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "具下列身分之學生得申請抵免學分：轉學生、曾在本校或他校肄、畢業，重新取得本校學籍之各年級學生、取得學籍之選讀生、先修讀學分，後考取修讀學位者、依本校學生出國選修課程實施辦法至外國大學選修課程者、經學術交流至教育部認可名冊所列大陸地區學校修讀學分者、依照修課規定准許於入學前先修讀學分者、跨校或校內雙重學籍學生。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4033",
+    "question": "我可以在什麼時候申請抵免學分？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "抵免學分之申請，應於入（轉）學、申請修習輔系或雙主修當學年加退選前辦理之。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4034",
+    "question": "抵免學分的原則是什麼？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "抵免學分之原則規定如下：科目名稱及內容相同者，科目名稱不同而內容相同者。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4035",
+    "question": "抵免學分的範圍有哪些限制？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "抵免學分之範圍如下：向度通識教育學分，應依本校「通識教育課程實施辦法」之規定辦理，原修習科目為原系（所）專業必、選修科目者，不得辦理向度通識教育學分之抵免，五年制專科畢業生於專三以前修習通過之科目，不得抵免，國立臺北聯合大學系統之跨校互選向度通識教育科目，不得抵免，擬申請抵免之科目，至入學時已超過十年者，不得抵免。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4036",
+    "question": "如果我修習的科目學分數不同，怎麼處理？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "以多抵少者，抵免後以較少學分登記，以少抵多不足學分無法補修者，不得抵免。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4037",
+    "question": "新生可以先修讀學分再考取學位嗎？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "准許先修讀學分，後考取修讀學位（含選讀生）之新生，以最近四年內所修讀及格之科目與學分為限。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4038",
+    "question": "抵免學分的申請需要哪些文件？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "申請學生應檢具抵免學分申請書、歷年成績表及原修習科目之課程大綱，作為審查科目內容是否相符之依據。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4039",
+    "question": "我可以在學期中申請抵免學分嗎？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "抵免學分之申請，應於入（轉）學、申請修習輔系或雙主修當學年加退選前辦理之。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4040",
+    "question": "如果我已經修習的科目超過十年，還可以抵免學分嗎？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "擬申請抵免之科目，至入學時已超過十年者，不得抵免。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4041",
+    "question": "抵免學分的審核是否需要考試？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "抵免學分之審核，得會同相關單位舉行考試或辦理覆核。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4043",
+    "question": "通識教育課程的學分要求是什麼？",
+    "category": "GE/法規/通識教育課程實施辦法",
+    "ground_truth": "自107學年度起，語文通識8學分及向度通識16學分。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4044",
+    "question": "通識教育課程的語文通識包含哪些課程？",
+    "category": "GE/法規/通識教育課程實施辦法",
+    "ground_truth": "107至112學年度，語文通識課程包含大一國文：經典閱讀與詮釋4學分及大學英文/適應大學英文4學分。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4045",
+    "question": "通識教育課程的向度通識分為哪幾個向度？",
+    "category": "GE/法規/通識教育課程實施辦法",
+    "ground_truth": "向度通識教育課程分為人文思維與美學詮釋、倫理判斷與生命涵養、法政制度與公民社會、經濟社會與全球視野、科學素養與邏輯思維、歷史思維與文明探索六大向度。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4046",
+    "question": "105至106學年度入學的學生需要修習多少學分的向度通識教育課程？",
+    "category": "GE/法規/通識教育課程實施辦法",
+    "ground_truth": "105至106學年度入學學生必須選修向度通識教育課程18學分，六大向度中任選5向度，各向度至少選1門。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4047",
+    "question": "107學年度以後入學的學生需要修習多少學分的向度通識教育課程？",
+    "category": "GE/法規/通識教育課程實施辦法",
+    "ground_truth": "107學年度以後入學學生必須選修向度通識教育課程16學分，六大向度中任選5向度，各向度至少選1門。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4048",
+    "question": "通識教育課程的選修方式是如何公告的？",
+    "category": "GE/法規/通識教育課程實施辦法",
+    "ground_truth": "通識教育課程之選修方式，依實際需要，由通識教育中心、中國文學系、語言中心協同教務處於每學期另行於註冊選課須知中公告之。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4049",
+    "question": "通識教育課程的成績評量原則是什麼？",
+    "category": "GE/法規/通識教育課程實施辦法",
+    "ground_truth": "向度通識成績評量，平均成績以80±5分（含）為原則。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4050",
+    "question": "大一國文：經典閱讀與詮釋課程由哪個系負責開設？",
+    "category": "GE/法規/通識教育課程實施辦法",
+    "ground_truth": "大一國文：經典閱讀與詮釋課程由本校中國文學系負責規劃及開設。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4053",
+    "question": "通識微型課程的學分數是多少？",
+    "category": "GE/法規/通識微型及自主學習課程實施原則",
+    "ground_truth": "通識微型課程是指不多於一學分（0.1～1學分）之微學分彈性課程。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4054",
+    "question": "學生修習通識微型課程需要累積多少學分才能取得相關通識領域學分？",
+    "category": "GE/法規/通識微型及自主學習課程實施原則",
+    "ground_truth": "學生修習通識各微型課程累積達整數學分者，取得相關通識領域學分。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4055",
+    "question": "通識微型課程的評量原則是什麼？",
+    "category": "GE/法規/通識微型及自主學習課程實施原則",
+    "ground_truth": "課程學習之評量須包含成果導向之評量，具備成果發表、成果展示或其它足以評量相關習得能力之測試。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4056",
+    "question": "學生團隊自主學習課程是由誰提出的？",
+    "category": "GE/法規/通識微型及自主學習課程實施原則",
+    "ground_truth": "學生團隊自主課程是指由學生依據特定的學習目標，自行組隊自主提出之課程計畫。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4057",
+    "question": "學生團隊自主學習課程的指導老師由誰擔任？",
+    "category": "GE/法規/通識微型及自主學習課程實施原則",
+    "ground_truth": "指導老師由本校專兼任教師擔任，負責輔導及評量學生之學習目標、學習方法、活動、執行成效等事宜。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4058",
+    "question": "通識微型及自主學習課程的學分計算原則是什麼？",
+    "category": "GE/法規/通識微型及自主學習課程實施原則",
+    "ground_truth": "授課教師、指導老師實際授滿 18小時，以一學分授課時數。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4059",
+    "question": "學生學習實際投入多少小時可以獲得一學分？",
+    "category": "GE/法規/通識微型及自主學習課程實施原則",
+    "ground_truth": "學生學習實際投入（含上課）滿27小時，獲得一學分。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4060",
+    "question": "通識微型課程學分的上限是多少？",
+    "category": "GE/法規/通識微型及自主學習課程實施原則",
+    "ground_truth": "學生修習通識微型課程學分以4學分為上限，可認抵各向度通識學分。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4062",
+    "question": "暑期線上學院的報名期限是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "報名期限是即日起至 6/28 (日) 23:59。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4063",
+    "question": "全國夏季學院的選課時間是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "第一階段（登記分發制）選課時間是04月29日（三）10:00 至05月06日（三）10:00，第二階段（先選先得制）選課時間是05月18日（三）10:00 至各課程開始前2週。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4066",
+    "question": "通識月排名活動我需要帶什麼文件去領獎？",
+    "category": "GE/最新消息",
+    "ground_truth": "得獎人必須親自於領獎時間攜帶身分證件(學生證)至通識中心(行政大樓3樓13室)。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4067",
+    "question": "參加第31屆通識月活動需要填寫哪些資料才能獲得參加資格？",
+    "category": "GE/最新消息",
+    "ground_truth": "參加第31屆通識月活動需要填寫回饋單並留下聯絡資料，包括姓名、學號和手機。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4068",
+    "question": "通識月的活動期間是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "通識月的活動期間是從115年3月16日到115年5月12日。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4069",
+    "question": "我想知道114學年度第二學期通識創新課程教學獎助計畫的申請結果是什麼？",
+    "category": "GE/最新消息",
+    "ground_truth": "經中心會議審查，通過審查的創新課程包括：氣候變遷與永續能源、通識微型課程-播客製作、Python生成式AI實作、網路生活應用。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4070",
+    "question": "114-2 學期向度通識課程學分抵免申請的截止日期是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "114-2 學期向度通識課程學分抵免申請將於加退選結束前（3/4）截止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4072",
+    "question": "114-2 學期向度通識課程學分抵免申請的截止時間是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "114-2 學期向度通識課程學分抵免申請的截止時間為加退選結束前（3/4）。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4073",
+    "question": "我作為114學年度入學的新生，學分抵免申請的截止日期是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "若你為114學年度入學新生，尚未於114-1學期完成學分抵免申請，請務必於114-2學期完成辦理。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4075",
+    "question": "我可以申請幾次學分抵免？",
+    "category": "GE/最新消息",
+    "ground_truth": "凡以 114 學年度新生身分申請學分抵免者，僅能申請一次，且須一次送齊所有欲抵免科目。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4077",
+    "question": "我作為114學年度的新生，什麼時候需要完成學分抵免的申請？",
+    "category": "GE/最新消息",
+    "ground_truth": "若你於114-1學期尚未辦理學分抵免，請務必於114-2學期完成申請，以免影響後續修課與畢業規劃。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4078",
+    "question": "新生選課的時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "15學年度第1學期新生選課重要時程\n學士班新生選課（第二次選課）： 8月21日（五）至8月27日（四）止\n加退選階段： 9月7日（一）至9月14日（一）止",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4079",
+    "question": "我想知道申請「語文通識－大學英文」課程抵免的截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "115 學年度第 1 學期 (115-1)\n線上申請： 自公告日起至 115 年 9 月 6 日止（僅限以英檢成績申請）\n。\n紙本申請： 自公告日起至 115 年 9 月 14 日止",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4080",
+    "question": "重修或補修「大學英文」課程的登記截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "重修或補修「大學英文」課程的登記截止日期是2026年9月4日（星期五）17:00前。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4081",
+    "question": "115-1學期的線上申請截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "115-1學期的線上申請截止日期是115年9月6日。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4082",
+    "question": "這次英語短影音比賽有多少組學生參賽？",
+    "category": "LC/最新消息",
+    "ground_truth": "本次比賽共吸引25組學生參賽，其中大學英文組9組、一般組16組。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4084",
+    "question": "我可以在哪裡領取培力英語能力檢定測驗的獎品？",
+    "category": "LC/最新消息",
+    "ground_truth": "獲獎同學請於即日起至2026年6月5日(五)前攜帶學生證親自至語言中心/雙語辦公室（人文大樓3F08室）領取獎品。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4087",
+    "question": "投票的開放時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "投票的開放時間是從5月4日中午12點至5月11日下午4點止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4088",
+    "question": "這個EMI教學工作坊的日期和時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "這個EMI教學工作坊的日期和時間是5月19日 (二) 12:10–13:10。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4089",
+    "question": "測驗證明上傳的截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "測驗證明上傳截止日為2026年4月30日（四）23:59。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4090",
+    "question": "我可以在什麼時候預約EMI TA諮詢服務？",
+    "category": "LC/最新消息",
+    "ground_truth": "預約日期為即日起至每諮詢日前三天截止。可預約的諮詢時段包括：4/21(二) 14:00~16:00、4/24(五) 14:00~16:00、4/28(二) 12:00~14:00、5/8(五) 12:00~14:00、5/12(二) 14:00~16:00、5/15(五) 12:00~14:00、5/19(二) 12:00~16:00、5/26(二) 12:00~16:00。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4091",
+    "question": "我可以在什麼時候預約英語學術論文諮詢？",
+    "category": "LC/最新消息",
+    "ground_truth": "預約表單開放填寫的時間是從2026年4月10日 (五) 起至每諮詢日前三日截止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4092",
+    "question": "申請英語能力檢定獎勵的截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "申請時間即日起至2026/4/9（四）16:00止！",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4097",
+    "question": "短影音教學工作坊的場次和時間是什麼？",
+    "category": "LC/最新消息",
+    "ground_truth": "短影音教學工作坊共辦2場，場次一是3月27日（五）下午13:10-15:00，場次二是3月31日（二）下午17:10-19:00。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4099",
+    "question": "英文健診的預約時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "114學年度第2學期於2026/03/02 (一) 起 ~ 06/05 (五) 止開放預約健診。預約表單於每週一上午10:00至週四中午12:00前開放填寫",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4101",
+    "question": "藝術工作坊的網路報名截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "藝術工作坊的網路報名截止日期是3月9日中午12:00。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4102",
+    "question": "我可以在哪裡領取114-2 EMI/ESAP 教學助理培訓的證書？",
+    "category": "LC/最新消息",
+    "ground_truth": "通過培訓的同學請於即日起至 3 月 31 日 (二) 至語言中心／雙語化學習辦公室（人文大樓 308 室）領取培訓證書。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4103",
+    "question": "酷英大專區的線上研習會在什麼時候舉行？",
+    "category": "LC/最新消息",
+    "ground_truth": "酷英大專區的線上研習會將在2026年3月至4月期間舉行，共六場。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4104",
+    "question": "外語圓桌活動的預約時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "外語圓桌活動的預約時間是從3月9日（星期一）上午9:00至3月12日（星期四）中午12:00止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4105",
+    "question": "Study Group 英語學習小組活動的報名截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "Study Group 英語學習小組活動報名加長延長至3/6(五)中午12點止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4108",
+    "question": "我可以在什麼時間預約114-2 Roundtable外語圓桌活動參與證明？",
+    "category": "LC/最新消息",
+    "ground_truth": "本學期活動參與證書開放申請登記自5/20(三)至5/29(五)下午16:00截止",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4109",
+    "question": "3月2日的講座有哪些主題和時間安排？",
+    "category": "LC/最新消息",
+    "ground_truth": "3月2日的講座主題和時間安排為：Session 1，Dr. Maja Tabea Jerrentrup — AI and Fiction，時間為12:00–13:00，地點為人文大樓418室；Session 2，Silke Riegler — Exploring Critical Incidents，時間為13:10–15:00，地點為人文大樓506室。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4110",
+    "question": "Study Group 英語學習小組的報名截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "網路報名最終截止時間： 115 年 3 月 6 日（五）中午 12:00 止",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4111",
+    "question": "報名TEEMI平台的截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "報名截止日期是2026年3月24日中午12:00。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4112",
+    "question": "借用Grammarly EDU帳號的期間是多久？",
+    "category": "LC/最新消息",
+    "ground_truth": "每人每次借用14天，期滿結束後有需要可重新登記借用。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4113",
+    "question": "我可以申請抵免學分的資格有哪些？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "具下列身分之學生得申請抵免學分，且以一次為原則：轉學生、曾在本校或他校肄、畢業，重新取得本校學籍之各年級學生、取得學籍之選讀生、先修讀學分，後考取修讀學位者、依本校學生出國選修課程實施辦法至外國大學選修課程者、經學術交流至教育部認可名冊所列大陸地區學校修讀學分者、依照修課規定准許於入學前先修讀學分者、跨校或校內雙重學籍學生。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4114",
+    "question": "抵免學分的申請截止日期是什麼時候？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "抵免學分之申請，應於入（轉）學、申請修習輔系或雙主修當學年加退選前辦理之。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4115",
+    "question": "抵免學分的審核程序需要哪些文件？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "申請學生應檢具抵免學分申請書、歷年成績表及原修習科目之課程大綱，作為審查科目內容是否相符之依據。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4116",
+    "question": "我修習的科目已經超過十年，還能抵免學分嗎？",
+    "category": "GE/法規/通識教育中心學生抵免學分辦法",
+    "ground_truth": "擬申請抵免之科目，至入學時已超過十年者，不得抵免。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4117",
+    "question": "107學年度以後入學的學生必須選修多少學分的向度通識教育課程？",
+    "category": "GE/法規/通識教育課程實施辦法",
+    "ground_truth": "107學年度以後入學學生必須選修向度通識教育課程16學分。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4118",
+    "question": "通識教育課程的語文通識學分在113學年度是怎麼分配的？",
+    "category": "GE/法規/通識教育課程實施辦法",
+    "ground_truth": "自113學年度起，語文通識課程包含大一國文：經典閱讀與詮釋（一）2學分、大一國文：經典閱讀與詮釋（二）2學分及大學英文4學分。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4119",
+    "question": "105至106學年度的語文通識課程包含哪些課程及學分？",
+    "category": "GE/法規/通識教育課程實施辦法",
+    "ground_truth": "105至106學年度，語文通識課程包含大一國文：經典閱讀與詮釋4學分及外文6學分。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4120",
+    "question": "通識微型課程的學分上限是多少？",
+    "category": "GE/法規/通識微型及自主學習課程實施原則",
+    "ground_truth": "學生修習通識微型課程學分以4學分為上限，可認抵各向度通識學分。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4121",
+    "question": "學生需要投入多少小時的學習才能獲得一學分？",
+    "category": "GE/法規/通識微型及自主學習課程實施原則",
+    "ground_truth": "學生學習實際投入（含上課）滿27小時，獲得一學分。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4122",
+    "question": "通識微型課程的學分範圍是多少？",
+    "category": "GE/法規/通識微型及自主學習課程實施原則",
+    "ground_truth": "通識微型課程是指不多於一學分（0.1～1學分）之微學分彈性課程。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4123",
+    "question": "授課教師需要授滿多少小時才能計算為一學分？",
+    "category": "GE/法規/通識微型及自主學習課程實施原則",
+    "ground_truth": "授課教師、指導老師實際授滿18小時，以一學分授課時數計。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4125",
+    "question": "這次通識月的活動名稱是什麼？",
+    "category": "GE/最新消息",
+    "ground_truth": "這次通識月的活動名稱是「共學、共玩、共好：游於藝中的生命教育」。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4126",
+    "question": "這次通識月活動的時間是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "活動時間是2026年115/03/16–115/05/12",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4128",
+    "question": "我需要提供什麼資料來申請高教深耕研究助理的職位？",
+    "category": "GE/最新消息",
+    "ground_truth": "申請資料包括簡歷和詳述學術專長，需發送至 email: schen@gm.ntpu.edu.tw。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4129",
+    "question": "參加第31屆通識月活動需要填寫哪些資料才能取得參加資格？",
+    "category": "GE/最新消息",
+    "ground_truth": "參加第31屆通識月活動需要填寫回饋單並留下聯絡資料，包括姓名、學號和手機。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4136",
+    "question": "我可以用什麼方式提交學分抵免申請文件？",
+    "category": "GE/最新消息",
+    "ground_truth": "可採以下方式之一：親送（上班時間）、郵寄掛號或公文交換。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4139",
+    "question": "這個系列講座的日期是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "這個系列講座的日期是3月13日、3月20日、3月27日和4月10日。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4140",
+    "question": "我需要在什麼時候完成學分抵免的申請？",
+    "category": "GE/最新消息",
+    "ground_truth": "學分抵免的申請時間依據課程類別與您的學生身分而定，但最核心的原則是必須在入（轉）學當學年的加退選截止前完成辦理",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4141",
+    "question": "申請114-2向度通識課程TA補助的截止日期是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "申請114-2向度通識課程TA補助的截止日期是115年02月08日(日) 23:59止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4142",
+    "question": "申請114-2「通識創新課程教學獎助計畫」的截止日期是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "申請期限是即日起至115年02月08日(日) 23:59 止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4143",
+    "question": "第30屆通識月的活動時間是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "第30屆通識月的活動時間為 114 年 10 月 7 日至 11 月 11 日",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4144",
+    "question": "頒獎及分享會的時間和地點是什麼？",
+    "category": "GE/最新消息",
+    "ground_truth": "頒獎及分享會預計於11/26(三)中午12時10分於行政大樓4樓第3會議室舉辦。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4145",
+    "question": "參加第30屆通識月活動需要填寫哪些資料才能取得參加資格？",
+    "category": "GE/最新消息",
+    "ground_truth": "參加第30屆通識月活動需要填寫回饋單並留下聯絡資料，包括姓名、學號和手機。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4147",
+    "question": "新生必須修習的「語文通識－大學英文」課程需要多少學分？",
+    "category": "LC/最新消息",
+    "ground_truth": "所有115學年度入學之新生皆須修習「語文通識－大學英文」課程，共計 4學分。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4158",
+    "question": "申請114-2學期英語能力檢定獎勵的截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "申請時間即日起至2026/4/9（四）16:00止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4160",
+    "question": "英文健診的預約開放時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "114學年度第2學期於2026/03/02 (一) 起 ~ 06/05 (五) 止開放預約健診。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4167",
+    "question": "我可以在哪裡領取 EMI/ESAP 教學助理培訓的證書？",
+    "category": "LC/最新消息",
+    "ground_truth": "通過培訓的同學請於即日起至 3 月 31 日 (二) 至語言中心／雙語化學習辦公室（人文大樓 308 室）領取培訓證書。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4168",
+    "question": "酷英大專區線上研習的主題是什麼？",
+    "category": "LC/最新消息",
+    "ground_truth": "主題為「酷英大專區英語學習資源介紹與EMI資源應用」。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4169",
+    "question": "外語圓桌活動的預約開放時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "外語圓桌活動的預約開放時間是從3月9日（星期一）上午9:00至3月12日（星期四）中午12:00止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4172",
+    "question": "我可以在什麼時候預約外語圓桌活動？",
+    "category": "LC/最新消息",
+    "ground_truth": "預約外語圓桌活動的開放時間是從3月2日（星期一）上午9:00至3月5日（星期四）中午12:00止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4175",
+    "question": "TEEMI的報名截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "TEEMI的報名截止日期是2026年3月24日中午12:00。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4176",
+    "question": "每次借用Grammarly EDU帳號的期間是多久？",
+    "category": "LC/最新消息",
+    "ground_truth": "每人每次借用14天，期滿結束後有需要可重新登記借用。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4177",
+    "question": "藝術工作坊的網路報名時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "藝術工作坊的網路報名時間是2/23(一)早上10點至3/9(一)中午12:00止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4178",
+    "question": "報名培力英語能力檢定測驗的截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "報名日期即日起至2026年3月4日（三）23:59止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4179",
+    "question": "EMI/ESAP教學助理培訓的報名截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "報名截止日期是2026年2月25日(三)23:59。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4180",
+    "question": "EMI教師培訓的報名截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "EMI教師培訓的報名截止日期是2月25日（星期三）中午12:00前。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4181",
+    "question": "TEEMI 平台的試用截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "正式報名截止日期： TEEMI 平台於 114-2 學期正式開放報名，報名截止時間為 2026 年 3 月 24 日（二）中午 12:00 止",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4183",
+    "question": "我可以在哪裡領取114-1學生英語力普查抽獎活動的獎品？",
+    "category": "LC/最新消息",
+    "ground_truth": "獎品可以在語言中心/雙語辦公室（人文大樓3F08室）領取。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4184",
+    "question": "我可以在什麼時候去領取培力英語能力檢定測驗的獎品？",
+    "category": "LC/最新消息",
+    "ground_truth": "獲獎同學請於即日起至2025年12月18日(四)前攜帶學生證親自至語言中心/雙語辦公室（人文大樓3F08室）領取獎品。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4186",
+    "question": "我可以在什麼時候預約參加英文健診？",
+    "category": "LC/最新消息",
+    "ground_truth": "114學年度第1學期於2025/09/22 (一) 起 ~ 12/19 (五)止開放預約健診。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4189",
+    "question": "Roundtable 外語圓桌活動的預約時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "預約活動的時間是12月1日（星期一）上午9:00至12月3日（星期三）中午12:00止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4191",
+    "question": "預約健診的開放時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "114學年度第1學期於2025/09/22 (一) 起 ~ 12/19 (五) 止開放預約健診。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4196",
+    "question": "這次雙語計畫成果發表暨說明會的時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "這次雙語計畫成果發表暨說明會的時間是12月9日（星期二）10:00。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4197",
+    "question": "報名這些講座的截止日期是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "報名截止日期是即日起至11月18日（三）中午12:00前。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4199",
+    "question": "我可以在什麼時候預約英文健診？",
+    "category": "LC/最新消息",
+    "ground_truth": "以 114 學年度第 2 學期為例，預約服務時間為 2026 年 3 月 2 日（一）起至 6 月 5 日（五）止",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4200",
+    "question": "預約Roundtable活動的截止時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "預約表單預計開放至11/13（四）中午12:00，將視同學預約情況提前關閉表單。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4201",
+    "question": "語言中心有哪些新進的外語檢定圖書可以借閱？",
+    "category": "LC/最新消息",
+    "ground_truth": "語言中心新進的外語檢定圖書包括：IELTS ACADEMIC 13 WITH ANSWERS、IELTS ACADEMIC 18 WITH ANSWERS、IELTS ACADEMIC 19 WITH ANSWERS、The Official Cambridge Guide to IELTS Student's Book with DVD-ROM (with Answer Booklet)、多益TOEIC考前衝刺 全擬真聽力閱 試題+解析【終極2回】、多益TOEIC考前衝刺 全擬真聽力閱 試題+解析【標竿2回】、全新!新制多益TOEIC試題滿分一本通:6回完整試題+詳解，掌握最新命題趨勢、IELTS雅思致勝寶典: 圖解聽說讀寫攻略+4回奪標 模擬試題 (試題本)、IELTS雅思致勝寶典: 圖解聽說讀寫攻略+4回奪標 模擬試題 (解析本)、NEW TOEIC新多益口說與寫作大破解、全新制怪物講師教學團隊的TOEIC多益1,200題全真模擬試題(閱讀)、全新制怪物講師教學團隊的TOEIC多益1,200題全真模擬試題(聽力)、NEW TEOIC七大題型拿滿分秘技(2022全新編修版)(學生本+教師本)、最新! 新制多益TOEIC聽力+閱讀全方位指南:第一次考就高分!解題精華(含解答本)、NEW TOEIC 秒解多益七大題型 金色證書應考攻略(試題本+解析)、最新! 新制多益TOEIC閱讀題庫解析:最新收錄精準10回模擬試題!、全新制TOEIC多益口說攻略+模擬試題+解析、一定會考的JLPT日檢N4-N5選擇題1,000、一定會考的JLPT日檢N3選擇題1,000、一定會考的JLPT日檢N2選擇題1,000、完全掌握N3,N4對應文法問題對策、完全掌握N5對應文法問題對策、完全掌握N1對應文法問題對策。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4202",
+    "question": "預約英文健診的開放時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "114學年度第1學期於2025/09/22 (一) 起 ~ 12/19 (五) 止開放預約健診。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4206",
+    "question": "Roundtable外語圓桌活動的預約開放時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "預約開放時間是10/27（一）上午9:00至10/30（四）中午12:00止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4207",
+    "question": "我需要什麼樣的英語檢定成績才能參加抽獎活動？",
+    "category": "LC/最新消息",
+    "ground_truth": "根據來源資料，參加抽獎活動所需的英語檢定成績依活動性質而定，主要可分為成績等級導向與測驗完成導向兩類。以下為具體的成績要求整理：\n一、 依成績等級參加抽獎（學生英語力普查）\n若參加「學生英語力普查抽獎活動」，您需要上傳指定的英檢成績證明，獎項會根據您的成績等級分發不同的抽獎機會\n：\nB2 等級成績：\n聽、讀、說、寫四項全達 B2 以上：可參加 400 元禮券抽獎\n。\n聽讀或說寫任意二項達 B2 以上：可參加 300 元禮券抽獎\n。\nB1 等級成績：\n聽、讀、說、寫四項全達 B1 以上：可參加 200 元禮券抽獎\n。\n聽讀或說寫任意二項達 B1 以上：可參加 100 元禮券抽獎\n。\n採計的檢定類別： 包含 TOEIC、GEPT、TOEFL iBT、IELTS、劍橋國際英語認證、FLTP、劍橋領思 (Linguaskill)、培力英檢 (BESTEP)、TEEMI 平台及酷英網 (Cool English)\n。\n二、 依測驗完成狀況參加抽獎\n部分活動只要完成測驗或通過特定等級即可參加：\n培力英語能力檢定測驗 (BESTEP)：\n非商學院學生報名並完成報考項目（聽、讀、說、寫）測驗，即可參加 200 至 500 元不等的禮券抽獎\n。\nTest My English 英語自主檢測系統：\nB1 等級： 通過聽讀說寫並取得證書（1 次抽獎機會）\n。\nB2 等級： 完成聽讀說寫成績（2 次機會）；若通過並取得證書則有 3 次機會\n。\nTEEMI 平台與 Cool English 獎勵計畫：\n完成 TEEMI 口說及寫作測驗各一次\n。\n完成 TEEMI-Bot 一組（10 次）測驗\n。\n完成 Cool English 酷英網大專區學術詞彙競賽並取得證書\n。\n完成 Test My English B2 等級測驗\n。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4208",
+    "question": "講座 2 的時間是什麼時候？",
+    "category": "LC/最新消息",
+    "ground_truth": "講座 2 的時間是 10 月 28 日（二）10:10–12:00。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4212",
+    "question": "寫作培訓班的上課時間和地點是什麼？",
+    "category": "LC/最新消息",
+    "ground_truth": "寫作培訓班的上課時間是10/8 (三) 13:00-16:00，地點是人文大樓4F18。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4215",
+    "question": "我可以在哪些日期預約EMI TA諮詢服務？",
+    "category": "LC/最新消息",
+    "ground_truth": "可預約諮詢時段如下：9月26日、10月2日、10月3日、10月16日、10月17日、11月6日、11月7日、11月14日、11月20日、11月21日、11月28日、12月4日、12月5日、12月11日、12月12日、12月19日。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4216",
+    "question": "我可以在哪些日期預約英語學術論文諮詢？",
+    "category": "LC/最新消息",
+    "ground_truth": "可預約諮詢的日期包括：9月26日、10月2日、10月3日、10月16日、10月17日、11月6日、11月7日、11月14日、11月20日、11月21日、11月28日、12月4日、12月5日、12月11日、12月12日、12月19日。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4218",
+    "question": "學士班學生可以選修進修學士班的通識課程嗎？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "自105學年度起，學士班及進修學士班學生均得相互選課，於校定期間內上網辦理選課(請參閱〈 本校學士班及進修學士班互選課程辦法 〉)。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4219",
+    "question": "要如何選修進修學士班的通識課程？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "自105學年度起，學士班及進修學士班學生均得相互選課，於校定期間內上網辦理選課(請參閱〈 本校學士班及進修學士班互選課程辦法 〉)。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4220",
+    "question": "要怎麼加選那些不開放人工加簽的通識課程？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "人工加簽僅限日間學制的課程，且需由授課教師在教師資訊系統中直接加入學生學號，學生尚需於學生資訊系統中做確認始完成加選。\n無論老師是否同意人工加簽，依學校選課規定，所有課程均適用重大事由加退選。如符合「 國立臺北大學學生選課辦法 」第五條規定之不可歸責於學生之重大事由者，得於本校規定期限內填寫「重大事由加退選申請單」，經開課單位、任課教師及學生所屬系（所）主管同意後，送交教務單位辦理。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4221",
+    "question": "我是轉學生，想請問我該如何加選不開放人工加簽的通識課程？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "人工加簽僅限日間學制的課程，且需由授課教師在教師資訊系統中直接加入學生學號，學生尚需於學生資訊系統中做確認始完成加選。\n無論老師是否同意人工加簽，依學校選課規定，所有課程均適用重大事由加退選。如符合「 國立臺北大學學生選課辦法 」第五條規定之不可歸責於學生之重大事由者，得於本校規定期限內填寫「重大事由加退選申請單」，經開課單位、任課教師及學生所屬系（所）主管同意後，送交教務單位辦理。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4222",
+    "question": "雙主修和輔系的通識學分怎麼算？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "98學年度以前入學之學生，如雙主修跨學院學系者，其通識教育課程八學分仍需符合跨院選讀之規定。\n99學年度以後入學之學生，如雙主修，選修通識教育課程與所屬及雙主修學系之必修、選修課程相同或雷同者，不列入通識畢業學分數。輔系同學依原屬學系來認定。\n113學年度起，選修通識教育課程或向度通識教育課程，相同或雷同課程僅規範於 畢業時 所屬 主學系 ，雙主修學系課程不再列入排除範圍.",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4223",
+    "question": "如果我有雙主修，通識學分會怎麼認定？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "98學年度以前入學之學生，如雙主修跨學院學系者，其通識教育課程八學分仍需符合跨院選讀之規定。\n99學年度以後入學之學生，如雙主修，選修通識教育課程與所屬及雙主修學系之必修、選修課程相同或雷同者，不列入通識畢業學分數。輔系同學依原屬學系來認定。\n113學年度起，選修通識教育課程或向度通識教育課程，相同或雷同課程僅規範於 畢業時 所屬 主學系 ，雙主修學系課程不再列入排除範圍.",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4224",
+    "question": "必修的通識學分和適用的向度是怎麼規定的？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "根據入學年度依學號判定，如學號為410012345適用100學年度之規定，如學號為310312345適用103學年度之規定。\n各學年度學生必修通識教育學分之規定如下：（請參閱〈國立臺北大學通識教育課程實施辦法〉）。 (1).99至100學年度入學學生必須選修通識教育核心課程至少8學分，五大向度中任選4向度，各向度至少選1門；進階課程至少4學分，不分向度至少2門(向度名稱在課程查詢系統以「99-100向度」標示)。 (2).101至104學年度入學學生必須選修通識教育學分，課程分五大向度，任選至少4向度各1門課程，且總學分至少12學分(向度名稱在課程查詢系統以「101-102 向度」或「103-104 向度」標示)。 (3).105至106學年度入學學生必須選修向度通識教育學分，課程分六大向度，任選至少5向度各1門課程，且總學分至少18學分( 向度名稱在課程查詢系統以「105- 向度」標示) (4).107學年度以後入學學生必須選修向度通識教育學分，課程分六大向度，任選至少5向度各1門課程，且總學分至少16學分( 向度名稱在課程查詢系統以「105- 向度」標示)。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4225",
+    "question": "我想知道通識課程的必修學分和向度是怎麼規定的？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "根據入學年度依學號判定，如學號為410012345適用100學年度之規定，如學號為310312345適用103學年度之規定。\n各學年度學生必修通識教育學分之規定如下：（請參閱〈國立臺北大學通識教育課程實施辦法〉）。 (1).99至100學年度入學學生必須選修通識教育核心課程至少8學分，五大向度中任選4向度，各向度至少選1門；進階課程至少4學分，不分向度至少2門(向度名稱在課程查詢系統以「99-100向度」標示)。 (2).101至104學年度入學學生必須選修通識教育學分，課程分五大向度，任選至少4向度各1門課程，且總學分至少12學分(向度名稱在課程查詢系統以「101-102 向度」或「103-104 向度」標示)。 (3).105至106學年度入學學生必須選修向度通識教育學分，課程分六大向度，任選至少5向度各1門課程，且總學分至少18學分( 向度名稱在課程查詢系統以「105- 向度」標示) (4).107學年度以後入學學生必須選修向度通識教育學分，課程分六大向度，任選至少5向度各1門課程，且總學分至少16學分( 向度名稱在課程查詢系統以「105- 向度」標示)。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4226",
+    "question": "目前通識教育中心負責哪些課程？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "104學年度以前：全校通識教育課程必修12學分。\n105至106學年度：全校向度通識教育課程必修18學分。\n107學年度以後：全校向度通識教育課程必修16學分。\n語文通識專責單位： 大一國文：中國文學系 (文院7F；分機66708) 大學英文：語言中心 (文院3F；分機66478)",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4227",
+    "question": "請問通識教育中心的課程安排是什麼？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "104學年度以前：全校通識教育課程必修12學分。\n105至106學年度：全校向度通識教育課程必修18學分。\n107學年度以後：全校向度通識教育課程必修16學分。\n語文通識專責單位： 大一國文：中國文學系 (文院7F；分機66708) 大學英文：語言中心 (文院3F；分機66478)",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4228",
+    "question": "如果我有其他問題，該如何聯繫你們？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "可以mail至通識教育中心信箱: cge@mail.ntpu.edu.tw。\n可於上班時間(09:00-17:00)來電02-86741111轉66165、66171。\n可至三峽校區行政大樓3樓313室通識教育中心洽詢。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4229",
+    "question": "有哪些聯絡方式可以詢問其他問題？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "可以mail至通識教育中心信箱: cge@mail.ntpu.edu.tw。\n可於上班時間(09:00-17:00)來電02-86741111轉66165、66171。\n可至三峽校區行政大樓3樓313室通識教育中心洽詢。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4230",
+    "question": "怎麼找到通識教育課程的老師？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "請至通識教育中心網頁>師資簡介>專任/兼任/支援師資。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4231",
+    "question": "如果我想聯絡通識教育的教師，該怎麼做？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "請至通識教育中心網頁>師資簡介>專任/兼任/支援師資。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4232",
+    "question": "台北校區的學生，想知道有沒有其他方式可以抵免通識學分或申請重大事由加退選？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "通識中心於104-2開始試行於台北校區駐點，提供諮詢、重大事由加退選核章、抵免單協助送回三峽校區等服務。\n駐點服務時間依公告時間辦理，同學如需申請抵免向度通識學分、重大事由加退選等，須考量抵免單送回三峽校區審核的時間，是否會耽誤校內開放申請抵免學分的時間。\n郵寄掛號：寄送至三峽校區通識教育中心，並依郵戳時間為憑。\n公文交換：自行公文傳遞、自行委請各系辦同意協助公文傳遞，或自行委請進修教育組同意協助公文傳遞等方式送至三峽校區通識教育中心.",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4233",
+    "question": "如果我在台北校區，想抵免通識學分或申請重大事由加退選，有沒有其他辦法？",
+    "category": "GE/FAQ/改寫",
+    "ground_truth": "通識中心於104-2開始試行於台北校區駐點，提供諮詢、重大事由加退選核章、抵免單協助送回三峽校區等服務。\n駐點服務時間依公告時間辦理，同學如需申請抵免向度通識學分、重大事由加退選等，須考量抵免單送回三峽校區審核的時間，是否會耽誤校內開放申請抵免學分的時間。\n郵寄掛號：寄送至三峽校區通識教育中心，並依郵戳時間為憑。\n公文交換：自行公文傳遞、自行委請各系辦同意協助公文傳遞，或自行委請進修教育組同意協助公文傳遞等方式送至三峽校區通識教育中心.",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4234",
+    "question": "收到『抵免』申請通過的簡訊後，我需要注意什麼嗎？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "「大學英文」課程抵免註記將於下學期成績單上才會出現，所以同學在上學期成績單看不到是正常的，請不用緊張。\n\n以英檢通過抵免申請者，語言中心將直接為您辦理「外語能力指標檢核」，不須另外申請。\n\n如有興趣再進修英語或外語課程，可自由選修語言中心開設在「共同科」之英語或外語課程（課程介紹：\nhttps://lc.ntpu.edu.tw/web/course/introduce.jsp\n）。\n\n「培力英語能力檢定測驗」除了報名費全免之外，尚有測驗獎勵。若同學有計劃再考取英語檢定，請參考最新消息報名資訊（名額有限）\nhttps://tinyurl.com/9xjas4w9\n。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4235",
+    "question": "抵免申請通過後，有哪些事項需要留意？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "「大學英文」課程抵免註記將於下學期成績單上才會出現，所以同學在上學期成績單看不到是正常的，請不用緊張。\n\n以英檢通過抵免申請者，語言中心將直接為您辦理「外語能力指標檢核」，不須另外申請。\n\n如有興趣再進修英語或外語課程，可自由選修語言中心開設在「共同科」之英語或外語課程（課程介紹：\nhttps://lc.ntpu.edu.tw/web/course/introduce.jsp\n）。\n\n「培力英語能力檢定測驗」除了報名費全免之外，尚有測驗獎勵。若同學有計劃再考取英語檢定，請參考最新消息報名資訊（名額有限）\nhttps://tinyurl.com/9xjas4w9\n。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4236",
+    "question": "收到免修通過的簡訊後，應該注意什麼？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "免修的4個學分\n由各系規定補足方式，請務必與所屬學系確認\n。\n\n若大一期間取得「抵免」標準之英檢成績，可於入學學年度結束前於規定時間內申請更改為「抵免」。(請提前報考，以免逾期而無法辦理抵免申請)\n\n若大二以後取得通過抵免標準的英檢成績，亦可申請將「免修」改為「抵免」，但通過標準與大一期間有所不同，請務必確認抵免免修辦法第七條之一。\n\n因免修之學分由各學系分別規定，系統無法判別同學用哪些課程抵修，此外註冊組審核畢業學分時程為四年級下學期且以成績單審核，因此系統上「語文通識(外文)」的紅色旗子是會一直存在的。若同學不確定是否已達到畢業學分要求，建議向所屬學系助教詢問較清楚。\n\n以英檢通過免修申請者，語言中心將直接為您辦理「外語能力指標檢核」，不須另外申請。\n\n如有興趣再進修英語或外語課程，可自由選修語言中心開設在「共同科」之英語或外語課程（課程介紹：\nhttps://lc.ntpu.edu.tw/web/course/introduce.jsp\n）。\n\n「培力英語能力檢定測驗」目前已列於本校抵免/免修通過標準中，除了報名費全免之外，尚有測驗獎勵。若同學有計劃再考取英語檢定，將免修資格改為抵免，請參考最新消息報名資訊（名額有限）\nhttps://tinyurl.com/9xjas4w9\n。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4237",
+    "question": "免修申請通過後要注意哪些事項？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "免修的4個學分\n由各系規定補足方式，請務必與所屬學系確認\n。\n\n若大一期間取得「抵免」標準之英檢成績，可於入學學年度結束前於規定時間內申請更改為「抵免」。(請提前報考，以免逾期而無法辦理抵免申請)\n\n若大二以後取得通過抵免標準的英檢成績，亦可申請將「免修」改為「抵免」，但通過標準與大一期間有所不同，請務必確認抵免免修辦法第七條之一。\n\n因免修之學分由各學系分別規定，系統無法判別同學用哪些課程抵修，此外註冊組審核畢業學分時程為四年級下學期且以成績單審核，因此系統上「語文通識(外文)」的紅色旗子是會一直存在的。若同學不確定是否已達到畢業學分要求，建議向所屬學系助教詢問較清楚。\n\n以英檢通過免修申請者，語言中心將直接為您辦理「外語能力指標檢核」，不須另外申請。\n\n如有興趣再進修英語或外語課程，可自由選修語言中心開設在「共同科」之英語或外語課程（課程介紹：\nhttps://lc.ntpu.edu.tw/web/course/introduce.jsp\n）。\n\n「培力英語能力檢定測驗」目前已列於本校抵免/免修通過標準中，除了報名費全免之外，尚有測驗獎勵。若同學有計劃再考取英語檢定，將免修資格改為抵免，請參考最新消息報名資訊（名額有限）\nhttps://tinyurl.com/9xjas4w9\n。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4238",
+    "question": "抵免和免修有什麼不同呢？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "只要符合抵免或免修標準，不用修「大學英文」課程（上下學期各2學分，全學年共4學分）。\n\n抵免：直接取得4個學分，大一第二學期的成績單上將會註記大學英文抵免。\n\n免修：需另外再選修4個學分補回來。如何補？→各系規定不同，請詢問所屬系所助教。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4239",
+    "question": "如果我想知道抵免和免修的區別，應該怎麼理解？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "只要符合抵免或免修標準，不用修「大學英文」課程（上下學期各2學分，全學年共4學分）。\n\n抵免：直接取得4個學分，大一第二學期的成績單上將會註記大學英文抵免。\n\n免修：需另外再選修4個學分補回來。如何補？→各系規定不同，請詢問所屬系所助教。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4240",
+    "question": "要怎麼辦理抵免申請？有沒有時間限制？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "到語言中心綱站下載及填寫申請單，並攜帶英檢成績單或證書正本到語言中心辦理申請。\n\n有時間限制，限入學當年度辦理（原則上下學期初各辦理一次，詳細辦理時間請留意語言中心公告）。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4241",
+    "question": "我是新生，抵免申請的流程是什麼？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "到語言中心綱站下載及填寫申請單，並攜帶英檢成績單或證書正本到語言中心辦理申請。\n\n有時間限制，限入學當年度辦理（原則上下學期初各辦理一次，詳細辦理時間請留意語言中心公告）。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4242",
+    "question": "免修申請的流程是什麼？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "到語言中心綱站下載及填寫申請單，並攜帶英檢成績單或證書正本先到所屬系所蓋章後，再到語言中心辦理申請。\n\n有時間限制，限入學當年度辦理（原則上下學期初各辦理一次，詳細辦理時間請留意語言中心公告）。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4243",
+    "question": "如果我想申請免修，該怎麼做？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "到語言中心綱站下載及填寫申請單，並攜帶英檢成績單或證書正本先到所屬系所蓋章後，再到語言中心辦理申請。\n\n有時間限制，限入學當年度辦理（原則上下學期初各辦理一次，詳細辦理時間請留意語言中心公告）。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4244",
+    "question": "轉學生抵免大學英文課程的資格是什麼？申請流程怎麼樣？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "有資格限制，在原校已修習過課程名稱相同或內容相近之課程者，可申請抵免大學英文課程。\n\n到語言中心綱站下載及填寫申請單，再攜帶以下資料到語言中心申請(以下缺一不可)：\n\n1. 原校課綱〈課綱內容要清楚標示\n(1)教材用書名稱 (2)評量方式或標準 (3)每週上課進度\n〉。\n2. 原校成績單。\n\n \n\n有申請時間限制，限入學當年度辦理（原則上下學期各辦理一次，詳細辦理時間請留意語言中心公告）。\n\n請注意，轉學生學分抵免之認定，以\n轉入年級所屬入學學年度\n之標準為適用準則。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4245",
+    "question": "如果我是一名轉學生，想知道抵免英文課程的資格和流程，應該怎麼做？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "有資格限制，在原校已修習過課程名稱相同或內容相近之課程者，可申請抵免大學英文課程。\n\n到語言中心綱站下載及填寫申請單，再攜帶以下資料到語言中心申請(以下缺一不可)：\n\n1. 原校課綱〈課綱內容要清楚標示\n(1)教材用書名稱 (2)評量方式或標準 (3)每週上課進度\n〉。\n2. 原校成績單。\n\n \n\n有申請時間限制，限入學當年度辦理（原則上下學期各辦理一次，詳細辦理時間請留意語言中心公告）。\n\n請注意，轉學生學分抵免之認定，以\n轉入年級所屬入學學年度\n之標準為適用準則。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4246",
+    "question": "要怎麼辦理大學英文重/補修？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "每學期結束前，語言中心會公告下一學期重/補修登記時間及方式。\n\n登記時請選擇可修課時段即可，無需自行到選課系統選課，本中心會幫你排課。\n\n同學登記修課時段後，該時段請勿再排其他課程，以免衝堂，造成本中心無法順利進行排課作業。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4247",
+    "question": "如果我想重修大學英文，該怎麼做？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "每學期結束前，語言中心會公告下一學期重/補修登記時間及方式。\n\n登記時請選擇可修課時段即可，無需自行到選課系統選課，本中心會幫你排課。\n\n同學登記修課時段後，該時段請勿再排其他課程，以免衝堂，造成本中心無法順利進行排課作業。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4248",
+    "question": "Language Corner的具體位置是？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "Language Corner位於人文大樓4樓的418教室（入口是玻璃門的空間）",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4249",
+    "question": "我想知道Language Corner在哪裡？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "Language Corner位於人文大樓4樓的418教室（入口是玻璃門的空間）",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4250",
+    "question": "Language Corner什麼時候開放？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "每學期開放時段不同，每個學期初會在語言中心官網及facebook粉絲團公告開放的時間表，請務必事先查詢，以免白跑一趟。\n\n開放時間請到\n這裡\n參看最底下的開放時間表。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4251",
+    "question": "我想知道Language Corner的開放時間，該怎麼查？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "每學期開放時段不同，每個學期初會在語言中心官網及facebook粉絲團公告開放的時間表，請務必事先查詢，以免白跑一趟。\n\n開放時間請到\n這裡\n參看最底下的開放時間表。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4252",
+    "question": "借書流程是什麼？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "第一次借書，需繳$500押金並出示學生證或職員證以利資料建檔(畢業前或是不想再借書時即可申請退還押金)。\n\n收押金主要是為保護Corner的藏書和其他借閱人的權益，若逾期沒還，將依本中心規定罰款，每本逾期1日從保證金扣除5元，逾期30日則暫停借書之權利；若遺失損壞則必須新購一本還給中心。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4253",
+    "question": "我是新生，借書需要注意什麼？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "第一次借書，需繳$500押金並出示學生證或職員證以利資料建檔(畢業前或是不想再借書時即可申請退還押金)。\n\n收押金主要是為保護Corner的藏書和其他借閱人的權益，若逾期沒還，將依本中心規定罰款，每本逾期1日從保證金扣除5元，逾期30日則暫停借書之權利；若遺失損壞則必須新購一本還給中心。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4254",
+    "question": "Language Corner有哪些服務？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "提供圖書借閱﹑Study Group課程，辦理語言中心講座、工作坊等活動。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4255",
+    "question": "我想知道Language Corner的服務內容是什麼？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "提供圖書借閱﹑Study Group課程，辦理語言中心講座、工作坊等活動。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4256",
+    "question": "英文健檢的時間是什麼？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "學期中每星期提供6-8個時段的英文健診，每個時段約25分鐘，健診時間表請見語言中心網站或facebook公告。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4257",
+    "question": "如果我想參加英文健診，應該在什麼時候去？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "學期中每星期提供6-8個時段的英文健診，每個時段約25分鐘，健診時間表請見語言中心網站或facebook公告。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4258",
+    "question": "預約英文健診的流程是什麼？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "請先在語言中心網站填寫預約表，並請將相關諮詢文件Email至english_clinic@mail.ntpu.edu.tw。\n\n請注意，若未事先聯絡無故不到者，一個月內不得再預約諮詢服務。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4259",
+    "question": "我是轉學生，想知道怎麼預約英文健診？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "請先在語言中心網站填寫預約表，並請將相關諮詢文件Email至english_clinic@mail.ntpu.edu.tw。\n\n請注意，若未事先聯絡無故不到者，一個月內不得再預約諮詢服務。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4260",
+    "question": "英文健檢有什麼樣的服務呢？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "提供英文自傳、履歷表、讀書計畫、模擬面試(Mock Interview)、英文學習疑難問題等修改或諮詢服務，協助學生求職、升學更順利。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4261",
+    "question": "我想了解英文健檢的服務內容，是什麼？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "提供英文自傳、履歷表、讀書計畫、模擬面試(Mock Interview)、英文學習疑難問題等修改或諮詢服務，協助學生求職、升學更順利。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4262",
+    "question": "Roundtable是什麼活動？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "Roundtable外語圓桌會話每次活動時長50分鐘，全程採對話形式進行，每週討論主題依各班主持老師規劃而不同。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4263",
+    "question": "我想了解一下Roundtable的內容，能介紹一下嗎？",
+    "category": "LC/FAQ/改寫",
+    "ground_truth": "Roundtable外語圓桌會話每次活動時長50分鐘，全程採對話形式進行，每週討論主題依各班主持老師規劃而不同。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "lc"
+  },
+  {
+    "id": "V4264",
+    "question": "通識創新課程教學獎助計畫的申請結果是什麼？",
+    "category": "GE/最新消息",
+    "ground_truth": "經中心會議審查，通過審查的創新課程包括通識微型課程-播客製作 U4243 由陳淑惠申請及生成式AI體驗與實作 U4350 由楊喨智申請。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4266",
+    "question": "我可以在什麼時候到通識中心提交抵免文件？",
+    "category": "GE/最新消息",
+    "ground_truth": "在三峽校區，學生可以在加退選前的上班時間提交抵免文件至通識中心。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4268",
+    "question": "申請114-1「向度通識課程TA補助申請」的截止日期是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "申請114-1「向度通識課程TA補助申請」的截止日期是114年08月17日(日)23:59止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4270",
+    "question": "得獎人需要攜帶什麼文件去通識中心領獎？",
+    "category": "GE/最新消息",
+    "ground_truth": "得獎人必須親自於領獎時間攜帶身分證件(學生證)至通識中心(行政大樓3樓13室)領獎。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4273",
+    "question": "參加第29屆通識月活動需要填寫哪些資料才能取得參加資格？",
+    "category": "GE/最新消息",
+    "ground_truth": "參加第29屆通識月活動需要填寫回饋單並留下聯絡資料，包括姓名、學號和手機，才能取得參加資格。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4277",
+    "question": "織田憲嗣教授的私人收藏規模有多大？",
+    "category": "GE/最新消息",
+    "ground_truth": "織田收藏（Oda Collection）擁有超過千張椅子作品。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4278",
+    "question": "申請113-2「向度通識課程TA補助申請」的截止日期是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "申請113-2「向度通識課程TA補助申請」的截止日期是114年02月07日(五)23:59止。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4280",
+    "question": "李嘉進教授獲得什麼榮譽？",
+    "category": "GE/最新消息",
+    "ground_truth": "李嘉進教授獲頒「旭日重光章」，表彰他在推動臺日友好方面的傑出貢獻。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4282",
+    "question": "頒獎暨分享會的時間和地點是什麼？",
+    "category": "GE/最新消息",
+    "ground_truth": "頒獎暨分享會訂於11月20日（三）中午12時10分於行政大樓4樓第3會議室舉辦。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  },
+  {
+    "id": "V4283",
+    "question": "社會學的想像與助人行業的活動時間是什麼時候？",
+    "category": "GE/最新消息",
+    "ground_truth": "社會學的想像與助人行業的活動時間是2024年11月5日 (二) 12:10-13:00。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ge"
+  }
+]

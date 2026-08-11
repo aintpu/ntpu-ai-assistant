@@ -1,0 +1,51 @@
+# .gcloudignore — 控制 `gcloud builds submit` 上傳哪些檔案。
+#
+# 為什麼一定要有這個檔：沒有 .gcloudignore 時，gcloud 會改用 .gitignore 當排除清單。
+# 而 .gitignore 排除了 all_content_v2.md 與 ALL_files_2.md（體育室的爬蟲資料與法規全文），
+# 一旦沿用就會部署出「教務處/學務處/通識/語言中心正常，但體育室整個查無資料」的版本。
+# 這裡明確列出排除項目，資料檔一律上傳。
+
+# 版本控制與虛擬環境
+.git
+.gitignore
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# 機密：金鑰改由 Cloud Run 環境變數 / Secret Manager 提供，
+# 不可進入 image，也不可上傳到 Cloud Build 的來源封存（會留在 GCS bucket）。
+config.txt
+front_end/sports-ai-chat/.env.local
+
+# 使用者對話紀錄（隱私）
+chat_logs.csv
+chat_logs_advanced.csv
+
+# 安全掃描報告
+gitleaks_report.json
+trivy_report.txt
+
+# 前端相依與建置產物（前端由 front_end/sports-ai-chat/ 自己的 cloudbuild.yaml 部署）
+front_end/sports-ai-chat/node_modules/
+front_end/sports-ai-chat/.next/
+
+# 評估腳本的大型輸出
+evaluate/results/
+evaluate/*.xlsx
+
+# 內部品質審查表（程式未使用，不需進入映像檔）
+crawler_data/review_qa_*.xlsx
+
+# IDE / OS
+.vscode/
+.vs/
+.DS_Store
+Thumbs.db
+
+# 注意：以下項目「刻意不排除」，請勿加入──
+#   crawler_data/          各處室資料來源
+#   all_content_v2.md      體育室爬蟲內容
+#   ALL_files_2.md         體育室法規與表單全文
+#   corrections.md         使用者回饋修正紀錄
+#   .faiss_cache/          預先建好的索引，冷啟動 96 秒 → 3.7 秒

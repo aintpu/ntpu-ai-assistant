@@ -1,0 +1,56 @@
+# Secrets & local config (NEVER commit)
+config.txt
+front_end/sports-ai-chat/.env.local
+
+# User data (privacy)
+chat_logs.csv
+chat_logs_advanced.csv
+
+# Security reports
+gitleaks_report.json
+trivy_report.txt
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# FAISS cache (binary, regenerable)
+faiss_index_cache/
+.faiss_cache/
+
+# IDE
+.vscode/
+.vs/
+
+# 爬蟲資料一律納入版控。
+#
+# 2026-08 之前 all_content_v2.md 與 ALL_files_2.md 被排除，導致正式站沒有體育室的
+# 競賽成績與法規表單（gcloud builds submit 在沒有 .gcloudignore 時會沿用本檔），
+# 而同屬 crawler_data/ 的 oaa/osa/cge/lc 卻照常上傳，只有體育室缺資料很難察覺。
+# 這些檔案合計約 5 MB，內容為學校公開網頁，納入版控可讓任何部署方式都取得完整資料。
+all_content_en_v2.md
+ALL_files.md
+grades.md
+
+# 內部品質審查表（程式未使用；repo 為公開，不宜納入）
+crawler_data/review_qa_*.xlsx
+
+# Baseline results (large JSON, regenerable)
+evaluate/results/
+
+# Logs
+*.log
+evaluate/results/*.log
+
+# Generated Excel / outputs
+evaluate/*.xlsx
+
+# Frontend dependencies
+front_end/sports-ai-chat/node_modules/
+front_end/sports-ai-chat/.next/
+
+# OS
+.DS_Store
+Thumbs.db

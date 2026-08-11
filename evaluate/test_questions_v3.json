@@ -1,0 +1,902 @@
+[
+  {
+    "id": "Q001",
+    "question": "請問綜合體育館公益時段幾點開放？",
+    "category": "簡單事實",
+    "ground_truth": "綜合體育館公益時段開放時間為週一至週五下午17:10至晚上18:20。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q002",
+    "question": "體育室的電話總機是多少？",
+    "category": "簡單事實",
+    "ground_truth": "體育室電話總機為(02)8674-1111。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q003",
+    "question": "競賽活動組的分機號碼是幾號？",
+    "category": "簡單事實",
+    "ground_truth": "競賽活動組聯絡分機為68515。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q004",
+    "question": "場地器材組有哪些分機可以打？",
+    "category": "簡單事實",
+    "ground_truth": "場地器材組聯絡分機為68500、68501及68512。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q005",
+    "question": "崇越館學生每次可以用多久？",
+    "category": "簡單事實",
+    "ground_truth": "崇越館第三至第八面場地供學生使用，以學生證登錄，每次使用以30分鐘為限。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q006",
+    "question": "健身房公益時段幾點到幾點？",
+    "category": "簡單事實",
+    "ground_truth": "健身房公益時段開放時間為週一至週五晚上18:00至晚上20:00。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q007",
+    "question": "田徑場B1的公益時段幾點開放？",
+    "category": "簡單事實",
+    "ground_truth": "田徑場B1公益時段開放時間為週一至週五下午17:10至晚上20:00。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q008",
+    "question": "羽球代表隊的教練是誰？",
+    "category": "簡單事實",
+    "ground_truth": "羽球代表隊教練為王彥邦老師。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q009",
+    "question": "游泳代表隊在哪裡訓練？訓練時間是什麼？",
+    "category": "簡單事實",
+    "ground_truth": "游泳代表隊訓練時間為每週一、四17:30至20:00，訓練地點為綜合體育館。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q010",
+    "question": "射箭代表隊的訓練地點在哪裡？",
+    "category": "簡單事實",
+    "ground_truth": "射箭代表隊訓練地點為明德高中，訓練時間為每週一至四18:30至20:50。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q011",
+    "question": "排球代表隊的教練是誰？",
+    "category": "簡單事實",
+    "ground_truth": "排球代表隊教練為翁仲邦老師。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q012",
+    "question": "男生足球代表隊訓練時間是什麼時候？",
+    "category": "簡單事實",
+    "ground_truth": "男生足球代表隊訓練時間為每週二、五18:30至21:30，地點為綜合體育館。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q013",
+    "question": "桌球代表隊的教練叫什麼名字？",
+    "category": "簡單事實",
+    "ground_truth": "桌球代表隊教練為陳秋丹老師。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q014",
+    "question": "男生籃球代表隊的教練是誰？",
+    "category": "簡單事實",
+    "ground_truth": "男生籃球代表隊教練為陳彥安教練。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q015",
+    "question": "女生籃球代表隊教練是誰？",
+    "category": "簡單事實",
+    "ground_truth": "女生籃球代表隊教練為張維仁老師。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q016",
+    "question": "李靜雯老師的Email是什麼？",
+    "category": "簡單事實",
+    "ground_truth": "李靜雯老師的Email為carollee@mail.ntpu.edu.tw，分機68524。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q017",
+    "question": "李至斌老師的聯絡方式？",
+    "category": "簡單事實",
+    "ground_truth": "李至斌老師Email為dolphin@mail.ntpu.edu.tw，分機68521。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q018",
+    "question": "王彥邦老師的Email是什麼？",
+    "category": "簡單事實",
+    "ground_truth": "王彥邦老師Email為 wangyp@mail.ntpu.edu.tw，分機68514",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q019",
+    "question": "陳秋丹老師的Email是？",
+    "category": "簡單事實",
+    "ground_truth": "陳秋丹老師Email為atan@gm.ntpu.edu.tw，分機68525。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q020",
+    "question": "體育室的Instagram帳號是什麼？",
+    "category": "簡單事實",
+    "ground_truth": "體育室Instagram帳號為ntpu_peoffice（https://www.instagram.com/ntpu_peoffice/）。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q021",
+    "question": "三峽校區運動場館借用優先順序是什麼？",
+    "category": "簡單事實",
+    "ground_truth": "優先順序：一、體育課教學；二、代表隊訓練；三、核可活動；四、教職員工學生活動；五、校外團體租用。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q022",
+    "question": "場地借用分幾個時段？各時段時間是什麼？",
+    "category": "簡單事實",
+    "ground_truth": "分三個時段：第一時段上午8至12時；第二時段下午13至17時；第三時段晚上18至22時。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q023",
+    "question": "崇越館每輪每面球場至少需要幾個人？",
+    "category": "簡單事實",
+    "ground_truth": "崇越館每輪每面球場至少需要4人以上使用。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q024",
+    "question": "114學年度全大運，邱薇聿在哪個項目獲得第一名？",
+    "category": "簡單事實",
+    "ground_truth": "邱薇聿在114學年度全國大專校院運動會一般女生組跆拳道對打62公斤級獲得第1名。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q025",
+    "question": "112學年度全大運射箭男生組團體賽冠軍是哪些選手？",
+    "category": "簡單事實",
+    "ground_truth": "112學年度射箭男生組團體對抗賽第1名為湯智鈞、戴宇軒、傅詩貴。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q026",
+    "question": "113學年度全大運女生游泳4*200公尺自由式接力冠軍是誰？",
+    "category": "簡單事實",
+    "ground_truth": "113學年度一般女生組游泳4*200公尺自由式接力第1名為莫倩欣、劉子瑜、陳紫妶、黃子嫣。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q027",
+    "question": "114學年度公開男生組射箭反曲弓個人賽第二名是誰？",
+    "category": "簡單事實",
+    "ground_truth": "114學年度公開男生組射箭反曲弓個人賽第2名為湯智鈞。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q028",
+    "question": "112學年度全大運柔道一般女生組個人賽冠軍是誰？",
+    "category": "簡單事實",
+    "ground_truth": "112學年度柔道一般女生組個人賽第1名為簡堉秦。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q029",
+    "question": "113學年度全大運一般女生組網球雙打冠軍是誰？",
+    "category": "簡單事實",
+    "ground_truth": "113學年度一般女生組網球雙打第1名為李怡萱、賴映儒。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q030",
+    "question": "114學年度全大運公開男女混合組射箭複合弓混雙冠軍是誰？",
+    "category": "簡單事實",
+    "ground_truth": "114學年度公開男女混合組射箭複合弓混雙第1名為林昱圻、陳思妤。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q031",
+    "question": "系際盃桌球比賽採幾局幾勝制？",
+    "category": "簡單事實",
+    "ground_truth": "系際盃桌球比賽採五局三勝制。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q032",
+    "question": "系際盃籃球賽每隊最多可以報名幾人？",
+    "category": "簡單事實",
+    "ground_truth": "系際盃籃球賽每隊報名人數含隊長以18人為限。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q033",
+    "question": "系際盃排球賽雨天備案比賽在哪裡舉行？",
+    "category": "簡單事實",
+    "ground_truth": "日間部系際盃排球賽： 根據 112 學年度與 114 學年度的日間部系際盃排球賽公告，若遇到雨天，比賽通常會移至綜合體育館主場館舉行\n。在 115 年 5 月的公告中也提到，因舉辦系際盃籃/排球賽，綜合體育館會進行相關場地調度\n。\n進修學士班系際盃排球賽： 對於進修部而言，排球賽（及籃球賽）的雨天備案教室通常安排在臺北校區教學大樓的 313 教室",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q034",
+    "question": "系際盃比賽的抽籤會議在哪裡舉行？時間是什麼時候？",
+    "category": "簡單事實",
+    "ground_truth": "抽籤會議於臺北民生校區教學大樓B1桌球教室舉行，時間為115年4月15日（星期三）晚上18時整。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q035",
+    "question": "115年全國大專校院運動會在哪個城市舉辦？",
+    "category": "簡單事實",
+    "ground_truth": "是5/2~5/6(在中央大學舉辦)",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q036",
+    "question": "教學及行政單位辦學術活動借用場地要收費嗎？",
+    "category": "簡單事實",
+    "ground_truth": "教學及行政單位公務使用或舉辦學術活動，免收場地使用費，如需空調費以單位業務費轉支。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q037",
+    "question": "使用場館器材損壞要負什麼責任？",
+    "category": "簡單事實",
+    "ground_truth": "使用者或借用單位應負賠償責任；如有傷害他人，應負法律責任。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q038",
+    "question": "陳建瑋老師的Email和分機是多少？",
+    "category": "簡單事實",
+    "ground_truth": "陳建瑋老師Email為b490340352@gm.ntpu.edu.tw，分機68509。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q039",
+    "question": "翁仲邦老師的辦公室分機是多少？",
+    "category": "簡單事實",
+    "ground_truth": "翁仲邦老師辦公室分機為66249，研究室分機68526，Email為cbweng@mail.ntpu.edu.tw。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q040",
+    "question": "體育室Facebook粉絲專頁連結是什麼？",
+    "category": "簡單事實",
+    "ground_truth": "體育室Facebook粉絲專頁連結為https://www.facebook.com/profile.php?id=61551000405590。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q041",
+    "question": "體適能教室在哪裡？",
+    "category": "簡單事實",
+    "ground_truth": "體適能教室位於繁星樓B1。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q042",
+    "question": "三峽校區有哪些運動場館可以借用？",
+    "category": "簡單事實",
+    "ground_truth": "借用範圍包括：綜合體育館、崇越館、田徑場館、室外球場（人文球場及綜合球場）、棒壘球場、體適能教室（繁星樓B1）。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q043",
+    "question": "崇越館第一和第二面場地是給誰用的？",
+    "category": "簡單事實",
+    "ground_truth": "崇越館第一及第二面場地作為教職員工使用（排隊輪流），若無人使用，該輪開始後10分鐘開放遞補。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q044",
+    "question": "網球代表隊訓練地點在哪裡？",
+    "category": "簡單事實",
+    "ground_truth": "網球代表隊訓練地點為戶外網球場及綜合體育館，訓練時間每週一、四18:30至21:30。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q045",
+    "question": "113學年度全大運射箭混雙冠軍是誰？",
+    "category": "簡單事實",
+    "ground_truth": "113學年度公開男女混合組射箭反曲弓混雙第1名為隋昀瑾、湯智鈞。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q046",
+    "question": "系際盃桌球賽穿白色衣服可以上場嗎？",
+    "category": "簡單事實",
+    "ground_truth": "不可以，穿著白色衣服者不得出場比賽。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q047",
+    "question": "系際盃比賽冒名頂替會怎樣？",
+    "category": "簡單事實",
+    "ground_truth": "如遇冒名頂替出賽，則取消該隊參賽資格。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q048",
+    "question": "田徑場器材室的分機是多少？",
+    "category": "簡單事實",
+    "ground_truth": "田徑場器材室聯絡分機為59123。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q049",
+    "question": "進入體育場館不能穿什麼鞋？",
+    "category": "簡單事實",
+    "ground_truth": "禁止穿有跟鞋進入體育場館，以免場地損壞。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q050",
+    "question": "體育室傳真號碼是多少？",
+    "category": "簡單事實",
+    "ground_truth": "體育室傳真號碼為(02)8671-8008。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q051",
+    "question": "我是校外補習班，想借一面綜合體育館主場館籃球場一個下午時段（4小時），請問費用是多少？",
+    "category": "條件判斷",
+    "ground_truth": "校外單位借用綜合體育館主場館籃球場一面，費用為1500元/時，一個時段4小時共6000元，不含空調費及保證金。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q052",
+    "question": "我們是校外企業想連借兩天共四個時段的崇越館全館，請問可以打幾折？原價是多少？",
+    "category": "條件判斷",
+    "ground_truth": "總費用試算：\n折扣後場地費： 16,000 元 × 4 時段 × 0.7 = 44,800 元。\n空調費（無折扣）： 3,600 元 × 4 時段 = 14,400 元。\n合計應繳總額：59,200 元（另需依規定繳納 20,000 元保證金）。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q053",
+    "question": "我是臺北大學校友，想借田徑場跑道練習兩小時，費用是多少？",
+    "category": "條件判斷",
+    "ground_truth": "校友享9折優惠。田徑場跑道2000元/時，兩小時原價4000元，打9折後3600元。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q054",
+    "question": "我們學生社團辦活動想請校外廠商來擺攤收費，想借戶外開放場地，還能免費嗎？",
+    "category": "條件判斷",
+    "ground_truth": "不能免費。學生社團使用戶外開放場地若對參加人員收取費用，場地費改以8折計算，不得免費。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q055",
+    "question": "某政府機關借用綜合體育館副場館羽球場兩面一個下午時段，費用多少？",
+    "category": "條件判斷",
+    "ground_truth": "政府機關場地費以8折計算。副場館羽球場300元/時/面，下午時段4小時，兩面原價2400元，打8折後1920元。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q056",
+    "question": "我們是本校學生社團，和校外NGO合辦活動但有接受校外捐款，場地費怎麼算？",
+    "category": "條件判斷",
+    "ground_truth": "與校外單位合辦且受有校外經費補助，場地費以8折計算。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q057",
+    "question": "校外單位使用場地超過時間45分鐘，會怎麼計費？",
+    "category": "條件判斷",
+    "ground_truth": "超過半小時未滿1小時，以1小時計費。超過45分鐘符合此條件，加收1小時費用。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q058",
+    "question": "各單位舉辦高中營隊借用場地，可以打幾折？",
+    "category": "條件判斷",
+    "ground_truth": "各單位、各系、學生社團自行舉辦活動或舉辦高中營隊，場地費以5折計。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q059",
+    "question": "本校學生借用室外籃球場不開燈打兩小時，費用是多少？",
+    "category": "條件判斷",
+    "ground_truth": "室外籃球場不開燈200元/時，本校學生享5折，兩小時原價400元，打5折後200元。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q060",
+    "question": "校外單位長期借用一年內要幾個時段才能另議折扣？最低幾折？",
+    "category": "條件判斷",
+    "ground_truth": "長期借用一年內達20時段，場地費折扣得另議定，但不得低於5折。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q061",
+    "question": "系際盃籃球賽一支隊伍遲到12分鐘還沒到齊，會怎樣？",
+    "category": "條件判斷",
+    "ground_truth": "遲到 12 分鐘已超過校內賽事的法定寬限時間，該隊伍將被取消該場比賽資格並以棄權論處，且不得提出異議",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q062",
+    "question": "系際盃籃球賽決賽第四節最後幾分鐘停錶？",
+    "category": "條件判斷",
+    "ground_truth": "決賽第四節最後2分鐘停錶。若遇延長賽採加時賽5分鐘不停錶，最後1分鐘停錶。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q063",
+    "question": "代表隊隊員無故缺席訓練會怎樣？",
+    "category": "條件判斷",
+    "ground_truth": "未經請假不參加訓練以曠課論處，曠課次數超過規定者取消隊員資格，並酌扣體育課成績。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q064",
+    "question": "我是一般民眾想去臺北大學游泳池游泳，票價多少？",
+    "category": "條件判斷",
+    "ground_truth": "游泳館票價：全票100元，學生票75元，優待票50元，陪同票30元。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q065",
+    "question": "校內學生社團與校外單位合辦，但活動開放非校內人員參加，場地費幾折？",
+    "category": "條件判斷",
+    "ground_truth": "參加對象有非校內人員，場地費以8折計算。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q066",
+    "question": "系際盃桌球比賽桌球隊長說想代替其他系的人打，這樣可以嗎？被發現會怎樣？",
+    "category": "條件判斷",
+    "ground_truth": "不可以。出賽選手不在報名名單上應判敗場；如遇冒名頂替出賽，取消該隊參賽資格。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q067",
+    "question": "本校教職員借用戶外網球場開燈打三小時，費用多少？",
+    "category": "條件判斷",
+    "ground_truth": "戶外網球場開燈300元/時，教職員享7折，三小時原價900元，打7折後630元。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q068",
+    "question": "系際盃排球賽遲到10分鐘會怎樣？得分怎麼記？",
+    "category": "條件判斷",
+    "ground_truth": "遲到10分鐘（含）未有足額人數出賽，應判敗場，得分記為2:0。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q069",
+    "question": "想加入羽球校隊，請問訓練時間和地點是哪裡？另外教練的Email是什麼方便聯絡？",
+    "category": "多步推理",
+    "ground_truth": "羽球代表隊訓練時間為每週一、四18:30至21:30，訓練地點為崇越館。教練王彥邦老師Email為jackiewu@mail.ntpu.edu.tw，分機68522。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q070",
+    "question": "游泳代表隊有幾位教練？他們的Email各是什麼？訓練在哪裡進行？",
+    "category": "多步推理",
+    "ground_truth": "游泳代表隊有兩位教練：李靜雯老師（Email: carollee@mail.ntpu.edu.tw，分機68524）和李至斌老師（Email: dolphin@mail.ntpu.edu.tw，分機68521）。訓練時間每週一、四17:30至20:00，地點為綜合體育館。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q071",
+    "question": "射箭代表隊在113學年度全大運拿了哪些成績？如果我想加入射箭隊，要聯絡哪裡？",
+    "category": "多步推理",
+    "ground_truth": "113學年度射箭成績：公開男生組反曲弓個人賽第2名（戴宇軒）、第3名（湯智鈞）；男生組反曲弓團體賽第4名；女生組反曲弓團體賽第6名；混雙第1名（隋昀瑾、湯智鈞）。聯絡競賽活動組分機68515。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q072",
+    "question": "網球代表隊114學年度全大運拿了幾面獎牌？教練的Email是什麼？",
+    "category": "多步推理",
+    "ground_truth": "114學年度網球：一般女生組單打第3名（李怡萱）、雙打第2名（李怡萱、謝佳穎），共2面。教練陳建瑋老師Email為b490340352@gm.ntpu.edu.tw，分機68509。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q073",
+    "question": "桌球代表隊和游泳代表隊的訓練時間有沒有衝突？兩位教練的分機各是多少？",
+    "category": "多步推理",
+    "ground_truth": "桌球代表隊訓練每週一、三18:30至21:30；游泳代表隊訓練每週一、四17:30至20:00。週一兩隊都有訓練，時段部分重疊。桌球陳秋丹老師分機68525；游泳李靜雯老師68524、李至斌老師68521。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q074",
+    "question": "男女生籃球隊的教練各是誰？兩支隊伍的訓練時間一樣嗎？訓練在哪裡？",
+    "category": "多步推理",
+    "ground_truth": "男生籃球教練為陳彥安教練，女生籃球教練為張維仁老師。兩隊訓練時間相同，均為每週二、四18:30至21:30，地點均為綜合體育館。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q075",
+    "question": "陳紫妶在112和113學年度全大運游泳項目各拿了哪些成績？兩年相比有進步嗎？",
+    "category": "多步推理",
+    "ground_truth": "112學年度陳紫妶：4*100自由式接力第3名、4*100混合式接力第3名、100公尺蝶式第4名、4*200自由式接力第4名。113學年度：100公尺蝶式第5名、200公尺混合式第5名，接力第1名、第3名等。整體個人單項名次相近，但113學年度新增200公尺混合式並獲接力冠軍。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q076",
+    "question": "李怡萱在112、113、114三個學年度全大運各有什麼成績？有沒有進步？",
+    "category": "多步推理",
+    "ground_truth": "112學年度：女生組雙打第4名、單打第5名。113學年度：女生組雙打第1名（冠軍）。114學年度：女生組單打第3名、雙打第2名。雙打從第4名進步到第1名再到第2名；單打從第5名進步到第3名。整體成績持續進步。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q077",
+    "question": "我想借用崇越館的羽球場打球，公益時段幾點開放？如果不在公益時段，要如何申請借用？",
+    "category": "多步推理",
+    "ground_truth": "崇越館公益時段為週一至週五17:10至18:20，學生使用第3至第8面，每次30分鐘，每面至少4人。非公益時段需依借用申請程序向體育室申請，經核准後繳交場地費用（校外單位每面300元/時，本校學生5折）。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q078",
+    "question": "系際盃排球賽每隊最多幾人？如果找外系同學代打被抓到會怎樣？領隊會議在哪裡？",
+    "category": "多步推理",
+    "ground_truth": "排球賽每隊含隊長以18人為限。冒名頂替（外系代打）出賽，取消該隊參賽資格。領隊會議於臺北民生校區教學大樓B1桌球教室，115年4月15日晚上18時整。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q079",
+    "question": "系際盃桌球賽：採幾局幾勝？白色衣服能上場嗎？報名截止是什麼時候？",
+    "category": "多步推理",
+    "ground_truth": "桌球賽採五局三勝制；穿白色衣服者不得出場比賽；報名截止至115年4月10日（星期五）下午17時整，報名網址https://forms.gle/8zcaTLE28FQZx1NS6。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q080",
+    "question": "我想知道楊仲軒在113和114學年度全大運游泳的成績，他有穩定參賽嗎？",
+    "category": "多步推理",
+    "ground_truth": "113學年度：一般男生組100公尺仰式第2名、200公尺仰式第3名、50公尺仰式第3名。114學年度：一般男生組50公尺仰式第8名。兩年持續參賽，113學年度成績較佳，114學年度50公尺仰式名次下滑到第8名。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q081",
+    "question": "場館使用規定說不能穿有跟鞋，如果違規被管理人員看到會怎樣？適用哪些場館？",
+    "category": "多步推理",
+    "ground_truth": "禁止穿有跟鞋進入所有體育場館（含綜合體育館、崇越館等）。根據管理辦法第十三條，不遵守規定或違反使用須知經勸不聽者，管理人員可勒令停止使用，必要時令其離場，本校並有權終止其往後之借用權。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q082",
+    "question": "我是校外企業想全日借用三個時段的綜合體育館主場館，費用是多少？如果不小心毀損設備要怎麼辦？",
+    "category": "多步推理",
+    "ground_truth": "校外單位全日3個時段費用以8折計算。主場館24000元/時段，三個時段原價72000元，打8折後57600元，不含空調費。如有損壞設備，使用者或借用單位應負賠償責任；如有傷害他人，應負法律責任。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q083",
+    "question": "代表隊隊員參加校外比賽前要辦什麼手續？比賽結束後隊長要做什麼？",
+    "category": "多步推理",
+    "ground_truth": "參加校外比賽應辦妥請假手續，並經教練同意後始得前往。賽後隊長應於一週內將比賽結果以書面資料報告，並於賽後兩週內辦妥相關經費核銷手續。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q084",
+    "question": "112學年度全大運湯智鈞在射箭項目有哪些成績？他在112學年度青年盃呢？",
+    "category": "多步推理",
+    "ground_truth": "112學年度全大運：射箭男生組團體對抗賽第1名（冠軍，與戴宇軒、傅詩貴）；個人對抗賽第3名；混雙對抗賽第3名（與隋昀瑾）。112學年度青年盃：反曲弓大專男子組團體賽第3名；反曲弓專混雙賽第1名（與隋昀瑾）。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q085",
+    "question": "系際盃籃球賽：每隊報名上限幾人？集體鬥毆會怎樣？決賽規則跟預賽有什麼不同？",
+    "category": "多步推理",
+    "ground_truth": "籃球賽每隊報名含隊長以18人為限。比賽期間如有集體鬥毆，取消該隊繼續比賽資格。決賽每節10分鐘，第4節最後2分鐘停錶；預賽每場20分鐘不停錶，延長賽2分鐘不停錶最後1分鐘停錶。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q086",
+    "question": "想了解排球代表隊：教練是誰？Email是什麼？訓練時間和地點是什麼？",
+    "category": "多步推理",
+    "ground_truth": "排球代表隊教練為翁仲邦老師，Email為cbweng@mail.ntpu.edu.tw，辦公室分機66249，研究室分機68526。訓練時間為每週一、三18:30至21:30，訓練地點為綜合體育館。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q087",
+    "question": "我想了解射箭隊：藍翊禎教練的分機是多少？訓練地點在哪裡？每週幾天練習？",
+    "category": "多步推理",
+    "ground_truth": "射箭代表隊聯絡分機為68515（競賽活動組）。訓練地點為明德高中，每週一至四訓練（共4天），時間18:30至20:50。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q088",
+    "question": "系際盃比賽若球員受傷人數不足，可以怎麼處理？相關問題要聯絡誰？",
+    "category": "多步推理",
+    "ground_truth": "比賽期間若因選手受傷或特別因素造成人數不足，得向大會提出調點或換人的申訴，大會擁有判斷能否出賽的決定權。相關問題聯絡競賽活動組詹皓羽，電話(02)8671-8030，分機68515。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q089",
+    "question": "如果新的運動項目想成立代表隊，需要哪些程序？試辦多久才能正式成立？",
+    "category": "多步推理",
+    "ground_truth": "需備妥成立宗旨、年度工作計畫、訓練計畫、隊員名單，向競賽活動組提出申請，經室務會議通過後試辦一年。試辦一年期滿備妥成果報告，再經室務會議通過後始得正式成立。競賽活動組分機68515。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q090",
+    "question": "戶外教育與風險管理學術研討會什麼時候舉辦？在哪裡？摘要截止是什麼時候？",
+    "category": "多步推理",
+    "ground_truth": "戶外教育與風險管理教學與實務學術研討會舉辦日期為2026年5月23至24日，地點為國立臺東大學知本校區師範學院淑真講堂。摘要截止日期為2026年5月8日，報名截止日期為2026年5月15日。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q091",
+    "question": "網球代表隊113學年度全大運成績如何？可以聯絡哪位教練？Email是什麼？",
+    "category": "多步推理",
+    "ground_truth": "113學年度：一般男生組網球單打第5名（劉柏志）、雙打第5名（劉柏志、裘展宇）；一般女生組網球雙打第1名（李怡萱、賴映儒）。教練陳建瑋老師，Email為b490340352@gm.ntpu.edu.tw，分機68509。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q092",
+    "question": "114學年度全大運女生游泳接力項目，有哪些選手一起出賽？各拿了什麼名次？",
+    "category": "多步推理",
+    "ground_truth": "4*100公尺自由式接力第6名（施慧芳、莊立筠、盧冠伶、陳紫妶）；4*100公尺混合式接力第6名（施慧芳、莊立筠、陳紫妶、盧冠伶）；4*200公尺自由式接力第4名（盧冠伶、莊立筠、陳紫妶、施慧芳）。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q093",
+    "question": "系際盃排球賽比賽規則：遲到幾分鐘判敗？出賽選手須攜帶什麼證件？比賽地點在哪裡？",
+    "category": "多步推理",
+    "ground_truth": "遲到10分鐘（含）未有足額人數，判敗場得分2:0。出賽選手應攜帶學生證備查。比賽地點為臺北民生校區戶外綜合球場，雨天備案改在育樂館。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q094",
+    "question": "我想借用綜合體育館排球場兩面打一個晚上，我是本校學生，費用是多少？",
+    "category": "條件判斷",
+    "ground_truth": "綜合體育館主場館排球場1500元/時/面，本校學生享5折。一個晚上時段4小時，兩面原價：1500×4×2=12000元，打5折後6000元。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q095",
+    "question": "115年運動有功表揚推薦截止是什麼時候？要寄到哪裡？",
+    "category": "簡單事實",
+    "ground_truth": "推薦截止日期為115年6月30日（郵戳為憑）。推薦資料寄至臺北市政府體育局輔導管理科，地址為臺北市松山區南京東路四段10號。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q096",
+    "question": "112學年度全大運游泳楊仲軒拿了哪些成績？",
+    "category": "簡單事實",
+    "ground_truth": "112學年度楊仲軒：游泳一般男生組100公尺仰式第2名、50公尺仰式第4名。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q097",
+    "question": "系際盃桌球比賽報名人數每隊上限幾人？",
+    "category": "簡單事實",
+    "ground_truth": "系際盃桌球比賽每隊報名人數含隊長以10人為限。",
+    "expected_tool": "tool_get_latest_news",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q098",
+    "question": "場地使用費折扣：本校學生和教職員各是幾折？",
+    "category": "簡單事實",
+    "ground_truth": "本校學生5折；教職員及眷屬7折；校友9折。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q099",
+    "question": "代表隊隊員每週訓練至少幾次？每次至少幾小時？",
+    "category": "簡單事實",
+    "ground_truth": "常訓期每週訓練至少一次，每次至少2小時，於課餘或例假日實施。",
+    "expected_tool": "tool_search_database",
+    "topic_adherent": true,
+    "dept": "ope"
+  },
+  {
+    "id": "Q100",
+    "question": "112學年度全大運桌球女生雙打成績如何？",
+    "category": "簡單事實",
+    "ground_truth": "112學年度全大運桌球一般女生組雙打第5名，得獎者為陳冠甄、袁偵伶。",
+    "expected_tool": "tool_get_grade",
+    "topic_adherent": true,
+    "dept": "ope"
+  }
+]
