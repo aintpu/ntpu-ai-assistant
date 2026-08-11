@@ -28,6 +28,22 @@ const LABELS = {
     settings: "設定",
     about: "系統說明",
     aboutTitle: "系統特色、使用方式與服務範圍（另開新分頁）",
+    fbGood: "這個回答有幫助",
+    fbBad: "這個回答有問題",
+    fbTitle: "這個回答哪裡有問題？（可複選）",
+    fbReasons: {
+      wrong_info: "資訊錯誤，與實際規定不符",
+      outdated: "資訊過時",
+      off_topic: "答非所問，沒回答到我的問題",
+      too_vague: "太籠統，不夠具體",
+      bad_source: "找不到出處，或來源連結有誤",
+      other: "其他",
+    },
+    fbCommentPlaceholder: "可以再多說一點嗎？（選填）",
+    fbPrivacy: "請勿填寫身分證字號、學號等個人資料。",
+    fbSubmit: "送出",
+    fbCancel: "取消",
+    fbThanks: "感謝你的回饋！",
   },
   en: {
     title: "NTPU AI Assistant",
@@ -52,8 +68,27 @@ const LABELS = {
     settings: "Settings",
     about: "About this system",
     aboutTitle: "Features, usage, and coverage (opens in a new tab)",
+    fbGood: "This answer was helpful",
+    fbBad: "Something's wrong with this answer",
+    fbTitle: "What was wrong with this answer? (select all that apply)",
+    fbReasons: {
+      wrong_info: "Incorrect — doesn't match the actual rules",
+      outdated: "Out of date",
+      off_topic: "Didn't answer my question",
+      too_vague: "Too vague, not specific enough",
+      bad_source: "No source, or the source link is wrong",
+      other: "Other",
+    },
+    fbCommentPlaceholder: "Anything more you'd like to add? (optional)",
+    fbPrivacy: "Please don't include personal data such as ID or student numbers.",
+    fbSubmit: "Submit",
+    fbCancel: "Cancel",
+    fbThanks: "Thanks for your feedback!",
   },
 };
+
+// 與後端 FEEDBACK_REASONS 白名單一致；後端會再過濾一次
+const FEEDBACK_REASON_KEYS = ["wrong_info", "outdated", "off_topic", "too_vague", "bad_source", "other"];
 
 const QUICK_QUESTIONS = {
   zh: [
@@ -260,6 +295,22 @@ function SettingsIcon({ className }) {
   );
 }
 
+function ThumbUpIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3zm0 0 4.5-7a2 2 0 0 1 3.6 1.5L14 9h5a2 2 0 0 1 2 2.4l-1.6 7A2 2 0 0 1 17.4 20H7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ThumbDownIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 14V3H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3zm0 0 4.5 7a2 2 0 0 0 3.6-1.5L14 15h5a2 2 0 0 0 2-2.4l-1.6-7A2 2 0 0 0 17.4 4H7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function InfoIcon({ className }) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -292,9 +343,107 @@ function NtpuLogo() {
   );
 }
 
+// ─── 回答評價 ─────────────────────────────────────────────────────────────────
+// 讚：一鍵送出。倦：先展開原因複選與選填文字，再送出。
+// 預設分類讓回饋可以彙總統計，文字欄補個案細節。
+function AnswerFeedback({ messageId, sessionId, lang, T }) {
+  const labels = LABELS[lang];
+  const [state, setState] = useState("idle");   // idle | form | sent
+  const [reasons, setReasons] = useState([]);
+  const [comment, setComment] = useState("");
+
+  const send = async (rating, reasonList = [], text = "") => {
+    setState("sent");   // 樂觀更新：回饋送不出去不該打擾使用者
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message_id: messageId,
+          session_id: sessionId,
+          rating,
+          reasons: reasonList,
+          comment: text,
+        }),
+      });
+    } catch {
+      /* 回饋失敗不影響對話，靜默略過 */
+    }
+  };
+
+  const toggle = (key) =>
+    setReasons(rs => rs.includes(key) ? rs.filter(r => r !== key) : [...rs, key]);
+
+  if (state === "sent") {
+    return <div className={`mt-2 px-1 text-xs ${T.sourceText}`}>{labels.fbThanks}</div>;
+  }
+
+  if (state === "form") {
+    return (
+      <div className={`mt-2 rounded-xl border p-3 text-xs ${T.settingsPanel}`}>
+        <div className="mb-2 font-medium">{labels.fbTitle}</div>
+        <div className="mb-2 flex flex-col gap-1.5">
+          {FEEDBACK_REASON_KEYS.map(key => (
+            <label key={key} className="flex cursor-pointer items-start gap-2">
+              <input
+                type="checkbox"
+                checked={reasons.includes(key)}
+                onChange={() => toggle(key)}
+                className="mt-0.5 shrink-0"
+              />
+              <span>{labels.fbReasons[key]}</span>
+            </label>
+          ))}
+        </div>
+        <textarea
+          value={comment}
+          onChange={e => setComment(e.target.value.slice(0, 500))}
+          placeholder={labels.fbCommentPlaceholder}
+          rows={2}
+          className={`w-full resize-none rounded-lg border px-2 py-1.5 text-xs ${T.inputBorder} ${T.inputBg} ${T.inputText} ${T.placeholder} focus:outline-none focus:ring-1 ${T.inputFocus}`}
+        />
+        <div className={`mt-1 ${T.sourceText}`}>{labels.fbPrivacy}</div>
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            onClick={() => send("down", reasons, comment)}
+            style={{ background: BRAND }}
+            className={`rounded-lg px-3 py-1.5 font-medium transition-opacity hover:opacity-90 ${T.sendEnabled}`}
+          >
+            {labels.fbSubmit}
+          </button>
+          <button onClick={() => setState("idle")} className={`px-2 py-1.5 ${T.sourceText}`}>
+            {labels.fbCancel}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1.5 flex items-center gap-1 px-1">
+      <button
+        onClick={() => send("up")}
+        title={labels.fbGood}
+        aria-label={labels.fbGood}
+        className={`rounded-md p-1.5 transition-colors ${T.sidebarBtn}`}
+      >
+        <ThumbUpIcon className="h-3.5 w-3.5" />
+      </button>
+      <button
+        onClick={() => setState("form")}
+        title={labels.fbBad}
+        aria-label={labels.fbBad}
+        className={`rounded-md p-1.5 transition-colors ${T.sidebarBtn}`}
+      >
+        <ThumbDownIcon className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 // ─── 訊息氣泡 ─────────────────────────────────────────────────────────────────
 
-function MessageBubble({ msg, lang, T }) {
+function MessageBubble({ msg, lang, T, sessionId }) {
   const labels = LABELS[lang];
 
   if (msg.role === "user") {
@@ -361,6 +510,11 @@ function MessageBubble({ msg, lang, T }) {
                 ))}
               </ul>
             </div>
+          )}
+
+          {/* 回答完整結束（有 message_id）才顯示評價，串流中途不顯示 */}
+          {msg.messageId && msg.content && (
+            <AnswerFeedback messageId={msg.messageId} sessionId={sessionId} lang={lang} T={T} />
           )}
         </div>
       </div>
@@ -536,7 +690,7 @@ export default function ChatPage() {
             else if (evt.type === "sources") { current.sources = evt.sources ?? []; push(); }
             else if (evt.type === "blocked") { current = { role: "assistant", status: "blocked", content: evt.message }; setLoading(false); push(); }
             else if (evt.type === "error")   { current = { role: "assistant", status: "error", content: evt.message }; setLoading(false); push(); }
-            else if (evt.type === "done")    { if (evt.answer) { current.content = evt.answer; current.rawAnswer = evt.answer; } current.statusText = ""; push(); }
+            else if (evt.type === "done")    { if (evt.answer) { current.content = evt.answer; current.rawAnswer = evt.answer; } if (evt.message_id) current.messageId = evt.message_id; current.statusText = ""; push(); }
           }
         }
         if (!gotAnything) throw new Error("empty stream");
@@ -545,7 +699,7 @@ export default function ChatPage() {
 
       let aiMsg;
       if (data.status === "ok") {
-        aiMsg = { role: "assistant", status: "ok", content: data.answer, rawAnswer: data.answer, sources: data.sources ?? [], audioBase64: data.audio_base64 ?? null };
+        aiMsg = { role: "assistant", status: "ok", content: data.answer, rawAnswer: data.answer, sources: data.sources ?? [], audioBase64: data.audio_base64 ?? null, messageId: data.message_id ?? null };
         if (data.audio_base64) playBase64Audio(data.audio_base64);
       } else {
         aiMsg = { role: "assistant", status: data.status, content: data.message ?? "發生未知錯誤。" };
@@ -750,7 +904,7 @@ export default function ChatPage() {
             /* 訊息列表 */
             <div className="mx-auto max-w-3xl px-3 py-4 sm:px-4 sm:py-6">
               {messages.map((msg, i) => (
-                <MessageBubble key={i} msg={msg} lang={lang} T={T} />
+                <MessageBubble key={i} msg={msg} lang={lang} T={T} sessionId={sessionId.current} />
               ))}
               {loading && <TypingIndicator T={T} />}
               <div ref={bottomRef} />

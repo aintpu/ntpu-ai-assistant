@@ -205,6 +205,45 @@ gcloud run services logs read aia-api --region asia-east1 --limit 30
 
 ---
 
+## 4.4 查看使用狀況與使用者回饋
+
+系統會把兩種結構化事件以單行 JSON 印到 stdout，Cloud Run 自動收進 Cloud Logging
+（解析為 `jsonPayload`）。兩者以 `message_id` 相互對應：
+
+| 事件 | 內容 |
+|---|---|
+| `answer` | message_id、session_id、處室、問題、回答、來源、使用的工具、模型、耗時 |
+| `feedback` | message_id、session_id、rating（up/down）、原因分類、文字說明 |
+
+**看所有負評：**
+
+```bash
+gcloud logging read 'jsonPayload.event="feedback" AND jsonPayload.rating="down"' --limit 50 --format json
+```
+
+**看某則回答的完整脈絡（把 `<ID>` 換成回饋裡的 message_id）：**
+
+```bash
+gcloud logging read 'jsonPayload.message_id="<ID>"' --format json
+```
+
+**統計使用量（不重複使用者數以 session_id 計）：**
+
+```bash
+gcloud logging read 'jsonPayload.event="answer"' --limit 1000 --format="value(jsonPayload.session_id)" | sort -u | wc -l
+```
+
+> **為什麼不存資料庫**：Cloud Run 的容器檔案系統是暫時的，原本的 `chat_logs.csv`
+> 在執行個體回收後就消失。stdout 不需要額外服務、金鑰或 IAM 設定即可持久保存。
+> 日後要做統計分析，可在 Cloud Logging 建立 **Log Sink 匯出到 BigQuery**，
+> 就能用 SQL 直接計算滿意率與各類原因的分布。
+
+> **回饋為何不在伺服器端保留狀態**：Cloud Run 可能同時有多個執行個體，
+> 使用者送出回饋時未必打到產生該則回答的那一台。因此兩個事件各自獨立寫出，
+> 靠 `message_id` 在日誌端 join，不依賴記憶體關聯。
+
+---
+
 ## 5. 出問題時回滾
 
 列出歷史版本：

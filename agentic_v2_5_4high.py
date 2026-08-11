@@ -1035,6 +1035,39 @@ def _print_timings():
         total = sum(dt for _, dt in recs)
         print("[計時] " + " | ".join(f"{s}={dt:.1f}s" for s, dt in recs) + f" | 累計={total:.1f}s")
 
+# --- 本次請求的識別資訊 ---
+# 原本寫紀錄時用的是模組層級的 SESSION_ID（啟動時產生一次），等於同一個容器裡
+# 所有使用者共用同一個 id，無法區分使用者、也無法把一段對話串起來。
+# 改由端點把前端送來的 session_id 放進 thread-local，並為每則回答配一個
+# message_id，讓回饋能精確指向某一則回答。（比照 _source_ctx / _timing_ctx 的作法）
+_req_ctx = threading.local()
+
+def _set_request_ctx(session_id: str = "", message_id: str = ""):
+    _req_ctx.session_id = (session_id or "").strip()[:64]
+    _req_ctx.message_id = message_id or ""
+
+def _get_session_id() -> str:
+    # 前端未帶 session_id 時退回啟動時的全域值，維持舊行為
+    return getattr(_req_ctx, "session_id", "") or SESSION_ID
+
+def _get_message_id() -> str:
+    return getattr(_req_ctx, "message_id", "")
+
+def _new_message_id() -> str:
+    return uuid.uuid4().hex
+
+# --- 結構化事件日誌 ---
+# 單行 JSON 印到 stdout，Cloud Run 會自動解析成 Cloud Logging 的 jsonPayload。
+# 選這個做法是因為容器檔案系統是暫時的：原本的 chat_logs.csv 在執行個體回收後
+# 就消失，等於沒有在累積任何資料。stdout 不需要額外服務、金鑰或 IAM 設定。
+def _log_event(event: str, **fields):
+    try:
+        rec = {"event": event, "severity": "INFO", "ts": _now_iso()}
+        rec.update({k: v for k, v in fields.items() if v not in (None, "")})
+        print(json.dumps(rec, ensure_ascii=False), flush=True)
+    except Exception as e:  # 記錄失敗不可影響回答
+        print(f"[警告] 結構化日誌輸出失敗：{e}")
+
 # --- 工具輔助函數 ---
 def build_answer_from_docs(docs: List[Document], lang: str, header_zh: str, header_en: str) -> str:
     items = []
@@ -1392,10 +1425,10 @@ SYSTEM_STYLE = (
     "【對話情境判斷】\n"
     "1. 若使用者是在進行正常的對話互動，例如：道謝、稱讚、問候、簡短閒聊（如『謝謝』『你很棒』『好的』『了解』等），"
     "請以自然、友善的方式回應，不需要拒絕或強制導回業務範疇。\n"
-    "2. 若使用者的問題確實與上述三個服務單位完全無關，且不屬於正常對話互動（例如：詢問餐廳推薦、時事新聞、個人私事、撰寫程式碼等），"
+    "2. 若使用者的問題確實與上述五個服務單位完全無關，且不屬於正常對話互動（例如：詢問餐廳推薦、時事新聞、個人私事、撰寫程式碼等），"
     "請禮貌說明你的服務範疇，回應格式為：\n"
-    "『您好，我是 NTPU 行政服務 AI 助理，目前協助體育室、通識教育中心與語言中心相關問題。"
-    "如有場地借用、體育課程、通識課程、大學英文或外語畢業門檻等疑問，歡迎繼續詢問。』\n"
+    "『您好，我是 NTPU 行政服務 AI 助理，目前協助體育室、通識教育中心、語言中心、教務處與學務處相關問題。"
+    "如有場地借用、體育課程、通識課程、大學英文、學籍與學分抵免、住宿與獎助學金等疑問，歡迎繼續詢問。』\n"
     "3. 判斷時應優先參考對話上下文，若前一輪對話涉及任一服務單位，則本輪的簡短回覆（如『好』『了解』『謝謝』）應視為對話延續，而非無關問題。\n"
     
     "【🌐 跨語系檢索最高準則 (Cross-lingual Retrieval Rule)】\n"
@@ -1504,15 +1537,21 @@ def _is_prompt_injection(query: str) -> bool:
 
 def _agentic_answer_events(user_query: str, language: str, history: list,
                            event_type: str = "text", dept: str = None,
-                           injection_checked: bool = False):
+                           injection_checked: bool = False,
+                           session_id: str = "", message_id: str = ""):
     """Agentic 核心（事件產生器）。
 
     產出事件：("status", 訊息)   工具執行中的狀態提示
              ("delta", 文字)    最終答案的串流片段（僅中文回覆時逐字送出）
              ("final", 答案)    後處理完成的完整答案（必為最後一個事件）
     由 synthesize_agentic_answer（阻塞式）與 synthesize_agentic_answer_stream 包裝使用。
+
+    session_id / message_id 以參數傳入而非讀 thread-local：串流回應由 Starlette 以
+    執行緒池逐次取值，跨 yield 不保證停留在同一條執行緒，thread-local 可能讀不到。
     """
     _reset_source_collector()
+    # 供本函式內的 CSV 寫入沿用（同一次 next() 內讀取，不跨 yield）
+    _set_request_ctx(session_id, message_id)
 
     # injection_checked=True 表示上游（pipeline 合併分類器）已檢查過，省一次 LLM 呼叫
     if not injection_checked:
@@ -1855,7 +1894,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
             titles_str = "無呼叫檢索工具"
 
         _append_csv({
-            "session_id": SESSION_ID,
+            "session_id": session_id or SESSION_ID,
             "event_type": event_type,
             "language": language,
             "user_query": user_query,
@@ -1871,17 +1910,42 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
     except Exception as e:
         print(f"[警告] CSV 寫入失敗: {e}")
 
+    # 結構化事件：與 feedback 事件以 message_id 相互對應（在日誌端 join）。
+    # 不在伺服器端保留狀態，因為 Cloud Run 可能有多個執行個體，
+    # 使用者送出回饋時未必打到產生這則回答的那一台。
+    try:
+        timings = get_last_timings()
+        _log_event(
+            "answer",
+            message_id=message_id,
+            session_id=session_id or SESSION_ID,
+            dept=dept or "",
+            event_type=event_type,
+            language=language,
+            question=user_query[:1000],
+            answer=answer[:4000],
+            sources=get_last_sources(),
+            retrieved_titles=titles_str[:1000],
+            tools=[m.get("name") for m in tool_msgs],
+            model=MODEL_AGENT,
+            latency_s=round(sum(dt for _, dt in timings), 2) if timings else None,
+        )
+    except Exception as e:
+        print(f"[警告] answer 事件輸出失敗：{e}")
+
     _print_timings()
     yield ("final", answer)
 
 
 def synthesize_agentic_answer(user_query: str, language: str, history: list,
                               event_type: str = "text", dept: str = None,
-                              injection_checked: bool = False) -> str:
+                              injection_checked: bool = False,
+                              session_id: str = "", message_id: str = "") -> str:
     """阻塞式介面：跑完整個 agent loop 後回傳完整答案（行為與重構前相同）"""
     answer = ""
     for kind, payload in _agentic_answer_events(user_query, language, history,
-                                                event_type, dept, injection_checked):
+                                                event_type, dept, injection_checked,
+                                                session_id, message_id):
         if kind == "final":
             answer = payload
     return answer
@@ -1889,10 +1953,12 @@ def synthesize_agentic_answer(user_query: str, language: str, history: list,
 
 def synthesize_agentic_answer_stream(user_query: str, language: str, history: list,
                                      event_type: str = "text", dept: str = None,
-                                     injection_checked: bool = False):
+                                     injection_checked: bool = False,
+                                     session_id: str = "", message_id: str = ""):
     """串流介面：直接轉發 ("status"|"delta"|"final", payload) 事件"""
     yield from _agentic_answer_events(user_query, language, history,
-                                      event_type, dept, injection_checked)
+                                      event_type, dept, injection_checked,
+                                      session_id, message_id)
 
 # ==========================================
 # 7. 多模態模組 (Audio & Vision)
@@ -1993,7 +2059,7 @@ def analyze_image(img_path: str) -> str:
         # 👇 新增 CSV 寫入邏輯 👇
         try:
             _append_csv({
-                "session_id": SESSION_ID,
+                "session_id": _get_session_id(),
                 "event_type": "image",
                 "language": "zh-TW",
                 "user_query": "上傳圖片分析",
@@ -2063,7 +2129,7 @@ def analyze_image_with_question(img_path: str, question: str, prev_analysis: str
 
         try:
             _append_csv({
-                "session_id": SESSION_ID,
+                "session_id": _get_session_id(),
                 "event_type": "image_followup",
                 "language": "zh-TW",
                 "user_query": question,
@@ -2213,6 +2279,9 @@ async def chat_endpoint(req: ChatRequest, request: Request):
     if not q and not req.image_base64:
         return {"status": "error", "message": "問題不可為空"}
 
+    message_id = _new_message_id()
+    _set_request_ctx(req.session_id, message_id)
+
     if req.image_base64:
         try:
             import tempfile, base64 as _b64
@@ -2223,7 +2292,7 @@ async def chat_endpoint(req: ChatRequest, request: Request):
             import os as _os; _os.unlink(tmp)
         except Exception as e:
             answer = f"⚠️ 圖片分析失敗：{e}"
-        return {"status": "ok", "answer": answer, "sources": []}
+        return {"status": "ok", "answer": answer, "sources": [], "message_id": message_id}
 
     dept = classify_department(q, req.history)
     if dept == "inject":
@@ -2234,10 +2303,11 @@ async def chat_endpoint(req: ChatRequest, request: Request):
     answer = synthesize_agentic_answer(
         q, "zh-TW", req.history,
         dept=(None if dept == "chat" else dept),
-        injection_checked=True
+        injection_checked=True,
+        session_id=req.session_id, message_id=message_id
     )
     sources = get_last_sources()
-    return {"status": "ok", "answer": answer, "sources": sources}
+    return {"status": "ok", "answer": answer, "sources": sources, "message_id": message_id}
 
 
 @app.post("/api/chat/stream")
@@ -2248,6 +2318,8 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
         return StreamingResponse(_blocked(), media_type="text/event-stream")
 
     q = req.question.strip()
+    message_id = _new_message_id()
+    _set_request_ctx(req.session_id, message_id)
     dept_code = classify_department(q, req.history)
 
     if dept_code == "inject":
@@ -2266,7 +2338,8 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
         full_answer = ""
         try:
             for kind, payload in synthesize_agentic_answer_stream(
-                q, "zh-TW", req.history, dept=dept, injection_checked=True
+                q, "zh-TW", req.history, dept=dept, injection_checked=True,
+                session_id=req.session_id, message_id=message_id
             ):
                 if kind == "status":
                     yield f'data: {json.dumps({"type":"status","text":payload})}\n\n'
@@ -2280,7 +2353,7 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
             return
         sources = get_last_sources()
         yield f'data: {json.dumps({"type":"sources","sources":sources})}\n\n'
-        yield f'data: {json.dumps({"type":"done","answer":full_answer})}\n\n'
+        yield f'data: {json.dumps({"type":"done","answer":full_answer,"message_id":message_id})}\n\n'
 
     return StreamingResponse(_stream(), media_type="text/event-stream")
 
@@ -2303,10 +2376,12 @@ async def voice_endpoint(req: VoiceRequest, request: Request):
     if dept in ("inject", "other"):
         return {"status": "blocked", "message": _BLOCKED_MSG, "question": transcribed}
 
+    message_id = _new_message_id()
     answer = synthesize_agentic_answer(
-        transcribed, "zh-TW", req.history,
+        transcribed, "zh-TW", req.history, event_type="voice",
         dept=(None if dept == "chat" else dept),
-        injection_checked=True
+        injection_checked=True,
+        session_id=req.session_id, message_id=message_id
     )
     sources = get_last_sources()
     tts_b64 = None
@@ -2315,7 +2390,59 @@ async def voice_endpoint(req: VoiceRequest, request: Request):
     except Exception:
         pass
     return {"status": "ok", "answer": answer, "question": transcribed,
-            "sources": sources, "audio_base64": tts_b64}
+            "sources": sources, "audio_base64": tts_b64, "message_id": message_id}
+
+
+# ── 使用者回饋 ────────────────────────────────────────────────
+# 只寫結構化日誌，不在伺服器端保留狀態：Cloud Run 可能有多個執行個體，
+# 使用者送出回饋時未必打到產生該則回答的那一台，因此靠 message_id
+# 在日誌端與 answer 事件對應（見 DEPLOY.md 的查詢範例）。
+FEEDBACK_REASONS = {
+    "wrong_info",    # 資訊錯誤，與實際規定不符
+    "outdated",      # 資訊過時
+    "off_topic",     # 答非所問
+    "too_vague",     # 太籠統、不夠具體
+    "bad_source",    # 找不到出處或連結有誤
+    "other",         # 其他
+}
+MAX_COMMENT_CHARS = 500
+
+class FeedbackRequest(BaseModel):
+    message_id: str = ""
+    session_id: str = ""
+    rating: str = ""          # "up" | "down"
+    reasons: list = []
+    comment: str = ""
+
+
+@app.post("/api/feedback")
+async def feedback_endpoint(req: FeedbackRequest, request: Request):
+    if _is_rate_limited(request):
+        return {"status": "blocked", "message": _RATE_MSG}
+
+    rating = (req.rating or "").strip().lower()
+    if rating not in ("up", "down"):
+        return {"status": "error", "message": "rating 必須是 up 或 down"}
+
+    message_id = (req.message_id or "").strip()[:64]
+    if not message_id:
+        return {"status": "error", "message": "缺少 message_id"}
+
+    # 白名單過濾，避免任意字串被寫進日誌
+    reasons = [r for r in (req.reasons or [])
+               if isinstance(r, str) and r in FEEDBACK_REASONS]
+    reasons = list(dict.fromkeys(reasons))[:len(FEEDBACK_REASONS)]
+    comment = (req.comment or "").strip()[:MAX_COMMENT_CHARS]
+
+    _log_event(
+        "feedback",
+        message_id=message_id,
+        session_id=(req.session_id or "").strip()[:64] or SESSION_ID,
+        rating=rating,
+        reasons=reasons,
+        comment=comment,
+    )
+    return {"status": "ok"}
 
 
 @app.get("/api/health")
