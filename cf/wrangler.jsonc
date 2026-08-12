@@ -1,0 +1,51 @@
+{
+  // Cloudflare Worker + Container：把既有的 FastAPI 後端原樣跑在 Containers 上，
+  // Worker 只做轉發。部署由 .github/workflows/deploy.yml 在 CI 執行，
+  // 因此本機不需要安裝 Docker。
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ntpu-aia-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // image 指向專案根目錄的 Dockerfile；build context 為 repo 根目錄，
+  // 這樣 crawler_data/ 等資料檔才會一起進映像檔。
+  "containers": [
+    {
+      "class_name": "NtpuAiaBackend",
+      "image": "../Dockerfile",
+      "image_build_context": "..",
+      // standard-1：0.5 vCPU / 4 GiB / 8 GB。索引約 5178 筆，本機實測記憶體
+      // 需求低於 2 GiB，4 GiB 留有餘裕。不夠時改 standard-2（1 vCPU / 6 GiB）。
+      "instance_type": "standard-1",
+      // 單一執行個體即可：索引在啟動時載入，多開一份就多算一次記憶體費用。
+      "max_instances": 1
+    }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BACKEND",
+        "class_name": "NtpuAiaBackend"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["NtpuAiaBackend"]
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+
+  // 部署後需另外設定金鑰（只需做一次，CI 不會覆蓋）：
+  //   npx wrangler secret put OPENAI_API_KEY --config cf/wrangler.jsonc
+  //
+  // 綁自訂網域請先用 workers.dev 測試通過後，再於後台
+  // Workers & Pages → ntpu-aia-api → Settings → Domains & Routes 加入。
+}

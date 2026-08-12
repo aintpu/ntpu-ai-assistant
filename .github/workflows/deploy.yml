@@ -1,0 +1,66 @@
+name: Deploy backend to Cloudflare
+
+# 推上 main 就自動部署。CI runner 內建 Docker，因此開發機不需要安裝 Docker。
+on:
+  push:
+    branches: [main]
+    paths:
+      - "agentic_v2_5_4high.py"
+      - "llm_adapter.py"
+      - "corrections.md"
+      - "requirements-runtime.txt"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "crawler_data/**"
+      - "cf/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:      # 也可在 Actions 頁面手動觸發
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false   # 部署途中被取消會留下半完成的狀態
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 預先建好 FAISS 索引，讓映像檔帶著 .faiss_cache 一起部署。
+      # 不做這步的話，容器每次冷啟動都要重跑全量 embedding（實測 96 秒），
+      # 而容器休眠後的第一位使用者就得等這麼久。
+      # 索引指紋以「檔案內容雜湊」計算，因此能撐過 git checkout 與 Docker COPY。
+      - name: Build FAISS index
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::warning::未設定 OPENAI_API_KEY，略過索引預建；容器首次啟動需自行重建（約 96 秒）"
+            exit 0
+          fi
+          pip install --no-cache-dir -r requirements-runtime.txt
+          python -c "import agentic_v2_5_4high"
+          ls -la .faiss_cache
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install wrangler
+        working-directory: cf
+        run: npm ci
+
+      # wrangler 會用本機（此處為 runner）的 Docker 建置映像檔並推到
+      # Cloudflare 的 registry，接著部署 Worker 與 Container。
+      - name: Deploy
+        working-directory: cf
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy

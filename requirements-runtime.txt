@@ -1,0 +1,29 @@
+# 容器執行時實際需要的套件。
+#
+# requirements.txt 保留給開發、爬蟲與評估腳本使用；那裡的 gradio、selenium、
+# webdriver-manager、pdfplumber、PyMuPDF、odfpy、beautifulsoup4、pandas
+# 在 agentic_v2_5_4high.py 與 llm_adapter.py 的執行路徑中完全沒有被 import，
+# 裝進映像檔只會拖慢建置與容器冷啟動（冷啟動時間與映像檔大小相關）。
+
+# LLM 與檢索
+langchain==0.3.20
+langchain-community==0.3.19
+langchain-core==0.3.44
+langchain-openai==0.3.8
+langchain-text-splitters==0.3.6
+openai==1.66.3
+faiss-cpu==1.10.0
+rank-bm25==0.2.2
+numpy==2.1.3
+
+# Web 服務
+fastapi
+uvicorn
+pydantic
+
+# 功能相依
+deep-translator==1.11.4   # 中英翻譯
+openpyxl==3.1.5           # 讀法規彙整 xlsx
+pillow==11.3.0            # 圖片分析（PIL）
+requests==2.32.3
+apscheduler               # 定期重建索引的排程器
