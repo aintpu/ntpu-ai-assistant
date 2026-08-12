@@ -15,8 +15,18 @@ export class NtpuAiaBackend extends Container {
 
   constructor(ctx, env) {
     super(ctx, env);
+
+    // 診斷用：只記錄金鑰「有沒有拿到」與長度，不記錄內容。
+    // Durable Object 是長期存活的，其建構式取得的 env 會一直沿用到執行個體被
+    // 汰換為止；新增 secret 後若沒有重新部署，這裡就會是 missing。
+    const key = env.OPENAI_API_KEY ?? "";
+    console.log(JSON.stringify({
+      event: "container_env_check", severity: key ? "INFO" : "ERROR",
+      openai_api_key: key ? `present(len=${key.length})` : "MISSING",
+    }));
+
     // envVars 必須在建構時設定：Container.fetch() 只接受 request，
-    // 無法在轉發當下傳入啟動參數。
+    // 無法在轉發當下傳入啟動參數。實際內容於容器啟動時才被讀取。
     this.envVars = {
       // 金鑰來自 Worker secret。後端的 config.txt 已排除在映像檔外，
       // 啟動時會直接讀環境變數。
