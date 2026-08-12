@@ -1,4 +1,4 @@
-name: Deploy backend to Cloudflare
+name: Deploy to Cloudflare
 
 # 推上 main 就自動部署。CI runner 內建 Docker，因此開發機不需要安裝 Docker。
 on:
@@ -13,6 +13,7 @@ on:
       - ".dockerignore"
       - "crawler_data/**"
       - "cf/**"
+      - "front_end/sports-ai-chat/**"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:      # 也可在 Actions 頁面手動觸發
 
@@ -51,6 +52,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      # 前端與後端部署在同一個 Worker：靜態檔由 Workers Static Assets 供應，
+      # /api/* 轉給容器。因此前端呼叫 API 用相對路徑即可，NEXT_PUBLIC_API_URL
+      # 留空，也就不需要處理 CORS。
+      - name: Build frontend
+        working-directory: front_end/sports-ai-chat
+        env:
+          NEXT_PUBLIC_API_URL: ""
+        run: |
+          npm ci
+          npx next build
+          test -f out/index.html || { echo "::error::前端靜態輸出缺少 index.html"; exit 1; }
 
       - name: Install wrangler
         working-directory: cf

@@ -59,6 +59,15 @@ export class NtpuAiaBackend extends Container {
 
 export default {
   async fetch(request, env) {
+    const { pathname } = new URL(request.url);
+
+    // 非 API 路徑交還給 Static Assets（前端的靜態輸出）。
+    // run_worker_first 只列了 /api/*，理論上不會走到這裡，但明確處理可避免
+    // 日後調整路由設定時把整個前端擋掉。
+    if (!pathname.startsWith("/api/")) {
+      return env.ASSETS.fetch(request);
+    }
+
     // 固定單一執行個體：索引在啟動時載入記憶體，多開一份就多算一份記憶體費用，
     // 且各執行個體的狀態不共用。
     const backend = getContainer(env.BACKEND, "singleton");

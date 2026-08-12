@@ -8,6 +8,18 @@
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
 
+  // 前端（Next.js 靜態輸出）與後端放在同一個 Worker：同源即免除 CORS，
+  // 前端呼叫 /api/... 是相對路徑，不需要知道後端網址。
+  //
+  // 預設是「先找靜態檔，找不到才進 Worker」；/api/* 沒有對應檔案本來就會進
+  // Worker，但明確列出可避免日後新增同名靜態檔時被意外攔截。
+  "assets": {
+    "directory": "../front_end/sports-ai-chat/out",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
+    "not_found_handling": "404-page"
+  },
+
   // image 指向專案根目錄的 Dockerfile；build context 為 repo 根目錄，
   // 這樣 crawler_data/ 等資料檔才會一起進映像檔。
   "containers": [
