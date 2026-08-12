@@ -5,6 +5,8 @@ front_end/sports-ai-chat/.env.local
 # User data (privacy)
 chat_logs.csv
 chat_logs_advanced.csv
+events.jsonl
+events.jsonl.*
 
 # Security reports
 gitleaks_report.json

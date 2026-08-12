@@ -144,7 +144,7 @@ translator_zh2en = GoogleTranslator(source="zh-TW", target="en")
 translator_en2zh = GoogleTranslator(source="en", target="zh-TW")
 
 SESSION_ID = os.getenv("CHAT_SESSION_ID") or str(uuid.uuid4())
-LOG_CSV = "chat_logs.csv" 
+LOG_CSV = os.path.join(BASE_DIR, "chat_logs.csv")   # 絕對路徑，避免 cwd 不同寫到別處
 MAX_CTX_CHARS = 3000
 CSV_FIELDS = [
     "session_id", "event_type", "language", "user_query",
@@ -195,11 +195,17 @@ def _now_iso():
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 def _append_csv(row: dict):
+    # Cloud Run 的檔案系統是記憶體（tmpfs），這個檔會持續吃 RAM 且無上限成長
+    # （每筆約 10 KB，其中 8 成是 retrieved_context），偏偏執行個體回收時又全部消失。
+    # 該環境改以結構化日誌保存對話紀錄（見 _log_event），此處直接略過。
+    if os.getenv("K_SERVICE"):
+        return
+
     # 加上 if log_dir 防呆，避免路徑為空時當機
     log_dir = os.path.dirname(LOG_CSV)
-    if log_dir:  
+    if log_dir:
         os.makedirs(log_dir, exist_ok=True)
-        
+
     write_header = not os.path.exists(LOG_CSV)
     with open(LOG_CSV, "a", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=CSV_FIELDS)
@@ -1060,13 +1066,32 @@ def _new_message_id() -> str:
 # 單行 JSON 印到 stdout，Cloud Run 會自動解析成 Cloud Logging 的 jsonPayload。
 # 選這個做法是因為容器檔案系統是暫時的：原本的 chat_logs.csv 在執行個體回收後
 # 就消失，等於沒有在累積任何資料。stdout 不需要額外服務、金鑰或 IAM 設定。
+#
+# 本機另外落一份 JSONL：Cloud Run 有 Cloud Logging 接住 stdout，但本機開發與
+# 現場 demo 時 stdout 只是終端機畫面，關掉就沒了，回饋會直接遺失。
+# 在 Cloud Run 上（K_SERVICE 由平台注入）則跳過，避免寫進暫時性的容器檔案系統。
+EVENTS_JSONL = os.getenv("EVENTS_LOG_PATH", os.path.join(BASE_DIR, "events.jsonl"))
+_ON_CLOUD_RUN = bool(os.getenv("K_SERVICE"))
+_events_lock = threading.Lock()
+
 def _log_event(event: str, **fields):
     try:
         rec = {"event": event, "severity": "INFO", "ts": _now_iso()}
         rec.update({k: v for k, v in fields.items() if v not in (None, "")})
-        print(json.dumps(rec, ensure_ascii=False), flush=True)
+        line = json.dumps(rec, ensure_ascii=False)
     except Exception as e:  # 記錄失敗不可影響回答
-        print(f"[警告] 結構化日誌輸出失敗：{e}")
+        print(f"[警告] 結構化日誌序列化失敗：{e}")
+        return
+
+    print(line, flush=True)
+
+    if not _ON_CLOUD_RUN:
+        try:
+            with _events_lock:                      # 多執行緒同時寫入會交錯
+                with open(EVENTS_JSONL, "a", encoding="utf-8") as f:
+                    f.write(line + "\n")
+        except Exception as e:
+            print(f"[警告] events.jsonl 寫入失敗（不影響運作）：{e}")
 
 # --- 工具輔助函數 ---
 def build_answer_from_docs(docs: List[Document], lang: str, header_zh: str, header_en: str) -> str:

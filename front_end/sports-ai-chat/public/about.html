@@ -251,6 +251,25 @@
   .foot-links a:hover{color:var(--navy)}
   .foot-meta{font-size:12.5px;color:var(--muted);margin-top:22px;line-height:1.7}
 
+  /* 研究中心連結卡 */
+  .center-card{
+    display:flex;align-items:center;gap:16px;margin-top:30px;padding:18px 22px;
+    border:1px solid var(--line);border-radius:var(--r);background:var(--white);
+    transition:transform .2s,box-shadow .2s,border-color .2s;
+  }
+  .center-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--mist2)}
+  .center-mark{
+    flex:none;width:52px;height:52px;border-radius:13px;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--navy),var(--navy-deep));color:#fff;
+    font-family:var(--serif);font-size:16px;font-weight:700;letter-spacing:.02em;
+  }
+  .center-mark b{color:var(--plum-soft)}
+  .center-body{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .center-name{font-size:15.5px;font-weight:700;color:var(--ink);line-height:1.4}
+  .center-desc{font-size:13px;color:var(--muted);line-height:1.5}
+  .center-go{margin-left:auto;flex:none;font-size:19px;color:var(--plum);transition:transform .18s}
+  .center-card:hover .center-go{transform:translate(3px,-3px)}
+
   /* reveal on scroll */
   .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
   .reveal.in{opacity:1;transform:none}
@@ -278,6 +297,9 @@
     .dept{flex-basis:100%;max-width:none}
     .node::after{display:none!important}
     .notice{grid-template-columns:1fr;padding:26px}
+    .center-card{padding:16px;gap:13px}
+    .center-name{font-size:14.5px}
+    .center-desc{font-size:12.5px}
     .band{padding:40px 28px}
     .wrap{padding:0 20px}
     section.block{padding:56px 0}
@@ -595,6 +617,20 @@
         <a href="https://aia.ntpu.ai" target="_blank" rel="noopener">aia.ntpu.ai ↗</a>
       </div>
     </div>
+    <a class="center-card" href="https://ai4x.ntpu.edu.tw/zh/index.html" target="_blank" rel="noopener">
+      <span class="center-mark">AI<b>4X</b></span>
+      <span class="center-body">
+        <span class="center-name">
+          <span class="zh">國立臺北大學跨域人工智慧前瞻研究中心</span>
+          <span class="en">NTPU AI4X Research Center</span>
+        </span>
+        <span class="center-desc">
+          <span class="zh">了解更多本校人工智慧相關研究與應用</span>
+          <span class="en">Explore the university's AI research and applications</span>
+        </span>
+      </span>
+      <span class="center-go">↗</span>
+    </a>
     <p class="foot-meta">
       <span class="zh">本頁為系統說明頁，內容供參考。系統回答之權責事項仍以各處室官方公告為準。目前服務範圍：體育室、通識教育中心、語言中心、教務處、學務處，未來將逐步擴充。</span>
       <span class="en">This is an informational page. For matters of authority, official office announcements prevail. Current coverage: Physical Education, General Education, the Language Center, Academic Affairs, and Student Affairs, with more to come.</span>
