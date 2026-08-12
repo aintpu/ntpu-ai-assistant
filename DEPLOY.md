@@ -1,273 +1,250 @@
-# 部署到 GCP — 操作手冊
+# 部署手冊
 
-本次變更：整合教務處（OAA）與學務處（OSA），索引由 3404 筆增為 5178 筆。
+正式環境為 **Cloudflare Workers + Containers**，前後端共用同一個 Worker。
+GCP Cloud Run 為過渡期的舊環境，`aia.ntpu.ai` 切換完成後即可停用（見附錄 A）。
 
 ---
 
-## 0. 先決條件
+## 1. 架構
 
-### 0.1 安裝 gcloud CLI（這台電腦目前沒有）
-
-從 https://cloud.google.com/sdk/docs/install#windows 下載安裝，然後：
-
-```bash
-gcloud auth login
+```
+使用者 ──► Worker「ntpu-aia-api」
+             ├─ /            → Static Assets（Next.js 靜態輸出）
+             ├─ /about       → Static Assets（系統說明頁）
+             └─ /api/*       → Durable Object → Container（FastAPI + FAISS）
 ```
 
-```bash
-gcloud config set project aintpu-aia
-```
+前後端**同源**，因此：
 
-```bash
-gcloud auth configure-docker asia-east1-docker.pkg.dev
-```
-
-### 0.2 環境資訊（取自 README）
+- 不需要 CORS 設定
+- 前端呼叫 API 用相對路徑（`/api/chat`），換網域不必重新建置
 
 | 項目 | 值 |
 |---|---|
-| Project ID | `aintpu-aia` |
-| 區域 | `asia-east1` |
-| Artifact Registry | `asia-east1-docker.pkg.dev/aintpu-aia/aia` |
-| 後端 Cloud Run | `aia-api` |
-| 前端 Cloud Run | `aia-web` |
-| Runtime 服務帳戶 | `aia-runtime@aintpu-aia.iam.gserviceaccount.com` |
-| Secret Manager | `OPENAI_API_KEY` |
-| 正式網域 | `aia.ntpu.ai` |
+| Cloudflare 帳號 | `Aintpu@gmail.com` |
+| Account ID | `cedba9318e222f84b8eb05c184c99443` |
+| Worker | `ntpu-aia-api` |
+| 測試網址 | `https://ntpu-aia-api.aintpu.workers.dev` |
+| 容器規格 | `standard-1`（0.5 vCPU / 4 GiB / 8 GB） |
+| 正式網域 | `aia.ntpu.ai`（zone 已在同一帳號） |
 
 ---
 
-## 1. 推上 GitHub
+## 2. 日常更新：只要 `git push`
 
-這個資料夾目前**還不是 git repo**，要先初始化。
+推上 `main` 就自動部署，**開發機不需要安裝 Docker**（CI runner 自帶）。
 
 ```bash
-cd "C:\Users\chenb\Desktop\ntpu_ai-assistant_202608\ntpu-ai-assistant-main"
+git push origin main
 ```
 
-```bash
-git init -b main
-```
+進度：https://github.com/aintpu/ntpu-ai-assistant/actions
 
-### 1.1 ⚠️ 送出前務必確認金鑰沒有被納入
+流程（`.github/workflows/deploy.yml`）：
 
-```bash
-git add -A && git status --short | grep -iE "config\.txt|\.env" || echo "OK：config.txt 與 .env.local 都沒有被 add"
-```
+1. 預先建立 FAISS 索引 → 讓映像檔帶著 `.faiss_cache`
+2. 建置前端（`next build`，靜態輸出到 `out/`）
+3. `wrangler deploy` → 建置映像檔、推送、部署 Worker 與 Container
 
-上面那行**必須**印出 `OK：...`。若印出檔名就是 `.gitignore` 失效，**先停下來**，不要 commit。
+首次約 10 分鐘，之後有快取約 3–5 分鐘。
 
-### 1.2 確認五個處室的資料檔都有進去
+> **為什麼要在 CI 預先建索引**：容器冷啟動時若需重建索引，5178 筆實測要 **96 秒**，
+> 休眠後第一位使用者就得等這麼久。預先建好可縮短到約 4 秒。
+> 代價是每次部署多一次 embedding 費用（約 US$0.10）。
 
-```bash
-git status --short crawler_data/ | sort
-```
+---
 
-**六個資料檔一個都不能少**，否則對應處室上線後會查無資料：
+## 3. 金鑰設定（只需做一次）
 
-| 檔案 | 對應 |
-|---|---|
-| `all_content_v2.md` | 體育室 最新消息／常見問題／96 筆競賽成績 |
-| `ALL_files_2.md` | 體育室 808 筆法規與表單 |
-| `cge_content.md` | 通識教育中心 |
-| `lc_content.md` | 語言中心 |
-| `oaa_regulations.md` | 教務處 1017 筆 |
-| `osa_regulations.md` | 學務處 1501 筆 |
+金鑰分屬三個地方，用途不同，**不要混用**：
 
-外加兩個法規彙整 xlsx（`北大學術單位法規彙整.xlsx`、`北大行政單位法規彙整.xlsx`）——
-少了它們法規仍會載入，但來源連結會全部空白。
+| 位置 | 用途 | 設定方式 |
+|---|---|---|
+| Cloudflare Worker Secret | 容器執行時呼叫 OpenAI | 後台 → Settings → Variables and secrets，型別選 **Secret** |
+| GitHub `OPENAI_API_KEY` | CI 預先建索引 | repo → Settings → Secrets → Actions |
+| GitHub `CLOUDFLARE_API_TOKEN`／`CLOUDFLARE_ACCOUNT_ID` | CI 部署權限 | 同上 |
 
-`review_qa_*.xlsx` 不會出現，這是刻意排除的（內部審查文件，程式未使用，且 repo 為公開）。
+> ⚠️ **新增或更換 Worker Secret 後必須重新部署**。Durable Object 是長期存活的，
+> 其建構式取得的 `env` 會沿用到執行個體被汰換為止；只在後台改 secret 而不重新
+> 部署，容器仍會拿到舊值（表現為所有問答都失敗、回應只需 5–7 秒）。
+> 重新部署可直接推一個 commit，或在 Actions 頁面手動 **Run workflow**。
 
-> **這一步的由來**：2026-08 之前 `.gitignore` 排除了體育室那兩個檔，
-> 導致正式站「通識與語言中心正常，體育室查無競賽成績與表單」。
-> 若日後又有人把它們加回 `.gitignore`，同樣的問題會再發生一次。
+診斷：容器啟動時會輸出下列事件，可在 Observability 確認金鑰是否送達（只記錄長度，不記錄內容）：
 
-### 1.3 commit 與推送
-
-```bash
-git commit -m "feat: 整合教務處(OAA)與學務處(OSA)法規；修正跨處室 HitL 修正紀錄"
-```
-
-```bash
-git remote add origin https://github.com/aintpu/ntpu-ai-assistant.git
-```
-
-```bash
-git push -u origin main
+```json
+{"event":"container_env_check","openai_api_key":"present(len=164)"}
 ```
 
 ---
 
-## 2. 部署後端（aia-api）
+## 4. 綁定正式網域 `aia.ntpu.ai`
 
-> 五個處室的資料檔現在都已納入版控，所以**從本機上傳或從 GitHub 建置都可以**。
-> 下面以本機 `gcloud builds submit` 為例；它會依 `.gcloudignore` 排除
-> `config.txt`、`.venv/`、`node_modules/` 等，並保留 `crawler_data/` 與 `.faiss_cache/`。
+> **先在 `workers.dev` 測試通過再做這步。** `aia.ntpu.ai` 目前指向 GCP 且正在服務學生，
+> 切換過程中若 Worker 有問題會直接影響使用者。
 
-```bash
-cd "C:\Users\chenb\Desktop\ntpu_ai-assistant_202608\ntpu-ai-assistant-main"
+### 4.1 先移除指向 GCP 的舊 DNS 記錄
+
+自訂網域與既有 DNS 記錄會衝突，必須先刪掉舊的。
+
+1. Cloudflare 後台 → **Domains** → `ntpu.ai` → **DNS → Records**
+2. 搜尋 `aia`，找到指向 `8.232.127.58` 的 **A 記錄**（雲朵應為灰色 DNS only）
+3. **先把內容記下來**（回滾時要用），再刪除
+
+```
+類型  名稱  內容            Proxy
+A     aia   8.232.127.58    DNS only（灰雲）
 ```
 
-### 2.1 建置映像檔
+### 4.2 加入自訂網域
+
+1. **Workers & Pages** → `ntpu-aia-api` → **Domains**（或 Settings → Domains & Routes）
+2. **Add** → **Custom domain**
+3. 輸入 `aia.ntpu.ai` → 確認
+
+Cloudflare 會自動建立所需的 DNS 記錄並簽發憑證，通常 1–2 分鐘生效。
+
+### 4.3 驗證
 
 ```bash
-gcloud builds submit --tag asia-east1-docker.pkg.dev/aintpu-aia/aia/aia-api:latest
+curl -s -o /dev/null -w "%{http_code}\n" https://aia.ntpu.ai/api/health
 ```
-
-### 2.2 部署到 Cloud Run
-
-金鑰由 Secret Manager 提供 —— `config.txt` 已排除在映像檔外，**沒有這段綁定服務會起不來**。
 
 ```bash
-gcloud run deploy aia-api --image asia-east1-docker.pkg.dev/aintpu-aia/aia/aia-api:latest --region asia-east1 --service-account aia-runtime@aintpu-aia.iam.gserviceaccount.com --set-secrets OPENAI_API_KEY=OPENAI_API_KEY:latest --set-env-vars ALLOWED_ORIGINS=https://aia.ntpu.ai --memory 2Gi --cpu 2 --timeout 300 --startup-cpu-boost
+curl -s -I https://aia.ntpu.ai/ | grep -i "^server"
 ```
 
-### 2.3 為什麼帶 `--startup-cpu-boost`
+回應標頭應為 `server: cloudflare`。若仍是 `Google Frontend`，表示 DNS 尚未生效或舊記錄還在。
 
-索引若需完整重建，本機實測要 **96 秒**；Cloud Run 啟動期 CPU 若被限速會更久，
-超過啟動探測上限就會判定 revision 失敗。開 CPU boost 保留餘裕。
+接著跑第 5 節的抽測。
 
-正常情況下映像檔已內含 `.faiss_cache`，啟動只要 **3.7 秒**。
-啟動日誌若出現 `索引快取命中` 表示走的是快取；出現 `建立 FAISS 索引中` 則是完整重建
-（代表快取與資料檔對不上，會多花 96 秒與一次全量 embedding 費用，但功能正常）。
+### 4.4 回滾
+
+把 4.2 建立的自訂網域移除，再依 4.1 記下的內容重新建立 A 記錄指回 `8.232.127.58`，
+即可回到 GCP（前提是 Cloud Run 服務尚未刪除）。
 
 ---
 
-## 3. 部署前端（aia-web）
+## 5. 部署後驗證
 
-前端需要在**建置時**就知道後端網址（`NEXT_PUBLIC_*` 會被編進 bundle）。
-
-先取得後端網址：
+### 5.1 靜態資源與 API
 
 ```bash
-gcloud run services describe aia-api --region asia-east1 --format "value(status.url)"
+curl -s -o /dev/null -w "首頁 %{http_code}\n" https://aia.ntpu.ai/
 ```
 
 ```bash
-cd "C:\Users\chenb\Desktop\ntpu_ai-assistant_202608\ntpu-ai-assistant-main\front_end\sports-ai-chat"
+curl -s -o /dev/null -w "說明頁 %{http_code}\n" https://aia.ntpu.ai/about
 ```
-
-把下面的 `<後端網址>` 換成上一步的輸出：
-
-```bash
-gcloud builds submit --config cloudbuild.yaml --substitutions _API_URL=<後端網址>
-```
-
-```bash
-gcloud run deploy aia-web --image asia-east1-docker.pkg.dev/aintpu-aia/aia/aia-web:latest --region asia-east1 --allow-unauthenticated
-```
-
-> `.env.local` 已被前端 `.dockerignore` 的 `.env*` 排除，不會污染正式建置。
-> 正式站的 API 位址一律由上面的 `_API_URL` 決定。
-
----
-
-## 4. 部署後驗證
-
-### 4.1 後端健康檢查
 
 ```bash
 curl -s https://aia.ntpu.ai/api/health
 ```
 
-### 4.2 各處室抽測（**體育室務必測到**）
+### 5.2 各處室抽測
 
-體育室資料是這次最容易漏掉的部分，一定要實際問過：
+用瀏覽器實際問，逐題確認：
 
-| 處室 | 測試問題 | 若失敗代表 |
+| 處室 | 測試問題 | 失敗代表 |
 |---|---|---|
-| 體育室 | 綜合體育館的借用申請表 | `ALL_files_2.md` 沒上傳 |
-| 體育室 | 112 學年度全大運名次 | `all_content_v2.md` 沒上傳 |
-| 教務處 | 辦理休學需要哪些程序 | OAA 資料未載入 |
-| 學務處 | 宿舍退宿要注意什麼 | OSA 資料未載入 |
+| 體育室 | 體育室有哪些表單可以下載 | `ALL_files_2.md` 未進映像檔 |
+| 體育室 | 112 學年度全大運我們拿了什麼名次？ | `all_content_v2.md` 未進映像檔 |
+| 教務處 | 辦理休學需要哪些程序？ | OAA 資料未載入 |
+| 學務處 | 弱勢學生助學金如何申請？ | OSA 資料未載入 |
 | 通識 | 向度通識畢業門檻 | GE 迴歸問題 |
-| 語言中心 | 大學英文抵免方式 | LC 迴歸問題 |
+| 語言中心 | 大學英文抵免及免修方式 | LC 迴歸問題 |
 
-### 4.3 檢查啟動日誌
+> 回應時間約 **4–10 秒**。若只花 5–7 秒卻回「目前這個問題我暫時無法整理出明確答案」，
+> 通常是 OpenAI 呼叫失敗（金鑰未送達容器），見第 3 節的警告。
+
+### 5.3 分類器是否正常
 
 ```bash
-gcloud run services logs read aia-api --region asia-east1 --limit 30
+curl -s -X POST https://aia.ntpu.ai/api/chat -H "Content-Type: application/json" -d '{"question":"推薦附近的餐廳","history":[]}'
 ```
 
-應能看到五個處室的載入筆數，總計 **5178 筆**：
+應回 `"status":"blocked"`。若回 `"status":"ok"`，代表 `classify_department` 的 LLM 呼叫失敗而 fallback。
 
-```
-[系統] 法規/表單文件切塊完成，共 808 筆
-[系統] 使用者修正紀錄 體育室 43 筆
-[系統] 通識教育中心 接入 462 筆
-[系統] 語言中心 接入 381 筆
-[系統] 教務處 接入法規切塊 1017 筆
-[系統] 學務處 接入法規切塊 1501 筆
-```
+### 5.4 回饋機制
 
-**若少了前兩行，就是體育室資料沒進去** —— 回頭確認 `.gcloudignore` 是否被改動。
+在瀏覽器問一題，點回答下方的 👍／👎，確認出現「感謝你的回饋！」。
 
 ---
 
-## 4.4 查看使用狀況與使用者回饋
+## 6. 查看使用狀況與回饋
 
-系統會把兩種結構化事件以單行 JSON 印到 stdout，Cloud Run 自動收進 Cloud Logging
-（解析為 `jsonPayload`）。兩者以 `message_id` 相互對應：
+系統將兩種結構化事件以單行 JSON 輸出到 stdout，可在
+**Workers & Pages → `ntpu-aia-api` → Observability → Logs** 查看。
 
 | 事件 | 內容 |
 |---|---|
-| `answer` | message_id、session_id、處室、問題、回答、來源、使用的工具、模型、耗時 |
-| `feedback` | message_id、session_id、rating（up/down）、原因分類、文字說明 |
+| `answer` | message_id、session_id、處室、問題、回答、來源、工具、模型、耗時 |
+| `feedback` | message_id、session_id、rating、原因分類、文字說明 |
 
-**看所有負評：**
+兩者以 `message_id` 對應。
+
+分析（滿意率、負評原因分布、各處室滿意率、負評案例）：
 
 ```bash
-gcloud logging read 'jsonPayload.event="feedback" AND jsonPayload.rating="down"' --limit 50 --format json
+python analyze_feedback.py
 ```
 
-**看某則回答的完整脈絡（把 `<ID>` 換成回饋裡的 message_id）：**
+本機開發時事件會另外寫入 `events.jsonl`；容器環境則跳過寫檔（檔案系統是暫時的），
+改由上述日誌保存。要分析正式環境的資料，先從 Observability 匯出成 JSONL，再：
 
 ```bash
-gcloud logging read 'jsonPayload.message_id="<ID>"' --format json
-```
-
-**統計使用量（不重複使用者數以 session_id 計）：**
-
-```bash
-gcloud logging read 'jsonPayload.event="answer"' --limit 1000 --format="value(jsonPayload.session_id)" | sort -u | wc -l
-```
-
-> **為什麼不存資料庫**：Cloud Run 的容器檔案系統是暫時的，原本的 `chat_logs.csv`
-> 在執行個體回收後就消失。stdout 不需要額外服務、金鑰或 IAM 設定即可持久保存。
-> 日後要做統計分析，可在 Cloud Logging 建立 **Log Sink 匯出到 BigQuery**，
-> 就能用 SQL 直接計算滿意率與各類原因的分布。
-
-> **回饋為何不在伺服器端保留狀態**：Cloud Run 可能同時有多個執行個體，
-> 使用者送出回饋時未必打到產生該則回答的那一台。因此兩個事件各自獨立寫出，
-> 靠 `message_id` 在日誌端 join，不依賴記憶體關聯。
-
----
-
-## 5. 出問題時回滾
-
-列出歷史版本：
-
-```bash
-gcloud run revisions list --service aia-api --region asia-east1 --limit 5
-```
-
-把流量切回上一版（`<前一版本名稱>` 換成上面查到的）：
-
-```bash
-gcloud run services update-traffic aia-api --region asia-east1 --to-revisions <前一版本名稱>=100
+python analyze_feedback.py cloud_events.jsonl
 ```
 
 ---
 
-## 6. 已知限制
+## 7. 成本
+
+Workers Paid US$5/月，含 25 GiB-hours 記憶體、375 vCPU-minutes、200 GB-hours 磁碟。
+容器休眠期間不計費（`sleepAfter` 設為 30 分鐘）。
+
+以 `standard-1` 估算：
+
+| 情境 | 每月清醒時數 | 估計月費 |
+|---|---|---|
+| 零星使用 | ~100 小時 | 約 US$12 |
+| 常態使用 | ~240 小時 | 約 US$23 |
+| 完全不休眠 | 730 小時 | 約 US$58 |
+
+建議在後台設定 **Budget Alert**。
+
+---
+
+## 8. 已知限制
 
 - **OAA/OSA 法規來源連結覆蓋率低**：教務處 20/156、學務處 20/170。
-  其餘法規有全文但無連結，前端「參考來源」只會顯示標題。
-  這是彙整用的 xlsx 只收錄各 20 筆造成的，需補資料而非改程式。
-- **OAA/OSA 沒有最新消息與常見問題**：只接了法規全文。
-  問「註冊截止日」「承辦人電話」這類會查無，系統會誠實說明並建議洽詢該處室。
+  其餘法規有全文但無連結，前端「參考來源」只顯示標題。需補資料而非改程式。
+- **OAA/OSA 沒有最新消息與常見問答**：只接了法規全文。問「註冊截止日」「承辦人電話」
+  這類會查無，系統會誠實說明並建議洽詢該處室。
 - **`osa_regulations.md` 有 6 筆是「未能抽出全文」的佔位**，只有連結沒有內文。
-- **`corrections.md` 寫在容器檔案系統內**：Cloud Run 執行個體是暫時的，
-  使用者的修正在執行個體回收後就會消失，且不會同步回 repo。
-  要長期保存需改存到 GCS 或資料庫。
+- **`corrections.md` 寫在容器檔案系統內**：執行個體回收後使用者的修正即消失，
+  且不會同步回 repo。要長期保存需改存 R2 或資料庫。
+- **冷啟動**：容器休眠後首次請求需等待喚醒（容器 1–3 秒 + 後端載入索引約 4 秒）。
+
+---
+
+## 附錄 A：GCP（過渡期舊環境）
+
+`aia.ntpu.ai` 切換到 Cloudflare **之前**，服務仍由 GCP Cloud Run 提供。
+
+| 項目 | 值 |
+|---|---|
+| Project ID | `aintpu-aia` |
+| 區域 | `asia-east1` |
+| 後端 | Cloud Run `aia-api` |
+| 前端 | Cloud Run `aia-web` |
+| 金鑰 | Secret Manager `OPENAI_API_KEY` |
+
+### 切換完成後的收尾
+
+1. 觀察 Cloudflare 版本穩定數日
+2. 停用或刪除 Cloud Run 的 `aia-api` 與 `aia-web`
+3. **確認 GCP 已不再服務後**，再作廢舊的 OpenAI 金鑰
+   （GCP 使用的是舊金鑰；提早作廢會使 `aia.ntpu.ai` 立即中斷）
+
+> 這台開發機未安裝 gcloud CLI。若需操作 GCP，須先安裝 Google Cloud SDK
+> 或改用 Cloud Shell。
