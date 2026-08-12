@@ -825,7 +825,7 @@ export default function ChatPage() {
 
           {/* 系統說明頁（public/about.html，另開分頁避免中斷對話） */}
           <a
-            href="/about.html"
+            href="/about"
             target="_blank"
             rel="noopener noreferrer"
             title={labels.aboutTitle}
@@ -876,7 +876,7 @@ export default function ChatPage() {
                 <p className={`mt-2 break-words text-sm ${T.welcomeSub}`}>{labels.welcomeSub}</p>
                 {/* 側邊欄在手機上收合，這裡再給一個顯眼的入口 */}
                 <a
-                  href="/about.html"
+                  href="/about"
                   target="_blank"
                   rel="noopener noreferrer"
                   title={labels.aboutTitle}
