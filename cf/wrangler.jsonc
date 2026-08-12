@@ -8,6 +8,16 @@
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
 
+  // 正式網域。以設定檔宣告而非在後台點選，好處是版本控制、可重現，
+  // 且與部署同一個流程。Cloudflare 會自動建立 DNS 記錄並簽發憑證
+  // （ntpu.ai 的 zone 已在同一帳號下，故不需指定 zone_id）。
+  "routes": [
+    {
+      "pattern": "aia.ntpu.ai",
+      "custom_domain": true
+    }
+  ],
+
   // 前端（Next.js 靜態輸出）與後端放在同一個 Worker：同源即免除 CORS，
   // 前端呼叫 /api/... 是相對路徑，不需要知道後端網址。
   //
