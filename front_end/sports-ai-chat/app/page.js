@@ -15,7 +15,7 @@ const LABELS = {
     sources: "參考來源",
     langLabel: "語言",
     welcome: "有什麼我能幫你的？",
-    welcomeSub: "體育室・通識中心・語言中心・教務處・學務處 相關問題皆可詢問",
+    welcomeSub: "體育室・通識中心・語言中心・教務處・學務處・人事室 相關問題皆可詢問",
     uploadTitle: "上傳圖片",
     voiceTitle: "語音輸入",
     recording: "錄音中，再按一次停止…",
@@ -55,7 +55,7 @@ const LABELS = {
     langLabel: "Language",
     welcome: "How can I help you?",
     welcomeSub:
-      "Ask about Sports Center, General Education, Language Center, Academic Affairs, or Student Affairs",
+      "Ask about Sports, General Education, Languages, Academic Affairs, Student Affairs, or Human Resources",
     uploadTitle: "Upload image",
     voiceTitle: "Voice input",
     recording: "Recording… click again to stop",
@@ -102,6 +102,9 @@ const QUICK_QUESTIONS = {
     "學分抵免的規定為何？",
     "弱勢學生助學金如何申請？",
     "宿舍住宿管理規定",
+    "身心調適假可以請幾天？",
+    "忘記刷卡該如何補辦？",
+    "差勤系統故障時如何辦理簽到退與差假？",
   ],
   en: [
     "Can I book the Sports Center?",
@@ -114,6 +117,9 @@ const QUICK_QUESTIONS = {
     "What are the rules for credit transfer?",
     "How to apply for a financial-need scholarship?",
     "Dormitory management regulations",
+    "How many mental health leave days are available?",
+    "What should I do if I forgot to clock in?",
+    "How do I handle attendance and leave during a system outage?",
   ],
 };
 
