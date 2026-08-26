@@ -578,6 +578,7 @@ export default function ChatPage() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const settingsRef = useRef(null);
+  const isComposingRef = useRef(false);
 
   const labels = LABELS[lang];
   const T = buildTheme(isDark);
@@ -738,7 +739,14 @@ export default function ChatPage() {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    if (e.key !== "Enter" || e.shiftKey) return;
+
+    // 中文／日文／韓文輸入法按 Enter 確認候選字時不可送出訊息。
+    // keyCode 229 是 Safari 等瀏覽器在 IME 組字期間的相容判斷。
+    if (isComposingRef.current || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
+
+    e.preventDefault();
+    sendMessage();
   };
 
   const handleDrop = (e) => {
@@ -966,6 +974,8 @@ export default function ChatPage() {
                 placeholder={isRecording ? labels.recording : labels.placeholder}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onCompositionStart={() => { isComposingRef.current = true; }}
+                onCompositionEnd={() => { isComposingRef.current = false; }}
                 onKeyDown={handleKeyDown}
                 disabled={loading || isRecording}
               />
