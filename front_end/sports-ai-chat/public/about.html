@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NTPU AI 智慧問答助理</title>
+<link rel="icon" type="image/png" href="/images/ntpu-logo.png">
 <style>
   :root{
     --ink:#12203a;          /* 主文字 深墨藍 */
@@ -53,12 +54,9 @@
   .nav{display:flex;align-items:center;gap:20px;height:64px}
   .brand{display:flex;align-items:center;gap:11px;font-weight:700;letter-spacing:.01em}
   .brand .logo{
-    width:34px;height:34px;border-radius:9px;flex:none;
-    background:linear-gradient(135deg,var(--navy),var(--navy-deep));
-    display:grid;place-items:center;color:#fff;font-family:var(--serif);
-    font-weight:700;font-size:17px;position:relative;
+    width:44px;height:36px;flex:none;display:grid;place-items:center;
   }
-  .brand .logo::after{content:"";position:absolute;right:-3px;bottom:-3px;width:11px;height:11px;background:var(--plum);border-radius:50%;border:2px solid var(--paper)}
+  .brand .logo img{display:block;width:100%;height:100%;object-fit:contain}
   .brand small{display:block;font-weight:500;font-size:11.5px;color:var(--muted);letter-spacing:.02em;margin-top:-3px}
   .nav-links{margin-left:auto;display:flex;gap:4px;align-items:center}
   .nav-links a{
@@ -259,11 +257,10 @@
   }
   .center-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--mist2)}
   .center-mark{
-    flex:none;width:52px;height:52px;border-radius:13px;display:grid;place-items:center;
-    background:linear-gradient(135deg,var(--navy),var(--navy-deep));color:#fff;
-    font-family:var(--serif);font-size:16px;font-weight:700;letter-spacing:.02em;
+    flex:none;width:64px;height:64px;border-radius:50%;overflow:hidden;
+    display:grid;place-items:center;background:var(--white);border:1px solid var(--line);
   }
-  .center-mark b{color:var(--plum-soft)}
+  .center-mark img{display:block;width:100%;height:100%;object-fit:cover}
   .center-body{display:flex;flex-direction:column;gap:3px;min-width:0}
   .center-name{font-size:15.5px;font-weight:700;color:var(--ink);line-height:1.4}
   .center-desc{font-size:13px;color:var(--muted);line-height:1.5}
@@ -286,7 +283,7 @@
   @media(max-width:640px){
     .brand span span.zh, .brand span span.en{font-size:14.5px}
     .brand small{font-size:10.5px}
-    .brand .logo{width:30px;height:30px;font-size:15px}
+    .brand .logo{width:38px;height:31px}
     .nav{gap:10px}
     .nav-links{display:none;position:absolute;top:64px;left:0;right:0;flex-direction:column;background:var(--paper);border-bottom:1px solid var(--line);padding:12px 20px;gap:2px}
     .nav-links.open{display:flex}
@@ -298,6 +295,7 @@
     .node::after{display:none!important}
     .notice{grid-template-columns:1fr;padding:26px}
     .center-card{padding:16px;gap:13px}
+    .center-mark{width:56px;height:56px}
     .center-name{font-size:14.5px}
     .center-desc{font-size:12.5px}
     .band{padding:40px 28px}
@@ -311,7 +309,7 @@
 <header>
   <div class="wrap nav">
     <a class="brand" href="#top">
-      <span class="logo">北</span>
+      <span class="logo"><img src="/images/ntpu-logo.png" alt="" width="320" height="203"></span>
       <span>
         <span class="zh">NTPU AI 智慧問答助理</span><span class="en">NTPU AI Assistant</span>
         <small><span class="zh">校園智慧問答系統</span><span class="en">Campus Smart Q&amp;A</span></small>
@@ -615,7 +613,7 @@
   <div class="wrap">
     <div class="foot">
       <a class="brand" href="#top">
-        <span class="logo">北</span>
+        <span class="logo"><img src="/images/ntpu-logo.png" alt="" width="320" height="203" loading="lazy"></span>
         <span><span class="zh">NTPU AI 智慧問答助理</span><span class="en">NTPU AI Assistant</span>
         <small><span class="zh">國立臺北大學</span><span class="en">National Taipei University</span></small></span>
       </a>
@@ -627,7 +625,7 @@
       </div>
     </div>
     <a class="center-card" href="https://ai4x.ntpu.edu.tw/zh/index.html" target="_blank" rel="noopener">
-      <span class="center-mark">AI<b>4X</b></span>
+      <span class="center-mark"><img src="/images/ai4x-ntpu-logo.png" alt="" width="320" height="320" loading="lazy"></span>
       <span class="center-body">
         <span class="center-name">
           <span class="zh">國立臺北大學跨域人工智慧前瞻研究中心</span>
