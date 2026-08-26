@@ -8,7 +8,7 @@
 
 資料來源：人事室差勤常見 QA 彙整（115 年 8 月提供）。
 
-來源網址：https://new.ntpu.edu.tw/op/regulations
+來源網址：https://aia.ntpu.ai/documents/hr/hr-attendance-faq-11508.docx
 
 ### 聘僱人員的事假與病假之天數及給薪規定？
 
@@ -18,7 +18,7 @@
 
 資料來源：人事室差勤常見 QA 彙整（115 年 8 月提供）。
 
-來源網址：https://new.ntpu.edu.tw/op/regulations
+來源網址：https://aia.ntpu.ai/documents/hr/hr-attendance-faq-11508.docx
 
 ### 什麼是身心調適假？請假規定為何？
 
@@ -28,7 +28,7 @@
 
 資料來源：人事室差勤常見 QA 彙整（115 年 8 月提供）。
 
-來源網址：https://new.ntpu.edu.tw/op/regulations
+來源網址：https://aia.ntpu.ai/documents/hr/hr-attendance-faq-11508.docx
 
 ### 家庭照顧假的請假規定為何？是否會額外扣薪？
 
@@ -38,7 +38,7 @@
 
 資料來源：人事室差勤常見 QA 彙整（115 年 8 月提供）。
 
-來源網址：https://new.ntpu.edu.tw/op/regulations
+來源網址：https://aia.ntpu.ai/documents/hr/hr-attendance-faq-11508.docx
 
 ### 女性同仁請生理假的規定為何？是否併入病假？
 
@@ -48,7 +48,7 @@
 
 資料來源：人事室差勤常見 QA 彙整（115 年 8 月提供）。
 
-來源網址：https://new.ntpu.edu.tw/op/regulations
+來源網址：https://aia.ntpu.ai/documents/hr/hr-attendance-faq-11508.docx
 
 ### 結婚可以請幾天婚假？要在多久時間內請完？
 
@@ -58,7 +58,7 @@
 
 資料來源：人事室差勤常見 QA 彙整（115 年 8 月提供）。
 
-來源網址：https://new.ntpu.edu.tw/op/regulations
+來源網址：https://aia.ntpu.ai/documents/hr/hr-attendance-faq-11508.docx
 
 ### 請延長病假的條件與期限為何？
 
@@ -69,7 +69,7 @@
 
 資料來源：人事室差勤常見 QA 彙整（115 年 8 月提供）。
 
-來源網址：https://new.ntpu.edu.tw/op/regulations
+來源網址：https://aia.ntpu.ai/documents/hr/hr-attendance-faq-11508.docx
 
 ### 申請哪些假別時必須檢附醫療機構證明書？
 
@@ -79,7 +79,7 @@
 
 資料來源：人事室差勤常見 QA 彙整（115 年 8 月提供）。
 
-來源網址：https://new.ntpu.edu.tw/op/regulations
+來源網址：https://aia.ntpu.ai/documents/hr/hr-attendance-faq-11508.docx
 
 ### 忘記刷卡（漏刷卡）該如何辦理補救手續？
 
@@ -89,7 +89,7 @@
 
 資料來源：人事室差勤常見 QA 彙整（115 年 8 月提供）。
 
-來源網址：https://new.ntpu.edu.tw/op/regulations
+來源網址：https://aia.ntpu.ai/documents/hr/hr-attendance-faq-11508.docx
 
 ### 本校勞基法人員變形工時如何調移？
 
@@ -104,7 +104,7 @@
 
 資料來源：人事室差勤常見 QA 彙整（115 年 8 月提供）。
 
-來源網址：https://new.ntpu.edu.tw/op/regulations
+來源網址：https://aia.ntpu.ai/documents/hr/hr-attendance-faq-11508.docx
 
 ### 事假規定為何？
 
@@ -112,14 +112,14 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 差勤系統或刷卡系統故障時，應如何辦理簽到退與差假？
 
 依人事室 115 年 8 月 20 日起的暫行因應措施，若刷卡紀錄未正常顯示，或無法在線上辦理差假，應先改採紙本方式辦理，並覈實填寫及保存，以利後續彙整。系統恢復正常運作後，依人事室另行公告辦理。
 
-- 簽到、簽退：使用「校外（或不同校區）（或上、下班）簽到退表」（人事室表單編號 14），以系、所或行政單位為單位彙送人事室。
-- 差假申請：使用「國立臺北大學職員及無線上請假權限人員差勤系統新增、變更、註銷請示（假）單」（人事室表單編號 11）。
+- 簽到、簽退：使用「校外（或不同校區）（或上、下班）簽到退表」（人事室表單編號 14），以系、所或行政單位為單位彙送人事室。[直接開啟表單 14 PDF](https://aia.ntpu.ai/documents/hr/form-14-offsite-attendance-sign-sheet.pdf)
+- 差假申請：使用「國立臺北大學職員及無線上請假權限人員差勤系統新增、變更、註銷請示（假）單」（人事室表單編號 11）。[直接開啟表單 11 PDF](https://aia.ntpu.ai/documents/hr/form-11-attendance-leave-request.pdf)
 - 表件請至人事室網站的「表單下載」頁取得。
 - 如有疑問，請洽人事室分機 66047 或 66048。
 
@@ -135,7 +135,7 @@
 
 資料來源：人事室表單編號 14「國立臺北大學校外（或不同校區）（或上、下班）簽到退表」及人事室 115 年 8 月系統故障通知。
 
-來源網址：https://new.ntpu.edu.tw/op/documents
+來源網址：https://aia.ntpu.ai/documents/hr/form-14-offsite-attendance-sign-sheet.pdf
 
 ### 「職員及無線上請假權限人員差勤系統新增、變更、註銷請示（假）單」應如何填寫？
 
@@ -147,7 +147,7 @@
 
 資料來源：人事室表單編號 11「國立臺北大學職員及無線上請假權限人員差勤系統新增、變更、註銷請示（假）單」及人事室 115 年 8 月系統故障通知。
 
-來源網址：https://new.ntpu.edu.tw/op/documents
+來源網址：https://aia.ntpu.ai/documents/hr/form-11-attendance-leave-request.pdf
 
 ### 紙本請示（假）單的核定層級為何？
 
@@ -158,7 +158,7 @@
 
 資料來源：人事室表單編號 11「國立臺北大學職員及無線上請假權限人員差勤系統新增、變更、註銷請示（假）單」。
 
-來源網址：https://new.ntpu.edu.tw/op/documents
+來源網址：https://aia.ntpu.ai/documents/hr/form-11-attendance-leave-request.pdf
 
 ### 普通傷病假相關規定為何？
 
@@ -174,7 +174,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 公傷病假相關規定為何？
 
@@ -182,7 +182,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 職業災害醫療期間之原領工資與勞保職業災害傷病給付是否不同？
 
@@ -194,7 +194,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 產假規定為何？
 
@@ -204,7 +204,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 陪產假一定要一次請完嗎？
 
@@ -212,7 +212,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 打排卵針可以請病假嗎？
 
@@ -220,7 +220,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 安胎假可否以事假或留職停薪方式辦理？
 
@@ -228,7 +228,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 請假程序的相關規定？雇主要求勞工請事病假均須提出證明文件，有違法嗎？
 
@@ -240,7 +240,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 請事假 1 個月公司須給付工資？
 
@@ -248,7 +248,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 勞工請事、病假是否有天數限制？
 
@@ -256,7 +256,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 公假規定為何？
 
@@ -264,7 +264,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 參加教育召集是否屬於公假？
 
@@ -272,7 +272,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 勞工在職訓練是否可請公假？
 
@@ -280,7 +280,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 勞工健康檢查是否可請公假？
 
@@ -288,7 +288,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 勞工參加技能檢定之職類與其職務有直接關係者，應給何種假別？
 
@@ -296,7 +296,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 婚假規定為何？
 
@@ -304,7 +304,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 請婚假須踐行何程序？婚假是否有次數限制？
 
@@ -314,7 +314,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 病假期間工資如何計算？
 
@@ -324,7 +324,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 喪假規定為何？
 
@@ -338,7 +338,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 《勞工請假規則》第 8 條所稱依「法令規定」應給公假的情形有哪些？
 
@@ -348,7 +348,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 勞工請假期間遇法定放假日，是否仍計入請假期？
 
@@ -356,7 +356,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 勞工非因職業原因感染新流感，請假規定為何？
 
@@ -364,7 +364,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 職工福利委員會在工作日舉辦員工旅遊，應如何請假？
 
@@ -372,7 +372,7 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf
 
 ### 公司得否以工作規則要求遲到勞工請事假或以加班補休處理？
 
@@ -382,4 +382,4 @@
 
 資料來源：新北市勞工局《勞動基準法 Q&A》【請假】。
 
-來源網址：https://cms-carrier.ntpu.edu.tw/uploads/7_Q_A_f9fbc4ea01.pdf
+來源網址：https://aia.ntpu.ai/documents/hr/new-taipei-labor-standards-leave-qa.pdf

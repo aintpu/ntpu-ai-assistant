@@ -157,6 +157,7 @@ Repository 目前包含：
 - `crawler_data/oaa_regulations.md`：教務處法規全文
 - `crawler_data/osa_regulations.md`：學務處法規全文
 - `crawler_data/hr_content.md`：人事室差勤與勞動基準法請假常見問答
+- `front_end/sports-ai-chat/public/documents/hr/`：人事室原始附件（1 份 DOCX、3 份 PDF），供回答來源直接開啟
 - `crawler_data/北大學術單位法規彙整.xlsx`：ge/lc 法規 metadata（每處室一個分頁，英文欄名）
 - `crawler_data/北大行政單位法規彙整.xlsx`：oaa/osa 法規 metadata（單一 Sheet1、中文欄名，以「處室」欄篩選）
 - `corrections.md`：人工修正內容
