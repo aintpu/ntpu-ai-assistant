@@ -84,6 +84,7 @@ provider_api_key = os.getenv("OPENAI_API_KEY", "").strip()
 provider_base_url = os.getenv(
     "OPENAI_BASE_URL", "https://api.openai.com/v1"
 ).rstrip("/")
+EMBEDDING_MAX_RETRIES = int(os.getenv("EMBEDDING_MAX_RETRIES", "8"))
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
 NIM_INVOKE_URL = os.getenv("NVIDIA_API_URL", "https://integrate.api.nvidia.com/v1/chat/completions")
 NIM_MODEL_MAIN = os.getenv("NVIDIA_MODEL", "mistralai/mistral-large-3-675b-instruct-2512")
@@ -645,7 +646,10 @@ class OPEIndex:
             model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
             api_key=provider_api_key,
             base_url=provider_base_url,
-            chunk_size=100  # 限制每次批次只傳送 100 個文件區塊給 OpenAI，避免 Token 爆表
+            chunk_size=100,  # 限制每次批次只傳送 100 個文件區塊給 OpenAI，避免 Token 爆表
+            # 大型索引可能在最後幾批碰到 TPM 429；SDK 會遵循 Retry-After
+            # 或使用指數退避。預設 2 次不足以等到 token 視窗釋放。
+            max_retries=EMBEDDING_MAX_RETRIES,
         )
 
     def _try_load_cache(self, fingerprint: str) -> bool:

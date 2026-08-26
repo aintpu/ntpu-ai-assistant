@@ -93,6 +93,7 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 MODEL_BIG=gpt-5.4-mini
 MODEL_SMALL=gpt-4o-mini
 EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_MAX_RETRIES=8
 ```
 
 不要把 `config.txt` 或任何 API Key 提交到 Git。
