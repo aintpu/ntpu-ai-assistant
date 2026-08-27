@@ -82,6 +82,13 @@ git push origin main
 | GitHub `OPENAI_API_KEY` | CI 預先建索引 | repo → Settings → Secrets → Actions |
 | GitHub `CLOUDFLARE_API_TOKEN`／`CLOUDFLARE_ACCOUNT_ID` | CI 部署權限 | 同上 |
 
+SYSTEM FAQ 的路由門檻預設由 Worker 傳入 Container：
+
+- `SYSTEM_PRIMARY_THRESHOLD=0.56`
+- `SYSTEM_FALLBACK_THRESHOLD=0.72`（必須高於 primary）
+
+若要調整，可在 Worker Variables and secrets 設定一般 Variable 後重新部署；未設定時使用上述預設值。
+
 > ⚠️ **新增或更換 Worker Secret 後必須重新部署**。Durable Object 是長期存活的，
 > 其建構式取得的 `env` 會沿用到執行個體被汰換為止；只在後台改 secret 而不重新
 > 部署，容器仍會拿到舊值（表現為所有問答都失敗、回應只需 5–7 秒）。
@@ -173,6 +180,9 @@ curl -s https://aia.ntpu.ai/api/health
 | 人事室 | 差勤系統故障時如何辦理簽到退與差假？ | HR 暫行措施未載入或分類失敗 |
 | 通識 | 向度通識畢業門檻 | GE 迴歸問題 |
 | 語言中心 | 大學英文抵免及免修方式 | LC 迴歸問題 |
+| SYSTEM | 你可以回答哪些問題？ | 應直接回六處室服務範圍與「系統說明」來源，不應強迫分到處室 |
+| SYSTEM fallback | 資料從哪來 | 原 Router 判 OTHER 時，應以較高門檻命中系統資料來源 FAQ |
+| OTHER | 明天台北會下雨嗎？ | 不應誤命中 SYSTEM FAQ，應明確說目前不支援 |
 
 > 回應時間約 **4–10 秒**。若只花 5–7 秒卻回「目前這個問題我暫時無法整理出明確答案」，
 > 通常是 OpenAI 呼叫失敗（金鑰未送達容器），見第 3 節的警告。

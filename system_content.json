@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "version": "1.0.0",
+  "last_updated": "2026-08-27",
+  "service": {
+    "name_zh": "NTPU AI 智慧問答助理",
+    "name_en": "NTPU AI Assistant",
+    "home_url": "https://aia.ntpu.ai/",
+    "supported_offices_zh": [
+      "體育室",
+      "通識教育中心",
+      "語言中心",
+      "教務處",
+      "學務處",
+      "人事室"
+    ],
+    "supported_offices_en": [
+      "Physical Education Office",
+      "Center for General Education",
+      "Language Center",
+      "Office of Academic Affairs",
+      "Office of Student Affairs",
+      "Personnel Office"
+    ],
+    "deployment_stack": "Cloudflare Workers · Containers · Durable Objects",
+    "deployment_zh": "前端靜態資源與 API 由同一個 Cloudflare Worker 提供；FastAPI、FAISS 與 BM25 執行於 Cloudflare Container，對話狀態保存於 Durable Object storage，API 金鑰以 Worker Secret 管理。",
+    "deployment_en": "One Cloudflare Worker serves the static frontend and API gateway; FastAPI, FAISS, and BM25 run in a Cloudflare Container, conversation state is stored in Durable Object storage, and API keys are managed as Worker Secrets."
+  },
+  "faqs": [
+    {
+      "id": "system-capabilities",
+      "category": "capabilities",
+      "question_zh": "你可以回答哪些問題？",
+      "question_en": "What questions can you answer?",
+      "aliases_zh": ["你會什麼", "這個系統能做什麼", "可以查什麼", "服務範圍是什麼", "有哪些功能"],
+      "aliases_en": ["What can you do?", "What does this system support?", "What can I ask?", "What is your scope?"],
+      "answer_zh": "目前可查詢體育室、通識教育中心、語言中心、教務處、學務處與人事室的相關規定、辦法、公告與常見問題。你也可以詢問本系統的服務範圍、使用方式、資料來源、限制與隱私提醒。",
+      "answer_en": "You can currently ask about regulations, policies, announcements, and common questions from the Physical Education Office, Center for General Education, Language Center, Office of Academic Affairs, Office of Student Affairs, and Personnel Office. You may also ask about this system's coverage, usage, sources, limitations, and privacy guidance.",
+      "keywords": ["回答", "問題", "功能", "服務範圍", "capabilities", "support", "scope"],
+      "source": {"type": "system", "title_zh": "系統說明：服務範圍", "title_en": "System Guide: Coverage", "url": "https://aia.ntpu.ai/about#scope"}
+    },
+    {
+      "id": "system-offices",
+      "category": "coverage",
+      "question_zh": "目前支援哪些處室？",
+      "question_en": "Which offices are currently supported?",
+      "aliases_zh": ["有哪些處室", "支援單位", "可以問哪些行政單位", "六處室是哪些"],
+      "aliases_en": ["Which departments are covered?", "What offices are supported?", "Which university units can I ask about?"],
+      "answer_zh": "目前支援六個單位：體育室、通識教育中心、語言中心、教務處、學務處與人事室。各單位可查內容依目前已匯入的官方資料而定。",
+      "answer_en": "Six units are currently supported: the Physical Education Office, Center for General Education, Language Center, Office of Academic Affairs, Office of Student Affairs, and Personnel Office. Available topics depend on the official materials currently indexed.",
+      "keywords": ["處室", "單位", "六處室", "office", "department", "coverage"],
+      "source": {"type": "system", "title_zh": "系統說明：服務範圍", "title_en": "System Guide: Coverage", "url": "https://aia.ntpu.ai/about#scope"}
+    },
+    {
+      "id": "system-how-to-use",
+      "category": "usage",
+      "question_zh": "這個系統怎麼使用？",
+      "question_en": "How do I use this system?",
+      "aliases_zh": ["怎麼用", "這網站怎麼玩", "如何提問", "使用方式", "要怎麼問"],
+      "aliases_en": ["How do I use it?", "How should I ask questions?", "How does this site work?"],
+      "answer_zh": "直接在輸入框用自然語言描述問題即可；若知道處室、身分、學制、年度或規定名稱，一併提供會更容易找到正確資料。回答後建議打開來源連結核對官方原文，也可以針對同一主題繼續追問。",
+      "answer_en": "Type your question in natural language. Including the office, your role, program, year, or policy name helps retrieve the right material. Open the source link to verify the official text, and you may continue with follow-up questions on the same topic.",
+      "keywords": ["使用", "怎麼用", "提問", "how to", "usage", "ask"],
+      "source": {"type": "system", "title_zh": "系統說明：如何使用", "title_en": "System Guide: How to Use", "url": "https://aia.ntpu.ai/about#usage"}
+    },
+    {
+      "id": "system-login",
+      "category": "access",
+      "question_zh": "使用這個系統需要登入嗎？",
+      "question_en": "Do I need to sign in?",
+      "aliases_zh": ["需要登入嗎", "要學校帳號嗎", "不用登入可以用嗎", "需要註冊嗎"],
+      "aliases_en": ["Is login required?", "Do I need a university account?", "Do I need to register?"],
+      "answer_zh": "目前使用 aia.ntpu.ai 不需要登入或註冊，也不需要安裝應用程式。請勿在對話中輸入密碼、身分證字號、學號或其他敏感個人資料。",
+      "answer_en": "aia.ntpu.ai currently requires no sign-in, registration, or app installation. Do not enter passwords, ID numbers, student numbers, or other sensitive personal data in the chat.",
+      "keywords": ["登入", "帳號", "註冊", "login", "sign in", "account"],
+      "source": {"type": "system", "title_zh": "系統說明：如何使用", "title_en": "System Guide: How to Use", "url": "https://aia.ntpu.ai/about#usage"}
+    },
+    {
+      "id": "system-language",
+      "category": "language",
+      "question_zh": "可以用英文提問嗎？",
+      "question_en": "Can I ask questions in English?",
+      "aliases_zh": ["支援英文嗎", "可以講英文嗎", "有英文版嗎", "支援哪些語言"],
+      "aliases_en": ["Does it support English?", "Can you answer in English?", "What languages are supported?"],
+      "answer_zh": "可以。介面可切換中文或英文，也可直接用中文或英文提問。由於多數校務原始資料是中文，重要規定仍建議打開來源連結核對原文。",
+      "answer_en": "Yes. The interface can be switched between Chinese and English, and you can ask in either language. Because most original university documents are in Chinese, verify important rules through the linked source text.",
+      "keywords": ["英文", "語言", "雙語", "English", "language", "bilingual"],
+      "source": {"type": "system", "title_zh": "系統說明：系統特色", "title_en": "System Guide: Features", "url": "https://aia.ntpu.ai/about#features"}
+    },
+    {
+      "id": "system-sources",
+      "category": "data",
+      "question_zh": "你的資料來源是哪裡？",
+      "question_en": "Where does your information come from?",
+      "aliases_zh": ["資料從哪來", "知識庫來源", "引用什麼資料", "來源可靠嗎"],
+      "aliases_en": ["Where is the data from?", "What are your sources?", "What is in the knowledge base?"],
+      "answer_zh": "知識庫以國立臺北大學各處室公開網站、公告、常見問答與 PDF 法規辦法為主，經爬取、整理、切塊與索引後供檢索。回答會盡量附上對應的官方來源連結；系統自我說明則連到本系統說明頁。",
+      "answer_en": "The knowledge base primarily uses public NTPU office webpages, announcements, FAQs, and PDF regulations. These are collected, cleaned, chunked, and indexed for retrieval. Answers aim to include the corresponding official source link; system-related answers link to this system guide.",
+      "keywords": ["資料來源", "知識庫", "官方", "source", "data", "knowledge base"],
+      "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.ai/about#architecture"}
+    },
+    {
+      "id": "system-accuracy",
+      "category": "limitations",
+      "question_zh": "AI 的回答一定正確嗎？",
+      "question_en": "Are the AI answers always correct?",
+      "aliases_zh": ["回答準確嗎", "會不會答錯", "可以相信嗎", "AI會幻覺嗎"],
+      "aliases_en": ["Are the answers accurate?", "Can the AI be wrong?", "Can I trust the answer?"],
+      "answer_zh": "不一定。回答由 AI 根據檢索到的資料整理，仍可能誤解、不完整或使用到較舊內容。涉及學分、資格、期限、權益或人事規定時，請以來源連結中的官方公告、正式函文與承辦單位確認為準。",
+      "answer_en": "Not always. Answers are generated from retrieved material and may still be misunderstood, incomplete, or outdated. For credits, eligibility, deadlines, rights, or personnel rules, rely on the linked official notice or document and confirm with the responsible office.",
+      "keywords": ["正確", "準確", "幻覺", "可靠", "accuracy", "correct", "trust"],
+      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
+    },
+    {
+      "id": "system-updates",
+      "category": "data",
+      "question_zh": "資料多久更新一次？",
+      "question_en": "How often is the data updated?",
+      "aliases_zh": ["資料何時更新", "知識庫更新頻率", "是即時資料嗎", "最新資料嗎"],
+      "aliases_en": ["How often is the knowledge base updated?", "Is the data real time?", "When was the data updated?"],
+      "answer_zh": "知識庫會隨資料整理與系統部署更新，但目前不是與各處室網站即時同步，也不承諾固定更新週期。最新公告、緊急資訊與正式期限請以各處室官網為準。",
+      "answer_en": "The knowledge base is refreshed when source materials are curated and a new system version is deployed, but it is not synchronized with office websites in real time and no fixed update interval is guaranteed. Check official office sites for the latest or urgent information and deadlines.",
+      "keywords": ["更新", "即時", "多久", "頻率", "update", "real time", "frequency"],
+      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
+    },
+    {
+      "id": "system-privacy",
+      "category": "privacy",
+      "question_zh": "對話內容會怎麼處理？",
+      "question_en": "How is my conversation handled?",
+      "aliases_zh": ["會保存對話嗎", "隱私安全嗎", "可以輸入個資嗎", "對話紀錄"],
+      "aliases_en": ["Is my chat saved?", "What about privacy?", "Can I enter personal data?", "How is chat history handled?"],
+      "answer_zh": "系統會用 conversation ID 與結構化狀態維持同一對話的追問脈絡，並會產生操作與品質改善所需的服務日誌。問題與必要上下文會傳給設定的 AI 服務以產生回答。請勿輸入密碼、身分證字號、學號、金融資訊或其他敏感個資。",
+      "answer_en": "The system uses a conversation ID and structured state to keep follow-up context, and service logs may be produced for operation and quality improvement. Your question and necessary context are sent to the configured AI service to generate an answer. Do not enter passwords, ID or student numbers, financial information, or other sensitive personal data.",
+      "keywords": ["隱私", "個資", "保存", "對話紀錄", "privacy", "personal data", "saved"],
+      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
+    },
+    {
+      "id": "system-followups",
+      "category": "conversation",
+      "question_zh": "可以繼續追問嗎？",
+      "question_en": "Can I ask follow-up questions?",
+      "aliases_zh": ["能連續問嗎", "會記得上一題嗎", "有對話記憶嗎", "可以接著問嗎"],
+      "aliases_en": ["Can I continue the conversation?", "Do you remember the previous question?", "Can I ask another question about the same topic?"],
+      "answer_zh": "可以。同一個對話會保存結構化的主題、處室與前次來源，短追問會先改寫成完整問題再檢索。若你換了主題，系統會重新判斷處室；若指代不清，系統可能先請你補充。開啟新對話後不會沿用舊對話脈絡。",
+      "answer_en": "Yes. Within one conversation, structured topic, office, and previous-source state is retained, and short follow-ups are rewritten into standalone questions before retrieval. A topic change triggers routing again; unclear references may prompt a clarification. Starting a new chat does not reuse the old context.",
+      "keywords": ["追問", "上一題", "記得", "對話", "follow-up", "remember", "conversation"],
+      "source": {"type": "system", "title_zh": "系統說明：如何使用", "title_en": "System Guide: How to Use", "url": "https://aia.ntpu.ai/about#usage"}
+    },
+    {
+      "id": "system-no-answer",
+      "category": "limitations",
+      "question_zh": "為什麼有些問題回答不了？",
+      "question_en": "Why can't some questions be answered?",
+      "aliases_zh": ["為什麼查不到", "怎麼沒答案", "不支援哪些問題", "無法回答"],
+      "aliases_en": ["Why is there no answer?", "Why can't you find it?", "What is not supported?"],
+      "answer_zh": "常見原因包括：問題不屬於目前六處室或系統說明範圍、官方資料尚未匯入、問題條件不足，或檢索到的證據不足以安全回答。你可以補上處室、身分、學制、年度或規定名稱；若仍沒有資料，系統會明確說明目前不支援，而不自行猜測。",
+      "answer_en": "Common reasons include: the topic is outside the six supported offices and system guide, the official material has not been indexed, the question lacks key details, or retrieved evidence is insufficient. Add the office, role, program, year, or policy name. If evidence is still unavailable, the system should clearly say it is not currently supported rather than guess.",
+      "keywords": ["回答不了", "查不到", "不支援", "沒答案", "cannot answer", "unsupported", "no answer"],
+      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
+    },
+    {
+      "id": "system-vs-chatgpt",
+      "category": "comparison",
+      "question_zh": "這個系統與 ChatGPT 有什麼不同？",
+      "question_en": "How is this different from ChatGPT?",
+      "aliases_zh": ["跟ChatGPT差在哪", "你是ChatGPT嗎", "為什麼不用ChatGPT", "和一般聊天機器人差別"],
+      "aliases_en": ["Are you ChatGPT?", "How is this different from a general chatbot?", "Why not just use ChatGPT?"],
+      "answer_zh": "本系統是以北大六處室公開資料為範圍的校務 RAG 服務：先檢索 repository 建立的校務知識庫，再由模型整理並附來源。一般 ChatGPT 的知識與用途更廣，但不一定使用本系統已整理的校務資料、處室路由與來源格式。兩者都可能出錯，正式規定仍以官方文件為準。",
+      "answer_en": "This is an NTPU administrative RAG service scoped to public materials from six offices: it retrieves from the curated university knowledge base before a model composes an answer with sources. General ChatGPT is broader, but does not necessarily use this system's curated office data, routing, or source format. Both can be wrong; official documents remain authoritative.",
+      "keywords": ["ChatGPT", "差別", "不同", "聊天機器人", "difference", "chatbot"],
+      "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.ai/about#architecture"}
+    },
+    {
+      "id": "system-how-rag-works",
+      "category": "architecture",
+      "question_zh": "系統怎麼找到答案？",
+      "question_en": "How does the system find an answer?",
+      "aliases_zh": ["搜尋原理", "RAG是什麼", "怎麼檢索", "回答流程"],
+      "aliases_en": ["How does retrieval work?", "What is RAG?", "How are answers generated?"],
+      "answer_zh": "校務問題會先判斷所屬處室，再將問題改寫為適合檢索的完整查詢，以 FAISS 向量搜尋與 BM25 關鍵詞搜尋找候選資料，經融合與重排序後交給模型整理。只有有足夠證據時才應作答，最後附上來源。SYSTEM 問題則直接從本系統 FAQ 回答，不進入六處室 RAG。",
+      "answer_en": "For administrative questions, the system first selects an office, rewrites the question into a retrieval-ready standalone query, combines FAISS vector search with BM25 keyword search, fuses and reranks candidates, and then lets the model compose an answer. It should answer only when evidence is sufficient and include sources. SYSTEM questions are answered directly from this system FAQ instead of the six-office RAG.",
+      "keywords": ["RAG", "檢索", "搜尋", "流程", "FAISS", "BM25", "retrieval", "architecture"],
+      "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.ai/about#architecture"}
+    },
+    {
+      "id": "system-voice-image",
+      "category": "features",
+      "question_zh": "支援語音或圖片嗎？",
+      "question_en": "Does the system support voice or images?",
+      "aliases_zh": ["可以用語音嗎", "能上傳圖片嗎", "語音輸入", "圖片分析"],
+      "aliases_en": ["Can I use voice input?", "Can I upload an image?", "Does it analyze images?"],
+      "answer_zh": "目前介面支援麥克風語音輸入與圖片上傳。語音會先轉成文字再走一般問答流程；圖片由視覺模型分析，目前不會自動與六處室 RAG 文件合併，因此圖片中的重要校務資訊仍應核對官方來源。",
+      "answer_en": "The interface supports microphone input and image uploads. Voice is transcribed before entering the normal question flow. Images are analyzed by a vision model and are not automatically combined with six-office RAG documents, so important administrative information in an image should still be checked against official sources.",
+      "keywords": ["語音", "圖片", "麥克風", "voice", "image", "microphone"],
+      "source": {"type": "system", "title_zh": "系統說明：系統特色", "title_en": "System Guide: Features", "url": "https://aia.ntpu.ai/about#features"}
+    },
+    {
+      "id": "system-feedback",
+      "category": "support",
+      "question_zh": "回答有問題時怎麼辦？",
+      "question_en": "What should I do if an answer is wrong?",
+      "aliases_zh": ["怎麼回報錯誤", "答案錯了", "如何提供意見", "回饋功能"],
+      "aliases_en": ["How do I report an error?", "The answer is wrong", "How can I give feedback?"],
+      "answer_zh": "可使用回答下方的讚或倒讚回饋，選擇資訊錯誤、過時、答非所問、過於籠統或來源有誤等原因，也可補充不含個資的說明。涉及正式權益時，請同時向原權責處室確認。",
+      "answer_en": "Use the thumbs-up or thumbs-down control below an answer. You can mark incorrect, outdated, off-topic, vague, or bad-source issues and add a note without personal data. For matters affecting formal rights, also confirm with the responsible office.",
+      "keywords": ["回饋", "錯誤", "回報", "倒讚", "feedback", "report", "wrong"],
+      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
+    }
+  ]
+}

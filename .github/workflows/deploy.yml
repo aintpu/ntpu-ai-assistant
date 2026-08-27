@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - "agentic_v2_5_4high.py"
+      - "conversation_guardrail.py"
+      - "system_faq.py"
+      - "system_content.json"
       - "llm_adapter.py"
       - "corrections.md"
       - "requirements-runtime.txt"

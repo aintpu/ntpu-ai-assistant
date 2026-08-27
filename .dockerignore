@@ -12,6 +12,6 @@ crawler_data/review_qa_*.xlsx
 # 冷啟動由 96 秒降到 3.7 秒，也省下每次擴容的全量 embedding 費用。
 # 快取與資料檔對不上時，_data_fingerprint() 會自動改走完整重建，不會用到過期索引。
 
-# 機密：金鑰改由 Cloud Run 環境變數傳入，不可烤進 image layer
+# 機密：金鑰由 Cloudflare Worker Secret 傳入 Container，不可烤進 image layer
 config.txt
 config.example.txt

@@ -13,6 +13,7 @@ const LABELS = {
     send: "送出",
     disclaimer: "📌 回答由 AI 整理，最新資訊請以各單位官方公告為準。",
     sources: "參考來源",
+    systemSources: "系統說明",
     langLabel: "語言",
     welcome: "有什麼我能幫你的？",
     welcomeSub: "體育室・通識中心・語言中心・教務處・學務處・人事室 相關問題皆可詢問",
@@ -52,6 +53,7 @@ const LABELS = {
     send: "Send",
     disclaimer: "📌 AI-generated answers. Please refer to official announcements for the latest information.",
     sources: "Sources",
+    systemSources: "About this system",
     langLabel: "Language",
     welcome: "How can I help you?",
     welcomeSub:
@@ -92,6 +94,7 @@ const FEEDBACK_REASON_KEYS = ["wrong_info", "outdated", "off_topic", "too_vague"
 
 const QUICK_QUESTIONS = {
   zh: [
+    "你可以回答哪些問題？",
     "綜合體育館可以借用嗎？",
     "運動代表隊如何加入？",
     "大學英文抵免及免修方式",
@@ -107,6 +110,7 @@ const QUICK_QUESTIONS = {
     "差勤系統故障時如何辦理簽到退與差假？",
   ],
   en: [
+    "What can this system answer?",
     "Can I book the Sports Center?",
     "How to join a sports team?",
     "How to waive the college English requirement?",
@@ -503,7 +507,9 @@ function MessageBubble({ msg, lang, T, sessionId }) {
 
           {msg.sources && msg.sources.length > 0 && (
             <div className={`mt-2 px-1 text-xs ${T.sourceWrap}`}>
-              <div className="font-medium mb-1">{labels.sources}：</div>
+              <div className="font-medium mb-1">
+                {msg.sources.every((source) => source.type === "system") ? labels.systemSources : labels.sources}：
+              </div>
               <ul className="space-y-0.5">
                 {msg.sources.map((s, i) => (
                   <li key={i}>

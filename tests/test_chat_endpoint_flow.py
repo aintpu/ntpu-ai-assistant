@@ -24,6 +24,81 @@ except ModuleNotFoundError as exc:
 
 @unittest.skipIf(_IMPORT_ERROR, f"backend dependencies unavailable: {_IMPORT_ERROR}")
 class ChatEndpointFlowTests(unittest.TestCase):
+    def test_system_question_bypasses_six_office_rag(self):
+        def fake_complete(messages, **kwargs):
+            system = messages[0]["content"]
+            if "Conversation Context Resolver" in system:
+                return json.dumps({
+                    "is_followup": False,
+                    "topic_changed": False,
+                    "standalone_query": "你可以回答哪些問題？",
+                    "inherited_office": None,
+                    "topic": "系統服務範圍",
+                    "ambiguity": False,
+                    "ambiguity_reason": None,
+                    "confidence": 0.98,
+                }, ensure_ascii=False)
+            raise AssertionError("SYSTEM question must not call scope or RAG")
+
+        client = TestClient(core.app)
+        with patch.object(core, "_is_prompt_injection", return_value=False), \
+                patch.object(core.llm_adapter, "complete", side_effect=fake_complete), \
+                patch.object(core, "synthesize_agentic_answer") as synthesize:
+            response = client.post("/api/chat", json={
+                "question": "你可以回答哪些問題？",
+                "conversation_id": "integration-system-1",
+                "history": [],
+                "conversation_state": {},
+            })
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["domain"], "SYSTEM")
+        self.assertEqual(payload["sources"][0]["type"], "system")
+        self.assertEqual(payload["sources"][0]["faq_id"], "system-capabilities")
+        self.assertEqual(payload["conversation_state"]["active_topic"], "SYSTEM:system-capabilities")
+        synthesize.assert_not_called()
+
+    def test_other_route_can_fall_back_to_system_faq(self):
+        def fake_complete(messages, **kwargs):
+            system = messages[0]["content"]
+            if "Conversation Context Resolver" in system:
+                return json.dumps({
+                    "is_followup": False,
+                    "topic_changed": False,
+                    "standalone_query": "資料從哪來",
+                    "inherited_office": None,
+                    "topic": "資料來源",
+                    "ambiguity": False,
+                    "ambiguity_reason": None,
+                    "confidence": 0.82,
+                }, ensure_ascii=False)
+            if "Business Scope Guardrail" in system:
+                return json.dumps({
+                    "status": "OUT_OF_SCOPE",
+                    "office_hint": None,
+                    "confidence": 0.91,
+                    "reason": "未指明校務處室",
+                }, ensure_ascii=False)
+            raise AssertionError(f"unexpected completion prompt: {system[:80]}")
+
+        client = TestClient(core.app)
+        with patch.object(core, "_is_prompt_injection", return_value=False), \
+                patch.object(core.llm_adapter, "complete", side_effect=fake_complete), \
+                patch.object(core, "synthesize_agentic_answer") as synthesize:
+            response = client.post("/api/chat", json={
+                "question": "資料從哪來",
+                "conversation_id": "integration-system-fallback-1",
+                "history": [],
+                "conversation_state": {},
+            })
+
+        payload = response.json()
+        self.assertEqual(payload["domain"], "SYSTEM")
+        self.assertEqual(payload["sources"][0]["faq_id"], "system-sources")
+        synthesize.assert_not_called()
+
     def test_foreign_language_requirement_followup_stays_in_scope(self):
         calls = []
 

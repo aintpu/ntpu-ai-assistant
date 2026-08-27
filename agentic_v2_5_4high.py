@@ -42,6 +42,13 @@ from conversation_guardrail import (
     run_scope_guardrail,
     select_office,
 )
+from system_faq import (
+    SystemFAQMatch,
+    SystemFAQRetriever,
+    detect_language,
+    should_route_system,
+    should_use_system_fallback,
+)
 
 # google-genai 僅供 client_vision 使用（核心邏輯未用到），缺套件時不影響啟動
 try:
@@ -116,6 +123,13 @@ audio_client = client
 
 # 取得目前檔案所在目錄
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+SYSTEM_PRIMARY_THRESHOLD = float(os.getenv("SYSTEM_PRIMARY_THRESHOLD", "0.56"))
+SYSTEM_FALLBACK_THRESHOLD = max(
+    float(os.getenv("SYSTEM_FALLBACK_THRESHOLD", "0.72")),
+    SYSTEM_PRIMARY_THRESHOLD + 0.05,
+)
+SYSTEM_FAQ = SystemFAQRetriever()
 
 def _data_path(name: str) -> str:
     """體育室資料檔（.gitignore 排除，需人工放置）允許放在專案根目錄或 crawler_data/。
@@ -1245,13 +1259,12 @@ def get_last_conversation_state() -> dict:
     return dict(getattr(_conversation_ctx, "state", {}) or {})
 
 # --- 結構化事件日誌 ---
-# 單行 JSON 印到 stdout，Cloud Run 會自動解析成 Cloud Logging 的 jsonPayload。
+# 單行 JSON 印到 stdout，正式 Cloudflare Container 可直接收集標準輸出。
 # 選這個做法是因為容器檔案系統是暫時的：原本的 chat_logs.csv 在執行個體回收後
-# 就消失，等於沒有在累積任何資料。stdout 不需要額外服務、金鑰或 IAM 設定。
+# 就消失，等於沒有在累積任何資料。
 #
-# 本機另外落一份 JSONL：Cloud Run 有 Cloud Logging 接住 stdout，但本機開發與
-# 現場 demo 時 stdout 只是終端機畫面，關掉就沒了，回饋會直接遺失。
-# 在 Cloud Run 上（K_SERVICE 由平台注入）則跳過，避免寫進暫時性的容器檔案系統。
+# 本機另外落一份 JSONL；正式環境可設 EVENTS_LOG_PATH，或由平台收集 stdout。
+# `_ON_CLOUD_RUN` 僅保留舊 Cloud Run 遷移環境的相容判斷。
 EVENTS_JSONL = os.getenv("EVENTS_LOG_PATH", os.path.join(BASE_DIR, "events.jsonl"))
 _ON_CLOUD_RUN = bool(os.getenv("K_SERVICE"))
 _events_lock = threading.Lock()
@@ -2564,7 +2577,8 @@ def _detect_target_image(question: str, img_history: list) -> dict | None:
 # ==========================================
 
 _BLOCKED_MSG = (
-    "這個問題不在服務範圍內。我可以協助「體育室」（場地借用、課程、賽事）、"
+    "目前沒有可安全回答這個問題的資料。我可以說明本系統的功能、使用方式與限制，"
+    "也可以協助「體育室」（場地借用、課程、賽事）、"
     "「通識教育中心」（通識課程、學分抵免）、「語言中心」（大學英文、語言課程）、"
     "「教務處」（學籍、選課、成績、畢業資格）、「學務處」（生活輔導、獎助學金、住宿、社團）"
     "與「人事室」（差勤、請假、勤休法規）的相關問題喔！"
@@ -2588,6 +2602,10 @@ def _log_guardrail_decision(
     scope: ScopeDecision | None = None,
     selected_office: str | None = None,
     result: str = "",
+    route_original: str | None = None,
+    route_final: str | None = None,
+    system_fallback_used: bool = False,
+    system_match: SystemFAQMatch | None = None,
 ):
     fields = {
         "conversation_id": conversation_id,
@@ -2602,8 +2620,81 @@ def _log_guardrail_decision(
         "scope_status": scope.status if scope else None,
         "scope_confidence": scope.confidence if scope else None,
         "selected_office": selected_office,
+        "route_original": route_original,
+        "route_final": route_final,
+        "system_fallback_used": system_fallback_used,
+        "system_match_score": round(system_match.score, 4) if system_match else None,
+        "faq_id": system_match.faq_id if system_match else None,
     }
     _log_event("guardrail", **fields)
+
+
+def _best_system_match(*queries: str) -> SystemFAQMatch:
+    candidates = [SYSTEM_FAQ.best(q) for q in queries if isinstance(q, str) and q.strip()]
+    if not candidates:
+        return SYSTEM_FAQ.best("")
+    return max(candidates, key=lambda item: item.score)
+
+
+def _build_system_state(
+    state: ConversationState,
+    *,
+    raw_query: str,
+    resolution: ConversationResolution,
+    match: SystemFAQMatch,
+) -> ConversationState:
+    return ConversationState(
+        conversation_id=state.conversation_id,
+        active_office=None,
+        active_topic=f"SYSTEM:{match.faq_id}",
+        scope_verified=True,
+        previous_user_query=raw_query[:1200],
+        previous_standalone_query=resolution.standalone_query[:1200],
+        previous_source_ids=[f"system:{match.faq_id}"],
+        conversation_summary=state.conversation_summary,
+        last_updated_at=_now_iso(),
+    )
+
+
+def _system_decision(
+    *,
+    state: ConversationState,
+    raw_query: str,
+    resolution: ConversationResolution,
+    match: SystemFAQMatch,
+    fallback_used: bool,
+) -> dict:
+    updated_state = _build_system_state(
+        state,
+        raw_query=raw_query,
+        resolution=resolution,
+        match=match,
+    )
+    _set_last_conversation_state(updated_state)
+    route_original = "OTHER" if fallback_used else "SYSTEM"
+    _log_guardrail_decision(
+        conversation_id=state.conversation_id,
+        raw_query=raw_query,
+        resolution=resolution,
+        result="SYSTEM_FALLBACK" if fallback_used else "SYSTEM_PRIMARY",
+        route_original=route_original,
+        route_final="SYSTEM",
+        system_fallback_used=fallback_used,
+        system_match=match,
+    )
+    return {
+        "status": "system",
+        "message": "",
+        "state": updated_state,
+        "scope": None,
+        "resolution": resolution,
+        "office": None,
+        "domain": "SYSTEM",
+        "system_match": match,
+        "route_original": route_original,
+        "route_final": "SYSTEM",
+        "system_fallback_used": fallback_used,
+    }
 
 
 def prepare_conversation_turn(
@@ -2643,6 +2734,24 @@ def prepare_conversation_turn(
     )
     _record_timing("conversation_resolution", time.time() - t0)
 
+    system_match = _best_system_match(raw_query, resolution.standalone_query)
+    if should_route_system(
+        raw_query,
+        system_match,
+        threshold=SYSTEM_PRIMARY_THRESHOLD,
+    ) or should_route_system(
+        resolution.standalone_query,
+        system_match,
+        threshold=SYSTEM_PRIMARY_THRESHOLD,
+    ):
+        return _system_decision(
+            state=state,
+            raw_query=raw_query,
+            resolution=resolution,
+            match=system_match,
+            fallback_used=False,
+        )
+
     t0 = time.time()
     scope = run_scope_guardrail(
         standalone_query=resolution.standalone_query,
@@ -2656,6 +2765,23 @@ def prepare_conversation_turn(
     _record_timing("scope_guardrail", time.time() - t0)
 
     if scope.status == "OUT_OF_SCOPE":
+        fallback_match = _best_system_match(raw_query, resolution.standalone_query)
+        if should_use_system_fallback(
+            raw_query,
+            fallback_match,
+            threshold=SYSTEM_FALLBACK_THRESHOLD,
+        ) or should_use_system_fallback(
+            resolution.standalone_query,
+            fallback_match,
+            threshold=SYSTEM_FALLBACK_THRESHOLD,
+        ):
+            return _system_decision(
+                state=state,
+                raw_query=raw_query,
+                resolution=resolution,
+                match=fallback_match,
+                fallback_used=True,
+            )
         _set_last_conversation_state(state)
         _log_guardrail_decision(
             conversation_id=state.conversation_id,
@@ -2663,6 +2789,8 @@ def prepare_conversation_turn(
             resolution=resolution,
             scope=scope,
             result="OUT_OF_SCOPE",
+            route_original="OTHER",
+            route_final="OTHER",
         )
         return {
             "status": "blocked",
@@ -2671,6 +2799,7 @@ def prepare_conversation_turn(
             "scope": scope,
             "resolution": resolution,
             "office": None,
+            "domain": "OTHER",
         }
 
     if scope.status == "AMBIGUOUS" or resolution.ambiguity:
@@ -2692,6 +2821,8 @@ def prepare_conversation_turn(
             scope=scope,
             selected_office=scope.office_hint or state.active_office,
             result="AMBIGUOUS",
+            route_original=(scope.office_hint or state.active_office or "OTHER").upper(),
+            route_final=(scope.office_hint or state.active_office or "OTHER").upper(),
         )
         return {
             "status": "clarification",
@@ -2700,6 +2831,7 @@ def prepare_conversation_turn(
             "scope": scope,
             "resolution": resolution,
             "office": scope.office_hint or state.active_office,
+            "domain": (scope.office_hint or state.active_office or "OTHER").upper(),
         }
 
     office = select_office(
@@ -2716,6 +2848,8 @@ def prepare_conversation_turn(
         scope=scope,
         selected_office=office,
         result="READY",
+        route_original=(office or "OTHER").upper(),
+        route_final=(office or "OTHER").upper(),
     )
     return {
         "status": "ok",
@@ -2724,6 +2858,7 @@ def prepare_conversation_turn(
         "scope": scope,
         "resolution": resolution,
         "office": office,
+        "domain": (office or "OTHER").upper(),
     }
 
 
@@ -2733,6 +2868,9 @@ def classify_department(query: str, history: list = None) -> str:
     resolution = resolve_conversation(
         query, history or [], state, llm_adapter.complete, retries=1
     )
+    system_match = _best_system_match(query, resolution.standalone_query)
+    if should_route_system(query, system_match, threshold=SYSTEM_PRIMARY_THRESHOLD):
+        return "system"
     scope = run_scope_guardrail(
         resolution.standalone_query,
         {"active_office": state.active_office, "active_topic": state.active_topic},
@@ -2791,6 +2929,47 @@ def _scope_status(scope) -> str | None:
     return scope.status if isinstance(scope, ScopeDecision) else None
 
 
+def _system_answer_payload(
+    decision: dict,
+    *,
+    question: str,
+    conversation_id: str,
+    message_id: str,
+) -> dict:
+    match = decision["system_match"]
+    language = detect_language(question)
+    answer = match.answer(language)
+    sources = [match.source(language)]
+    _source_ctx.last_sources = sources
+    _source_ctx.last_source_ids = [f"system:{match.faq_id}"]
+    _log_event(
+        "answer",
+        session_id=conversation_id,
+        conversation_id=conversation_id,
+        message_id=message_id,
+        language=language,
+        user_query=question[:1000],
+        answer=answer,
+        sources=sources,
+        domain="SYSTEM",
+        route_original=decision["route_original"],
+        route_final="SYSTEM",
+        system_fallback_used=decision["system_fallback_used"],
+        system_match_score=round(match.score, 4),
+        faq_id=match.faq_id,
+    )
+    return {
+        "status": "ok",
+        "answer": answer,
+        "sources": sources,
+        "message_id": message_id,
+        "conversation_id": conversation_id,
+        "conversation_state": _state_to_dict(decision["state"]),
+        "scope_status": None,
+        "domain": "SYSTEM",
+    }
+
+
 def _sse_payload(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
@@ -2834,6 +3013,13 @@ async def chat_endpoint(req: ChatRequest, request: Request):
         conversation_id=conversation_id,
         conversation_state=req.conversation_state,
     )
+    if decision["status"] == "system":
+        return _system_answer_payload(
+            decision,
+            question=q,
+            conversation_id=conversation_id,
+            message_id=message_id,
+        )
     if decision["status"] == "blocked":
         return {
             "status": "blocked",
@@ -2842,6 +3028,7 @@ async def chat_endpoint(req: ChatRequest, request: Request):
             "conversation_id": conversation_id,
             "conversation_state": _state_to_dict(decision["state"]),
             "scope_status": _scope_status(decision.get("scope")),
+            "domain": decision.get("domain", "OTHER"),
         }
     if decision["status"] == "clarification":
         return {
@@ -2852,6 +3039,7 @@ async def chat_endpoint(req: ChatRequest, request: Request):
             "conversation_id": conversation_id,
             "conversation_state": _state_to_dict(decision["state"]),
             "scope_status": _scope_status(decision.get("scope")),
+            "domain": decision.get("domain", "OTHER"),
         }
 
     answer = synthesize_agentic_answer(
@@ -2871,6 +3059,7 @@ async def chat_endpoint(req: ChatRequest, request: Request):
         "message_id": message_id, "conversation_id": conversation_id,
         "conversation_state": get_last_conversation_state(),
         "scope_status": _scope_status(decision.get("scope")),
+        "domain": decision.get("domain", "OTHER"),
     }
 
 
@@ -2897,6 +3086,27 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
         conversation_state=req.conversation_state,
     )
 
+    if decision["status"] == "system":
+        payload = _system_answer_payload(
+            decision,
+            question=q,
+            conversation_id=conversation_id,
+            message_id=message_id,
+        )
+
+        async def _system_answer():
+            yield _sse_payload({"type": "sources", "sources": payload["sources"]})
+            yield _sse_payload({
+                "type": "done",
+                "answer": payload["answer"],
+                "message_id": message_id,
+                "conversation_id": conversation_id,
+                "conversation_state": payload["conversation_state"],
+                "scope_status": None,
+                "domain": "SYSTEM",
+            })
+        return StreamingResponse(_system_answer(), media_type="text/event-stream")
+
     if decision["status"] == "blocked":
         async def _blocked():
             yield _sse_payload({
@@ -2906,6 +3116,7 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
                 "conversation_id": conversation_id,
                 "conversation_state": _state_to_dict(decision["state"]),
                 "scope_status": _scope_status(decision.get("scope")),
+                "domain": decision.get("domain", "OTHER"),
             })
         return StreamingResponse(_blocked(), media_type="text/event-stream")
 
@@ -2918,6 +3129,7 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
                 "conversation_id": conversation_id,
                 "conversation_state": _state_to_dict(decision["state"]),
                 "scope_status": _scope_status(decision.get("scope")),
+                "domain": decision.get("domain", "OTHER"),
             })
         return StreamingResponse(_clarification(), media_type="text/event-stream")
 
@@ -2954,6 +3166,7 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
             "conversation_id": conversation_id,
             "conversation_state": get_last_conversation_state(),
             "scope_status": _scope_status(decision.get("scope")),
+            "domain": decision.get("domain", "OTHER"),
         })
 
     return StreamingResponse(_stream(), media_type="text/event-stream")
@@ -2982,6 +3195,19 @@ async def voice_endpoint(req: VoiceRequest, request: Request):
         conversation_id=conversation_id,
         conversation_state=req.conversation_state,
     )
+    if decision["status"] == "system":
+        payload = _system_answer_payload(
+            decision,
+            question=transcribed,
+            conversation_id=conversation_id,
+            message_id=message_id,
+        )
+        payload["question"] = transcribed
+        try:
+            payload["audio_base64"] = synthesize_speech(payload["answer"][:500])
+        except Exception:
+            payload["audio_base64"] = None
+        return payload
     if decision["status"] == "blocked":
         return {
             "status": "blocked", "message": decision["message"],
@@ -2989,6 +3215,7 @@ async def voice_endpoint(req: VoiceRequest, request: Request):
             "conversation_id": conversation_id,
             "conversation_state": _state_to_dict(decision["state"]),
             "scope_status": _scope_status(decision.get("scope")),
+            "domain": decision.get("domain", "OTHER"),
         }
     if decision["status"] == "clarification":
         return {
@@ -2997,6 +3224,7 @@ async def voice_endpoint(req: VoiceRequest, request: Request):
             "message_id": message_id, "conversation_id": conversation_id,
             "conversation_state": _state_to_dict(decision["state"]),
             "scope_status": _scope_status(decision.get("scope")),
+            "domain": decision.get("domain", "OTHER"),
         }
 
     answer = synthesize_agentic_answer(
@@ -3020,12 +3248,13 @@ async def voice_endpoint(req: VoiceRequest, request: Request):
             "sources": sources, "audio_base64": tts_b64, "message_id": message_id,
             "conversation_id": conversation_id,
             "conversation_state": get_last_conversation_state(),
-            "scope_status": _scope_status(decision.get("scope"))}
+            "scope_status": _scope_status(decision.get("scope")),
+            "domain": decision.get("domain", "OTHER")}
+
 
 
 # ── 使用者回饋 ────────────────────────────────────────────────
-# 只寫結構化日誌，不在伺服器端保留狀態：Cloud Run 可能有多個執行個體，
-# 使用者送出回饋時未必打到產生該則回答的那一台，因此靠 message_id
+# 只寫結構化日誌，不在 FastAPI 記憶體保留回饋狀態；因此靠 message_id
 # 在日誌端與 answer 事件對應（見 DEPLOY.md 的查詢範例）。
 FEEDBACK_REASONS = {
     "wrong_info",    # 資訊錯誤，與實際規定不符

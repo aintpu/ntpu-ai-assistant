@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "sync:system-content": "node scripts/sync-system-content.mjs",
+    "predev": "npm run sync:system-content",
     "dev": "next dev",
+    "prebuild": "npm run sync:system-content",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

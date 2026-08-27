@@ -52,6 +52,8 @@ evaluate/*.xlsx
 # Node 相依（前端與 Cloudflare Worker 皆適用）
 node_modules/
 front_end/sports-ai-chat/.next/
+# 由 repository 根目錄的 system_content.json 在 predev/prebuild 產生
+front_end/sports-ai-chat/public/system_content.json
 # wrangler 的本機狀態
 .wrangler/
 

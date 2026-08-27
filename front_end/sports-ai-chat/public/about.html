@@ -219,6 +219,17 @@
   .dept-body li{font-size:14px;color:var(--ink);display:flex;gap:10px;line-height:1.5}
   .dept-body li::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--plum);margin-top:8px}
 
+  /* ---------- system FAQ ---------- */
+  .faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .faq-item{background:var(--white);border:1px solid var(--line);border-radius:var(--r);padding:0 20px;box-shadow:var(--shadow)}
+  .faq-item summary{cursor:pointer;list-style:none;font-size:15.5px;font-weight:700;padding:18px 26px 18px 0;position:relative;line-height:1.5}
+  .faq-item summary::-webkit-details-marker{display:none}
+  .faq-item summary::after{content:"＋";position:absolute;right:0;top:17px;color:var(--plum);font-size:20px;font-weight:500}
+  .faq-item[open] summary::after{content:"−"}
+  .faq-answer{font-size:14px;color:var(--muted);padding:0 0 18px;line-height:1.72}
+  .faq-answer a{display:inline-block;margin-top:8px;color:var(--plum);font-weight:600}
+  .faq-answer a:hover{text-decoration:underline}
+
   /* ---------- notice ---------- */
   .notice{
     background:linear-gradient(135deg,#fff8ef,#fef2e4);border:1px solid #f0d9b8;border-radius:18px;
@@ -291,6 +302,7 @@
     .menu-toggle{display:grid;place-items:center}
     .langbtn{margin-left:0}
     .feat-grid,.arch-flow,.step-list{grid-template-columns:1fr}
+    .faq-grid{grid-template-columns:1fr}
     .dept{flex-basis:100%;max-width:none}
     .node::after{display:none!important}
     .notice{grid-template-columns:1fr;padding:26px}
@@ -308,7 +320,7 @@
 
 <header>
   <div class="wrap nav">
-    <a class="brand" href="#top">
+    <a class="brand" href="https://aia.ntpu.ai/">
       <span class="logo"><img src="/images/ntpu-logo.png" alt="" width="320" height="203"></span>
       <span>
         <span class="zh">NTPU AI 智慧問答助理</span><span class="en">NTPU AI Assistant</span>
@@ -320,6 +332,7 @@
       <a href="#usage"><span class="zh">如何使用</span><span class="en">How to Use</span></a>
       <a href="#scope"><span class="zh">服務範圍</span><span class="en">Coverage</span></a>
       <a href="#architecture"><span class="zh">系統架構</span><span class="en">Architecture</span></a>
+      <a href="#faq"><span class="zh">系統問答</span><span class="en">FAQ</span></a>
       <a href="#notice"><span class="zh">使用須知</span><span class="en">Notice</span></a>
     </nav>
     <button class="langbtn" id="langbtn" aria-label="切換語言 / Switch language">
@@ -563,10 +576,22 @@
       <div class="layer reveal">
         <div class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 10a6 6 0 0 0-11.3-2A4.5 4.5 0 0 0 7 17h11a4 4 0 0 0 0-8z"/></svg></div>
         <div><h4><span class="zh">部署 · 雲端平台</span><span class="en">Deployment · Cloud</span></h4>
-        <div class="stack">GCP Cloud Run · Secret Manager</div>
-        <p><span class="zh">部署於 Google 雲端，前後端各為獨立服務，金鑰安全託管。</span><span class="en">Runs on Google Cloud; frontend and backend are separate services with managed secrets.</span></p></div>
+        <div class="stack" id="deployment-stack">Cloudflare Workers · Containers · Durable Objects</div>
+        <p><span class="zh" id="deployment-zh">前端靜態資源與 API 由同一個 Cloudflare Worker 提供；FastAPI、FAISS 與 BM25 執行於 Cloudflare Container，對話狀態保存於 Durable Object storage，API 金鑰以 Worker Secret 管理。</span><span class="en" id="deployment-en">One Cloudflare Worker serves the static frontend and API gateway; FastAPI, FAISS, and BM25 run in a Cloudflare Container, conversation state is stored in Durable Object storage, and API keys are managed as Worker Secrets.</span></p></div>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ============ SYSTEM FAQ ============ -->
+<section class="block" id="faq">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="sec-kicker"><span class="zh">系統問答</span><span class="en">System FAQ</span></div>
+      <h2 class="sec-title"><span class="zh">關於這個系統，你也可以直接問</span><span class="en">You can ask about the system itself</span></h2>
+      <p class="sec-sub"><span class="zh">下列內容與聊天頁的 SYSTEM FAQ 共用同一份結構化資料，避免說明頁與實際回答不一致。</span><span class="en">This page and the chat SYSTEM FAQ use the same structured content so the guide and actual answers stay aligned.</span></p>
+    </div>
+    <div class="faq-grid" id="system-faq-list" aria-live="polite"></div>
   </div>
 </section>
 
@@ -612,7 +637,7 @@
 <footer>
   <div class="wrap">
     <div class="foot">
-      <a class="brand" href="#top">
+      <a class="brand" href="https://aia.ntpu.ai/">
         <span class="logo"><img src="/images/ntpu-logo.png" alt="" width="320" height="203" loading="lazy"></span>
         <span><span class="zh">NTPU AI 智慧問答助理</span><span class="en">NTPU AI Assistant</span>
         <small><span class="zh">國立臺北大學</span><span class="en">National Taipei University</span></small></span>
@@ -659,6 +684,40 @@
   const menu=document.getElementById('menutoggle'), links=document.getElementById('navlinks');
   menu.addEventListener('click',()=>links.classList.toggle('open'));
   links.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>links.classList.remove('open')));
+
+  // About page and chat SYSTEM answers share this generated JSON asset.
+  fetch('/system_content.json')
+    .then(response=>{
+      if(!response.ok) throw new Error(`SYSTEM content ${response.status}`);
+      return response.json();
+    })
+    .then(content=>{
+      const service=content.service||{};
+      const stack=document.getElementById('deployment-stack');
+      const deploymentZh=document.getElementById('deployment-zh');
+      const deploymentEn=document.getElementById('deployment-en');
+      if(stack&&service.deployment_stack) stack.textContent=service.deployment_stack;
+      if(deploymentZh&&service.deployment_zh) deploymentZh.textContent=service.deployment_zh;
+      if(deploymentEn&&service.deployment_en) deploymentEn.textContent=service.deployment_en;
+
+      const list=document.getElementById('system-faq-list');
+      (content.faqs||[]).forEach(faq=>{
+        const details=document.createElement('details');
+        details.className='faq-item reveal in';
+        const summary=document.createElement('summary');
+        const qZh=document.createElement('span'); qZh.className='zh'; qZh.textContent=faq.question_zh;
+        const qEn=document.createElement('span'); qEn.className='en'; qEn.textContent=faq.question_en;
+        summary.append(qZh,qEn);
+
+        const answer=document.createElement('div'); answer.className='faq-answer';
+        const aZh=document.createElement('span'); aZh.className='zh'; aZh.textContent=faq.answer_zh;
+        const aEn=document.createElement('span'); aEn.className='en'; aEn.textContent=faq.answer_en;
+        answer.append(aZh,aEn);
+        details.append(summary,answer);
+        list.append(details);
+      });
+    })
+    .catch(error=>console.warn('Unable to load shared SYSTEM FAQ:',error));
 
   // scroll reveal
   const io=new IntersectionObserver((entries)=>{

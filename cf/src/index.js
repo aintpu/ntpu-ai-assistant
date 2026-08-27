@@ -94,6 +94,8 @@ export class NtpuAiaBackend extends Container {
       // 啟動時會直接讀環境變數。
       OPENAI_API_KEY: env.OPENAI_API_KEY ?? "",
       ALLOWED_ORIGINS: env.ALLOWED_ORIGINS ?? "",
+      SYSTEM_PRIMARY_THRESHOLD: env.SYSTEM_PRIMARY_THRESHOLD ?? "0.56",
+      SYSTEM_FALLBACK_THRESHOLD: env.SYSTEM_FALLBACK_THRESHOLD ?? "0.72",
       // 讓後端知道自己在容器平台上：跳過寫 chat_logs.csv 與 events.jsonl
       // （容器檔案系統是暫時的），改由 stdout 的結構化日誌保存。
       K_SERVICE: "ntpu-aia-api",
