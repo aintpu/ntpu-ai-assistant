@@ -65,8 +65,9 @@ jobs:
           NEXT_PUBLIC_API_URL: ""
         run: |
           npm ci
-          npx next build
+          npm run build
           test -f out/index.html || { echo "::error::前端靜態輸出缺少 index.html"; exit 1; }
+          test -f out/system_content.json || { echo "::error::前端靜態輸出缺少 system_content.json"; exit 1; }
 
       - name: Install wrangler
         working-directory: cf

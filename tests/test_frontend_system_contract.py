@@ -24,8 +24,11 @@ class FrontendSystemContractTests(unittest.TestCase):
 
     def test_build_syncs_the_single_system_content_source(self):
         package = json.loads((FRONTEND / "package.json").read_text(encoding="utf-8"))
+        workflow = (ROOT / ".github" / "workflows" / "deploy.yml").read_text(encoding="utf-8")
         self.assertIn("sync-system-content.mjs", package["scripts"]["sync:system-content"])
         self.assertIn("sync:system-content", package["scripts"]["prebuild"])
+        self.assertIn("npm run build", workflow)
+        self.assertIn("out/system_content.json", workflow)
         self.assertTrue((ROOT / "system_content.json").is_file())
 
     def test_chat_ui_has_system_quick_question_and_source_label(self):
