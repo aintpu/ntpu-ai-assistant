@@ -63,7 +63,7 @@ print(f"[LLM adapter] provider={PROVIDER}, big={MODEL_BIG}, small={MODEL_SMALL}"
 
 
 def _build_kwargs(messages, model, tools, tool_choice, temperature,
-                  max_tokens, reasoning_effort, stream):
+                  max_tokens, reasoning_effort, stream, response_format=None):
     kwargs = {"model": model or MODEL_BIG, "messages": messages}
     if tools:
         kwargs["tools"] = tools
@@ -71,6 +71,8 @@ def _build_kwargs(messages, model, tools, tool_choice, temperature,
             kwargs["tool_choice"] = tool_choice
     if stream:
         kwargs["stream"] = True
+    if response_format:
+        kwargs["response_format"] = response_format
     if max_tokens:
         # openai 新模型要求 max_completion_tokens；ollama 走 max_tokens
         if PROVIDER == "openai":
@@ -86,16 +88,17 @@ def _build_kwargs(messages, model, tools, tool_choice, temperature,
 
 
 def _create(messages, model=None, tools=None, tool_choice=None, temperature=None,
-            max_tokens=None, reasoning_effort=None, stream=False):
+            max_tokens=None, reasoning_effort=None, stream=False,
+            response_format=None):
     kwargs = _build_kwargs(messages, model, tools, tool_choice, temperature,
-                           max_tokens, reasoning_effort, stream)
+                           max_tokens, reasoning_effort, stream, response_format)
     try:
         return client.chat.completions.create(**kwargs)
     except Exception as e:
         # 供應商不認得的參數（如 reasoning_effort / max_completion_tokens）自動剝除重試
         msg = str(e)
         retried = False
-        for bad in ("reasoning_effort", "max_completion_tokens", "tool_choice"):
+        for bad in ("reasoning_effort", "max_completion_tokens", "tool_choice", "response_format"):
             if bad in msg and bad in kwargs:
                 val = kwargs.pop(bad)
                 if bad == "max_completion_tokens":
@@ -106,12 +109,14 @@ def _create(messages, model=None, tools=None, tool_choice=None, temperature=None
         raise
 
 
-def complete(messages, model=None, temperature=0, max_tokens=None) -> str:
+def complete(messages, model=None, temperature=0, max_tokens=None,
+             response_format=None) -> str:
     """輔助任務用：單次呼叫回覆文字（分類、改寫、rerank、摘要等）"""
     if isinstance(messages, str):
         messages = [{"role": "user", "content": messages}]
     rsp = _create(messages, model=model or MODEL_SMALL,
-                  temperature=temperature, max_tokens=max_tokens)
+                  temperature=temperature, max_tokens=max_tokens,
+                  response_format=response_format)
     return (rsp.choices[0].message.content or "").strip()
 
 

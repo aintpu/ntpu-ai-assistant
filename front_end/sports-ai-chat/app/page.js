@@ -558,6 +558,46 @@ function TypingIndicator({ T }) {
   );
 }
 
+function createConversationId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `conversation-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+const CONVERSATION_ID_STORAGE_KEY = "ntpu-ai-assistant:conversation-id";
+const CONVERSATION_STATE_STORAGE_PREFIX = "ntpu-ai-assistant:conversation-state:";
+
+function getInitialConversationId() {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = window.sessionStorage.getItem(CONVERSATION_ID_STORAGE_KEY);
+      if (stored) return stored;
+    } catch {
+      // Private browsing or a restricted storage policy should not block chat.
+    }
+  }
+  return createConversationId();
+}
+
+function getInitialConversationState() {
+  if (typeof window !== "undefined") {
+    try {
+      const conversationId = window.sessionStorage.getItem(CONVERSATION_ID_STORAGE_KEY);
+      const rawState = conversationId
+        ? window.sessionStorage.getItem(`${CONVERSATION_STATE_STORAGE_PREFIX}${conversationId}`)
+        : null;
+      if (rawState) {
+        const state = JSON.parse(rawState);
+        if (state && typeof state === "object" && !Array.isArray(state)) return state;
+      }
+    } catch {
+      // A malformed or unavailable browser cache should not block chat.
+    }
+  }
+  return {};
+}
+
 // ─── 主頁面 ───────────────────────────────────────────────────────────────────
 
 export default function ChatPage() {
@@ -571,8 +611,9 @@ export default function ChatPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [sessionId, setSessionId] = useState(getInitialConversationId);
+  const [conversationState, setConversationState] = useState(getInitialConversationState);
 
-  const sessionId = useRef(crypto.randomUUID());
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -607,8 +648,28 @@ export default function ChatPage() {
     return () => document.removeEventListener("keydown", handler);
   }, [sidebarOpen]);
 
+  useEffect(() => {
+    if (!sessionId || typeof window === "undefined") return;
+    try {
+      // sessionStorage survives reloads in this tab, while keeping separate tabs
+      // from accidentally sharing a conversation without an account system.
+      window.sessionStorage.setItem(CONVERSATION_ID_STORAGE_KEY, sessionId);
+      window.sessionStorage.setItem(
+        `${CONVERSATION_STATE_STORAGE_PREFIX}${sessionId}`,
+        JSON.stringify(conversationState),
+      );
+    } catch {
+      // The server-side Durable Object store remains the source of truth.
+    }
+  }, [sessionId, conversationState]);
+
   const buildHistory = (msgs) =>
     msgs.map((m) => ({ role: m.role, content: m.role === "user" ? m.content : (m.rawAnswer ?? m.content) }));
+
+  const applyConversationMetadata = (payload) => {
+    if (payload?.conversation_id) setSessionId(payload.conversation_id);
+    if (payload?.conversation_state) setConversationState(payload.conversation_state);
+  };
 
   const handleImageSelect = async (file) => {
     if (!file || !file.type.startsWith("image/")) return;
@@ -625,6 +686,8 @@ export default function ChatPage() {
   const handleNewChat = () => {
     setMessages([]);
     setInput("");
+    setSessionId(createConversationId());
+    setConversationState({});
     clearImage();
     setSidebarOpen(false);
   };
@@ -648,9 +711,16 @@ export default function ChatPage() {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/voice`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ audio_base64: voiceBase64, history: buildHistory(messages), session_id: sessionId.current }),
+          body: JSON.stringify({
+            audio_base64: voiceBase64,
+            history: buildHistory(messages),
+            session_id: sessionId,
+            conversation_id: sessionId,
+            conversation_state: conversationState,
+          }),
         });
         data = await res.json();
+        applyConversationMetadata(data);
         if (data.question) {
           responseMessages = nextMessages.map((message, index) =>
             index === nextMessages.length - 1 ? { ...message, content: data.question } : message
@@ -661,14 +731,28 @@ export default function ChatPage() {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, history: buildHistory(messages), session_id: sessionId.current, image_base64: imageBase64 }),
+          body: JSON.stringify({
+            question,
+            history: buildHistory(messages),
+            session_id: sessionId,
+            conversation_id: sessionId,
+            conversation_state: conversationState,
+            image_base64: imageBase64,
+          }),
         });
         data = await res.json();
+        applyConversationMetadata(data);
       } else {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/stream`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, history: buildHistory(messages), session_id: sessionId.current }),
+          body: JSON.stringify({
+            question,
+            history: buildHistory(messages),
+            session_id: sessionId,
+            conversation_id: sessionId,
+            conversation_state: conversationState,
+          }),
         });
         if (!res.ok || !res.body) throw new Error("stream failed");
 
@@ -691,6 +775,7 @@ export default function ChatPage() {
             if (!line.startsWith("data:")) continue;
             let evt;
             try { evt = JSON.parse(line.slice(5)); } catch { continue; }
+            applyConversationMetadata(evt);
             gotAnything = true;
             if (evt.type === "status")  { current.statusText = evt.text; current.content = ""; setLoading(false); push(); }
             else if (evt.type === "delta")   { current.statusText = ""; current.content += evt.text; current.rawAnswer = current.content; setLoading(false); push(); }
@@ -705,6 +790,7 @@ export default function ChatPage() {
       }
 
       let aiMsg;
+      applyConversationMetadata(data);
       if (data.status === "ok") {
         aiMsg = { role: "assistant", status: "ok", content: data.answer, rawAnswer: data.answer, sources: data.sources ?? [], audioBase64: data.audio_base64 ?? null, messageId: data.message_id ?? null };
         if (data.audio_base64) playBase64Audio(data.audio_base64);
@@ -918,7 +1004,7 @@ export default function ChatPage() {
             /* 訊息列表 */
             <div className="mx-auto max-w-3xl px-3 py-4 sm:px-4 sm:py-6">
               {messages.map((msg, i) => (
-                <MessageBubble key={i} msg={msg} lang={lang} T={T} sessionId={sessionId.current} />
+                <MessageBubble key={i} msg={msg} lang={lang} T={T} sessionId={sessionId} />
               ))}
               {loading && <TypingIndicator T={T} />}
               <div ref={bottomRef} />

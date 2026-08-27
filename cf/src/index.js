@@ -3,8 +3,70 @@ import { Container, getContainer } from "@cloudflare/containers";
 /**
  * 承載既有的 FastAPI 後端（agentic_v2_5_4high.py）。
  *
- * 後端本身不做任何改寫：Dockerfile 讓 uvicorn 監聽 8080，這裡只把請求原樣轉進去。
+ * 後端仍由 Dockerfile 啟動 uvicorn；本層另外負責把每個 conversation_id 的
+ * Conversation State 存在 Durable Object storage，並在轉發前注入最新 state。
  */
+
+const SESSION_STORAGE_PREFIX = "conversation-session:";
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const SESSION_ROUTES = new Set([
+  "/api/chat",
+  "/api/chat/stream",
+  "/api/voice",
+]);
+
+function isRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeConversationId(value) {
+  return typeof value === "string" ? value.trim().slice(0, 64) : "";
+}
+
+function sanitizeConversationState(value, conversationId) {
+  if (!isRecord(value)) return null;
+
+  const text = (candidate, maxLength = 1200) => (
+    typeof candidate === "string" ? candidate.trim().slice(0, maxLength) || null : null
+  );
+  const rawSourceIds = Array.isArray(value.previous_source_ids)
+    ? value.previous_source_ids
+    : [];
+
+  // 與 Python ConversationState 對齊，只保存 resolver 需要的欄位；不保存完整對話
+  // history，降低個資暴露與 Durable Object storage 的無限成長風險。
+  return {
+    conversation_id: conversationId,
+    active_office: text(value.active_office, 32),
+    active_topic: text(value.active_topic, 200),
+    scope_verified: Boolean(value.scope_verified),
+    previous_user_query: text(value.previous_user_query),
+    previous_standalone_query: text(value.previous_standalone_query),
+    previous_source_ids: rawSourceIds
+      .filter((sourceId) => sourceId !== null && sourceId !== undefined && sourceId !== "")
+      .map((sourceId) => String(sourceId).slice(0, 200))
+      .slice(0, 20),
+    conversation_summary: text(value.conversation_summary, 600),
+    last_updated_at: text(value.last_updated_at, 64) || new Date().toISOString(),
+  };
+}
+
+function parseSsePayloads(frame) {
+  const payloads = [];
+  for (const line of frame.split(/\r?\n/)) {
+    if (!line.startsWith("data:")) continue;
+    const raw = line.slice(5).trim();
+    if (!raw || raw === "[DONE]") continue;
+    try {
+      const payload = JSON.parse(raw);
+      if (isRecord(payload)) payloads.push(payload);
+    } catch {
+      // A malformed SSE frame should not interrupt the user's answer.
+    }
+  }
+  return payloads;
+}
+
 export class NtpuAiaBackend extends Container {
   // 對應 Dockerfile 的 ENV PORT=8080
   defaultPort = 8080;
@@ -55,6 +117,179 @@ export class NtpuAiaBackend extends Container {
       event: "container_error", severity: "ERROR", error: String(error),
     }));
   }
+
+  _sessionKey(conversationId) {
+    return `${SESSION_STORAGE_PREFIX}${conversationId}`;
+  }
+
+  async _loadConversationState(conversationId) {
+    if (!conversationId) return null;
+    const key = this._sessionKey(conversationId);
+    const record = await this.ctx.storage.get(key);
+    if (!isRecord(record) || !isRecord(record.state)) return null;
+
+    const updatedAt = Date.parse(record.updated_at || "");
+    if (Number.isFinite(updatedAt) && Date.now() - updatedAt > SESSION_TTL_MS) {
+      await this.ctx.storage.delete(key);
+      return null;
+    }
+    return sanitizeConversationState(record.state, conversationId);
+  }
+
+  async _saveConversationState(conversationId, state) {
+    const safeState = sanitizeConversationState(state, conversationId);
+    if (!conversationId || !safeState) return;
+
+    await this.ctx.storage.put(this._sessionKey(conversationId), {
+      version: 1,
+      conversation_id: conversationId,
+      state: safeState,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  async _persistJsonResponse(conversationId, response) {
+    try {
+      const payload = await response.clone().json();
+      if (isRecord(payload) && isRecord(payload.conversation_state)) {
+        await this._saveConversationState(
+          normalizeConversationId(payload.conversation_id) || conversationId,
+          payload.conversation_state,
+        );
+      }
+    } catch (error) {
+      console.log(JSON.stringify({
+        event: "conversation_state_persist_error",
+        severity: "ERROR",
+        stage: "json_response",
+        error: String(error),
+      }));
+    }
+  }
+
+  async _persistStream(conversationId, stream) {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalState = null;
+    let finalConversationId = conversationId;
+
+    const consumeFrames = (text) => {
+      buffer += text;
+      const frames = buffer.split(/\r?\n\r?\n/);
+      buffer = frames.pop() || "";
+      for (const frame of frames) {
+        for (const payload of parseSsePayloads(frame)) {
+          if (payload.type !== "done" || !isRecord(payload.conversation_state)) continue;
+          finalState = payload.conversation_state;
+          finalConversationId = normalizeConversationId(payload.conversation_id) || conversationId;
+        }
+      }
+    };
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        consumeFrames(decoder.decode(value, { stream: true }));
+      }
+      consumeFrames(decoder.decode());
+      for (const payload of parseSsePayloads(buffer)) {
+        if (payload.type === "done" && isRecord(payload.conversation_state)) {
+          finalState = payload.conversation_state;
+          finalConversationId = normalizeConversationId(payload.conversation_id) || conversationId;
+        }
+      }
+      if (finalState) await this._saveConversationState(finalConversationId, finalState);
+    } catch (error) {
+      console.log(JSON.stringify({
+        event: "conversation_state_persist_error",
+        severity: "ERROR",
+        stage: "stream_response",
+        error: String(error),
+      }));
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
+  async _prepareConversationRequest(request) {
+    const url = new URL(request.url);
+    if (request.method !== "POST" || !SESSION_ROUTES.has(url.pathname)) {
+      return { request, conversationId: "" };
+    }
+
+    let payload;
+    try {
+      payload = await request.clone().json();
+    } catch {
+      return { request, conversationId: "" };
+    }
+    if (!isRecord(payload)) {
+      return { request, conversationId: "" };
+    }
+
+    let conversationId = normalizeConversationId(payload.conversation_id)
+      || normalizeConversationId(payload.session_id);
+    if (!conversationId) conversationId = crypto.randomUUID();
+
+    let storedState = null;
+    try {
+      storedState = await this._loadConversationState(conversationId);
+    } catch (error) {
+      // Storage 暫時異常時仍讓本輪請求進容器；client state 可作為短期 fallback。
+      console.log(JSON.stringify({
+        event: "conversation_state_load_error",
+        severity: "ERROR",
+        error: String(error),
+      }));
+    }
+    const suppliedState = sanitizeConversationState(payload.conversation_state, conversationId);
+    payload.conversation_id = conversationId;
+    payload.session_id = conversationId;
+    // Durable Object storage 是正式環境的 source of truth；只有第一次請求或
+    // 舊版 client 尚未有 server record 時，才接受 request 內附的 state 作為 bootstrap。
+    payload.conversation_state = storedState || suppliedState || {
+      conversation_id: conversationId,
+    };
+
+    const headers = new Headers(request.headers);
+    headers.set("content-type", "application/json");
+    headers.delete("content-length");
+    return {
+      request: new Request(request, {
+        body: JSON.stringify(payload),
+        headers,
+      }),
+      conversationId,
+    };
+  }
+
+  async fetch(request) {
+    const prepared = await this._prepareConversationRequest(request);
+    const response = await this.containerFetch(prepared.request);
+
+    if (!prepared.conversationId) return response;
+
+    const pathname = new URL(request.url).pathname;
+    if (pathname === "/api/chat/stream" && response.body) {
+      const [clientStream, auditStream] = response.body.tee();
+      const persistPromise = this._persistStream(prepared.conversationId, auditStream);
+      if (typeof this.ctx.waitUntil === "function") {
+        this.ctx.waitUntil(persistPromise);
+      } else {
+        void persistPromise;
+      }
+      return new Response(clientStream, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    }
+
+    await this._persistJsonResponse(prepared.conversationId, response);
+    return response;
+  }
 }
 
 export default {
@@ -68,8 +303,8 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
-    // 固定單一執行個體：索引在啟動時載入記憶體，多開一份就多算一份記憶體費用，
-    // 且各執行個體的狀態不共用。
+    // 固定單一執行個體：索引在啟動時載入記憶體，多開一份就多算一份記憶體費用；
+    // 對話 state 則由 Durable Object storage 持久保存，不依賴容器記憶體。
     const backend = getContainer(env.BACKEND, "singleton");
 
     try {

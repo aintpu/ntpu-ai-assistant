@@ -140,6 +140,8 @@ $body = @{
   question = "通識學分如何申請抵免？"
   history = @()
   session_id = "local-test"
+  conversation_id = "local-test"
+  conversation_state = @{}
 } | ConvertTo-Json
 
 Invoke-RestMethod `
@@ -194,9 +196,9 @@ OpenRouter、明碼金鑰或服務帳戶 JSON 私鑰。
 ## 目前限制
 
 - 尚未提供登入、使用者帳號與權限管理。
-- 前端對話只存在目前分頁，重新整理後會消失。
+- 前端在同一分頁的 `sessionStorage` 保存 `conversation_id` 與精簡 state；Cloudflare 正式環境再以 Durable Object storage 依 key 保存同一份 Conversation State（主題、處室、上一輪 query、來源 ID），重新整理後仍可接續追問，但畫面上的舊訊息不會自動還原。
 - 後端會寫入 `chat_logs.csv`，但 Cloud Run 磁碟是暫存空間，不能視為永久紀錄。
-- 沒有 Firestore 或其他永久對話資料庫。
+- Cloudflare 正式環境不依賴 Firestore；session state 存在 Worker Durable Object 的 SQLite-backed storage。GCP 舊環境直接跑 FastAPI 時，仍只有 request 內的 state 與前端 fallback。
 - FAISS 索引在容器冷啟動時建立，首次回應可能較慢。
 - 體育室主要知識庫檔案尚未納入 repository。
 - Rate limit 儲存在單一 instance 記憶體，多 instance 時不會共享計數。
@@ -207,7 +209,7 @@ OpenRouter、明碼金鑰或服務帳戶 JSON 私鑰。
 - 金鑰一旦出現在日誌或公開內容中，應立即撤銷並輪替。
 - 正式金鑰只能存放於 GCP Secret Manager。
 - `config.txt`、`.env.local`、對話紀錄與 FAISS cache 不應提交到 Git。
-- 上線永久對話保存前，應先確認告知、同意、刪除與資料保留政策。
+- 目前 Durable Object 只保存精簡的 Conversation State，閒置超過 30 天的 state 會在下次讀取時清除；若日後擴大為完整對話紀錄，應先確認告知、同意、刪除與資料保留政策。
 
 ## Git remote
 

@@ -11,13 +11,31 @@ GCP Cloud Run 為過渡期的舊環境，`aia.ntpu.ai` 切換完成後即可停�
 使用者 ──► Worker「ntpu-aia-api」
              ├─ /            → Static Assets（Next.js 靜態輸出）
              ├─ /about       → Static Assets（系統說明頁）
-             └─ /api/*       → Durable Object → Container（FastAPI + FAISS）
+             └─ /api/*       → Durable Object（session JSON storage）→ Container（FastAPI + FAISS）
 ```
 
 前後端**同源**，因此：
 
 - 不需要 CORS 設定
 - 前端呼叫 API 用相對路徑（`/api/chat`），換網域不必重新建置
+
+### 對話狀態保存
+
+每個 `conversation_id` 對應 Durable Object storage 的一筆 JSON：
+
+```text
+conversation-session:<conversation_id> → {
+  version,
+  conversation_id,
+  state: { active_topic, active_office, previous_standalone_query, previous_source_ids, ... },
+  updated_at
+}
+```
+
+Worker 轉發 `/api/chat`、`/api/chat/stream`、`/api/voice` 前，會先用
+`conversation_id` 讀取這份 state；回答完成後再把後端回傳的最新 state 寫回去。
+只保存 resolver 所需的精簡欄位，不保存完整 `history`。目前 state 閒置 30 天後，
+下次讀取時會被視為過期並清除。
 
 | 項目 | 值 |
 |---|---|
@@ -167,7 +185,15 @@ curl -s -X POST https://aia.ntpu.ai/api/chat -H "Content-Type: application/json"
 
 應回 `"status":"blocked"`。若回 `"status":"ok"`，代表 `classify_department` 的 LLM 呼叫失敗而 fallback。
 
-### 5.4 回饋機制
+### 5.4 追問連貫性與 reload
+
+1. 先問「外語能力畢業門檻」並記下回應。
+2. 接著問「要幾分」，確認回答仍使用語言中心的上一個主題。
+3. 重新整理頁面後再問「那需要什麼證明」，確認同一分頁的 `conversation_id`
+   仍能從 Durable Object storage 讀回上一輪 state。
+4. 點「新對話」後再問同一句，確認已使用新的 `conversation_id`，不會沿用舊主題。
+
+### 5.5 回饋機制
 
 在瀏覽器問一題，點回答下方的 👍／👎，確認出現「感謝你的回饋！」。
 
@@ -180,7 +206,8 @@ curl -s -X POST https://aia.ntpu.ai/api/chat -H "Content-Type: application/json"
 
 | 事件 | 內容 |
 |---|---|
-| `answer` | message_id、session_id、處室、問題、回答、來源、工具、模型、耗時 |
+| `guardrail` | conversation_id、raw_query、追問／換題判定、standalone_query、resolver／scope 信心、scope 狀態、選定處室 |
+| `answer` | message_id、session_id、conversation_id、raw／standalone query、追問／換題判定、處室、來源、FAISS／BM25／previous source／rerank IDs、evidence、工具、模型、耗時 |
 | `feedback` | message_id、session_id、rating、原因分類、文字說明 |
 
 兩者以 `message_id` 對應。
