@@ -13,7 +13,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Iterable
 
 
-VALID_OFFICES = {"ope", "ge", "lc", "oaa", "osa", "hr"}
+VALID_OFFICES = {"ope", "ge", "lc", "oaa", "osa", "hr", "oga"}
 OFFICE_NAMES = {
     "ope": "體育室",
     "ge": "通識教育中心",
@@ -21,6 +21,7 @@ OFFICE_NAMES = {
     "oaa": "教務處",
     "osa": "學務處",
     "hr": "人事室",
+    "oga": "總務處",
 }
 
 OFFICE_KEYWORDS = {
@@ -46,6 +47,25 @@ OFFICE_KEYWORDS = {
     "hr": (
         "人事", "差勤", "刷卡", "請假", "事假", "病假", "身心調適假", "婚假",
         "產假", "陪產假", "喪假", "勞基法", "變形工時",
+    ),
+    "oga": (
+        "總務", "營繕", "設備報修", "報修", "緊急修繕", "停電", "停水", "空調", "冷氣", "採購",
+        "施工", "重大建設", "用電資訊", "電話分機", "網路插孔", "場地線上登記",
+        "場地借用申請表", "環保標章", "校園賣店", "公務車",
+        "共同供應契約", "綠色採購", "科研採購", "財物", "財產盤點", "盤點", "財物報廢",
+        "資產經營管理", "校內空間", "校地", "校舍", "職務宿舍", "學位服", "消耗品",
+        "學雜費繳費單", "繳費單顯示", "多元支付", "出納", "所得清冊",
+        "貨款", "款項是否已入帳", "公教存款", "所得稅扣繳", "汽車停車證", "機車停車證", "腳踏車停車證",
+        "校園交通", "職業安全衛生", "監視器", "電子公文", "文件流程控管",
+        "待領郵件", "檔案檢調", "調閱校內檔案", "郵局搬遷", "校內郵務", "公文無紙化", "校園地圖",
+    ),
+}
+
+OFFICE_PRIORITY_KEYWORDS = {
+    "oga": (
+        "場地線上登記", "場地借用申請表", "學雜費繳費單", "線上繳費暨多元支付",
+        "文件流程控管", "公教優惠存款", "職務宿舍", "學位服",
+        "汽車應該停", "機車應該停", "腳踏車應該停",
     ),
 }
 
@@ -202,6 +222,7 @@ def _normalize_office(value: Any) -> str | None:
         "oaa": "oaa", "academic affairs": "oaa", "教務處": "oaa",
         "osa": "osa", "student affairs": "osa", "學務處": "osa",
         "hr": "hr", "human resources": "hr", "人事室": "hr",
+        "oga": "oga", "general affairs": "oga", "總務處": "oga",
     }
     return aliases.get(text) or (text if text in VALID_OFFICES else None)
 
@@ -392,6 +413,19 @@ def _lexical_scope(standalone_query: str, context: dict[str, Any]) -> ScopeDecis
     text = (standalone_query or "").strip().lower()
     if text in {phrase.lower() for phrase in CHAT_PHRASES}:
         return ScopeDecision("IN_SCOPE", None, 0.98, "一般對話或系統功能詢問。")
+
+    explicit = [office for office, name in OFFICE_NAMES.items() if name.lower() in text]
+    if len(explicit) == 1:
+        office = explicit[0]
+        return ScopeDecision("IN_SCOPE", office, 0.96, f"問題明確指定{OFFICE_NAMES[office]}。")
+
+    priority = [
+        office for office, keywords in OFFICE_PRIORITY_KEYWORDS.items()
+        if any(keyword.lower() in text for keyword in keywords)
+    ]
+    if len(priority) == 1:
+        office = priority[0]
+        return ScopeDecision("IN_SCOPE", office, 0.88, f"專屬關鍵詞與{OFFICE_NAMES[office]}相關。")
 
     matched = []
     for office, keywords in OFFICE_KEYWORDS.items():

@@ -131,6 +131,31 @@ class ConversationGuardrailTests(unittest.TestCase):
         self.assertIn("外語能力畢業門檻", result.standalone_query)
         self.assertEqual(result.inherited_office, "lc")
 
+    def test_general_affairs_question_routes_to_oga(self):
+        def failing_complete(*args, **kwargs):
+            raise RuntimeError("classifier unavailable")
+
+        scope = run_scope_guardrail(
+            "學雜費繳費單要去哪裡查詢與繳納？",
+            {},
+            failing_complete,
+            retries=0,
+        )
+        self.assertEqual(scope.status, "IN_SCOPE")
+        self.assertEqual(scope.office_hint, "oga")
+
+    def test_general_affairs_venue_form_beats_generic_venue_keyword(self):
+        def failing_complete(*args, **kwargs):
+            raise RuntimeError("classifier unavailable")
+
+        scope = run_scope_guardrail(
+            "校內或校外單位的場地借用申請表在哪裡下載？",
+            {},
+            failing_complete,
+            retries=0,
+        )
+        self.assertEqual(scope.office_hint, "oga")
+
     def test_similar_language_center_topics_do_not_mix(self):
         state = ConversationState(active_office="lc", active_topic="大學英文免修")
         completer = FakeCompleter([

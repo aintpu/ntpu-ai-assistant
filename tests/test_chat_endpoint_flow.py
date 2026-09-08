@@ -24,7 +24,7 @@ except ModuleNotFoundError as exc:
 
 @unittest.skipIf(_IMPORT_ERROR, f"backend dependencies unavailable: {_IMPORT_ERROR}")
 class ChatEndpointFlowTests(unittest.TestCase):
-    def test_system_question_bypasses_six_office_rag(self):
+    def test_system_question_bypasses_seven_office_rag(self):
         def fake_complete(messages, **kwargs):
             system = messages[0]["content"]
             if "Conversation Context Resolver" in system:

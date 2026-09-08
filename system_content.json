@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "version": "1.0.0",
-  "last_updated": "2026-08-27",
+  "version": "1.1.0",
+  "last_updated": "2026-09-08",
   "service": {
     "name_zh": "NTPU AI 智慧問答助理",
     "name_en": "NTPU AI Assistant",
@@ -12,7 +12,8 @@
       "語言中心",
       "教務處",
       "學務處",
-      "人事室"
+      "人事室",
+      "總務處"
     ],
     "supported_offices_en": [
       "Physical Education Office",
@@ -20,7 +21,8 @@
       "Language Center",
       "Office of Academic Affairs",
       "Office of Student Affairs",
-      "Personnel Office"
+      "Personnel Office",
+      "Office of General Affairs"
     ],
     "deployment_stack": "Cloudflare Workers · Containers · Durable Objects",
     "deployment_zh": "前端靜態資源與 API 由同一個 Cloudflare Worker 提供；FastAPI、FAISS 與 BM25 執行於 Cloudflare Container，對話狀態保存於 Durable Object storage，API 金鑰以 Worker Secret 管理。",
@@ -34,8 +36,8 @@
       "question_en": "What questions can you answer?",
       "aliases_zh": ["你會什麼", "這個系統能做什麼", "可以查什麼", "服務範圍是什麼", "有哪些功能"],
       "aliases_en": ["What can you do?", "What does this system support?", "What can I ask?", "What is your scope?"],
-      "answer_zh": "目前可查詢體育室、通識教育中心、語言中心、教務處、學務處與人事室的相關規定、辦法、公告與常見問題。你也可以詢問本系統的服務範圍、使用方式、資料來源、限制與隱私提醒。",
-      "answer_en": "You can currently ask about regulations, policies, announcements, and common questions from the Physical Education Office, Center for General Education, Language Center, Office of Academic Affairs, Office of Student Affairs, and Personnel Office. You may also ask about this system's coverage, usage, sources, limitations, and privacy guidance.",
+      "answer_zh": "目前可查詢體育室、通識教育中心、語言中心、教務處、學務處、人事室與總務處的相關規定、辦法、公告與常見問題。你也可以詢問本系統的服務範圍、使用方式、資料來源、限制與隱私提醒。",
+      "answer_en": "You can currently ask about regulations, policies, announcements, and common questions from the Physical Education Office, Center for General Education, Language Center, Office of Academic Affairs, Office of Student Affairs, Personnel Office, and Office of General Affairs. You may also ask about this system's coverage, usage, sources, limitations, and privacy guidance.",
       "keywords": ["回答", "問題", "功能", "服務範圍", "capabilities", "support", "scope"],
       "source": {"type": "system", "title_zh": "系統說明：服務範圍", "title_en": "System Guide: Coverage", "url": "https://aia.ntpu.ai/about#scope"}
     },
@@ -44,11 +46,11 @@
       "category": "coverage",
       "question_zh": "目前支援哪些處室？",
       "question_en": "Which offices are currently supported?",
-      "aliases_zh": ["有哪些處室", "支援單位", "可以問哪些行政單位", "六處室是哪些"],
+      "aliases_zh": ["有哪些處室", "支援單位", "可以問哪些行政單位", "七處室是哪些", "六處室是哪些"],
       "aliases_en": ["Which departments are covered?", "What offices are supported?", "Which university units can I ask about?"],
-      "answer_zh": "目前支援六個單位：體育室、通識教育中心、語言中心、教務處、學務處與人事室。各單位可查內容依目前已匯入的官方資料而定。",
-      "answer_en": "Six units are currently supported: the Physical Education Office, Center for General Education, Language Center, Office of Academic Affairs, Office of Student Affairs, and Personnel Office. Available topics depend on the official materials currently indexed.",
-      "keywords": ["處室", "單位", "六處室", "office", "department", "coverage"],
+      "answer_zh": "目前支援七個單位：體育室、通識教育中心、語言中心、教務處、學務處、人事室與總務處。各單位可查內容依目前已匯入的官方資料而定。",
+      "answer_en": "Seven units are currently supported: the Physical Education Office, Center for General Education, Language Center, Office of Academic Affairs, Office of Student Affairs, Personnel Office, and Office of General Affairs. Available topics depend on the official materials currently indexed.",
+      "keywords": ["處室", "單位", "七處室", "六處室", "office", "department", "coverage"],
       "source": {"type": "system", "title_zh": "系統說明：服務範圍", "title_en": "System Guide: Coverage", "url": "https://aia.ntpu.ai/about#scope"}
     },
     {
@@ -154,8 +156,8 @@
       "question_en": "Why can't some questions be answered?",
       "aliases_zh": ["為什麼查不到", "怎麼沒答案", "不支援哪些問題", "無法回答"],
       "aliases_en": ["Why is there no answer?", "Why can't you find it?", "What is not supported?"],
-      "answer_zh": "常見原因包括：問題不屬於目前六處室或系統說明範圍、官方資料尚未匯入、問題條件不足，或檢索到的證據不足以安全回答。你可以補上處室、身分、學制、年度或規定名稱；若仍沒有資料，系統會明確說明目前不支援，而不自行猜測。",
-      "answer_en": "Common reasons include: the topic is outside the six supported offices and system guide, the official material has not been indexed, the question lacks key details, or retrieved evidence is insufficient. Add the office, role, program, year, or policy name. If evidence is still unavailable, the system should clearly say it is not currently supported rather than guess.",
+      "answer_zh": "常見原因包括：問題不屬於目前七處室或系統說明範圍、官方資料尚未匯入、問題條件不足，或檢索到的證據不足以安全回答。你可以補上處室、身分、學制、年度或規定名稱；若仍沒有資料，系統會明確說明目前不支援，而不自行猜測。",
+      "answer_en": "Common reasons include: the topic is outside the seven supported offices and system guide, the official material has not been indexed, the question lacks key details, or retrieved evidence is insufficient. Add the office, role, program, year, or policy name. If evidence is still unavailable, the system should clearly say it is not currently supported rather than guess.",
       "keywords": ["回答不了", "查不到", "不支援", "沒答案", "cannot answer", "unsupported", "no answer"],
       "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
     },
@@ -166,8 +168,8 @@
       "question_en": "How is this different from ChatGPT?",
       "aliases_zh": ["跟ChatGPT差在哪", "你是ChatGPT嗎", "為什麼不用ChatGPT", "和一般聊天機器人差別"],
       "aliases_en": ["Are you ChatGPT?", "How is this different from a general chatbot?", "Why not just use ChatGPT?"],
-      "answer_zh": "本系統是以北大六處室公開資料為範圍的校務 RAG 服務：先檢索 repository 建立的校務知識庫，再由模型整理並附來源。一般 ChatGPT 的知識與用途更廣，但不一定使用本系統已整理的校務資料、處室路由與來源格式。兩者都可能出錯，正式規定仍以官方文件為準。",
-      "answer_en": "This is an NTPU administrative RAG service scoped to public materials from six offices: it retrieves from the curated university knowledge base before a model composes an answer with sources. General ChatGPT is broader, but does not necessarily use this system's curated office data, routing, or source format. Both can be wrong; official documents remain authoritative.",
+      "answer_zh": "本系統是以北大七處室公開資料為範圍的校務 RAG 服務：先檢索 repository 建立的校務知識庫，再由模型整理並附來源。一般 ChatGPT 的知識與用途更廣，但不一定使用本系統已整理的校務資料、處室路由與來源格式。兩者都可能出錯，正式規定仍以官方文件為準。",
+      "answer_en": "This is an NTPU administrative RAG service scoped to public materials from seven offices: it retrieves from the curated university knowledge base before a model composes an answer with sources. General ChatGPT is broader, but does not necessarily use this system's curated office data, routing, or source format. Both can be wrong; official documents remain authoritative.",
       "keywords": ["ChatGPT", "差別", "不同", "聊天機器人", "difference", "chatbot"],
       "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.ai/about#architecture"}
     },
@@ -178,8 +180,8 @@
       "question_en": "How does the system find an answer?",
       "aliases_zh": ["搜尋原理", "RAG是什麼", "怎麼檢索", "回答流程"],
       "aliases_en": ["How does retrieval work?", "What is RAG?", "How are answers generated?"],
-      "answer_zh": "校務問題會先判斷所屬處室，再將問題改寫為適合檢索的完整查詢，以 FAISS 向量搜尋與 BM25 關鍵詞搜尋找候選資料，經融合與重排序後交給模型整理。只有有足夠證據時才應作答，最後附上來源。SYSTEM 問題則直接從本系統 FAQ 回答，不進入六處室 RAG。",
-      "answer_en": "For administrative questions, the system first selects an office, rewrites the question into a retrieval-ready standalone query, combines FAISS vector search with BM25 keyword search, fuses and reranks candidates, and then lets the model compose an answer. It should answer only when evidence is sufficient and include sources. SYSTEM questions are answered directly from this system FAQ instead of the six-office RAG.",
+      "answer_zh": "校務問題會先判斷所屬處室，再將問題改寫為適合檢索的完整查詢，以 FAISS 向量搜尋與 BM25 關鍵詞搜尋找候選資料，經融合與重排序後交給模型整理。只有有足夠證據時才應作答，最後附上來源。SYSTEM 問題則直接從本系統 FAQ 回答，不進入七處室 RAG。",
+      "answer_en": "For administrative questions, the system first selects an office, rewrites the question into a retrieval-ready standalone query, combines FAISS vector search with BM25 keyword search, fuses and reranks candidates, and then lets the model compose an answer. It should answer only when evidence is sufficient and include sources. SYSTEM questions are answered directly from this system FAQ instead of the seven-office RAG.",
       "keywords": ["RAG", "檢索", "搜尋", "流程", "FAISS", "BM25", "retrieval", "architecture"],
       "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.ai/about#architecture"}
     },
@@ -190,8 +192,8 @@
       "question_en": "Does the system support voice or images?",
       "aliases_zh": ["可以用語音嗎", "能上傳圖片嗎", "語音輸入", "圖片分析"],
       "aliases_en": ["Can I use voice input?", "Can I upload an image?", "Does it analyze images?"],
-      "answer_zh": "目前介面支援麥克風語音輸入與圖片上傳。語音會先轉成文字再走一般問答流程；圖片由視覺模型分析，目前不會自動與六處室 RAG 文件合併，因此圖片中的重要校務資訊仍應核對官方來源。",
-      "answer_en": "The interface supports microphone input and image uploads. Voice is transcribed before entering the normal question flow. Images are analyzed by a vision model and are not automatically combined with six-office RAG documents, so important administrative information in an image should still be checked against official sources.",
+      "answer_zh": "目前介面支援麥克風語音輸入與圖片上傳。語音會先轉成文字再走一般問答流程；圖片由視覺模型分析，目前不會自動與七處室 RAG 文件合併，因此圖片中的重要校務資訊仍應核對官方來源。",
+      "answer_en": "The interface supports microphone input and image uploads. Voice is transcribed before entering the normal question flow. Images are analyzed by a vision model and are not automatically combined with seven-office RAG documents, so important administrative information in an image should still be checked against official sources.",
       "keywords": ["語音", "圖片", "麥克風", "voice", "image", "microphone"],
       "source": {"type": "system", "title_zh": "系統說明：系統特色", "title_en": "System Guide: Features", "url": "https://aia.ntpu.ai/about#features"}
     },

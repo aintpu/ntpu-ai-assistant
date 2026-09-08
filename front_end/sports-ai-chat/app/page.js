@@ -16,7 +16,7 @@ const LABELS = {
     systemSources: "系統說明",
     langLabel: "語言",
     welcome: "有什麼我能幫你的？",
-    welcomeSub: "體育室・通識中心・語言中心・教務處・學務處・人事室 相關問題皆可詢問",
+    welcomeSub: "體育室・通識中心・語言中心・教務處・學務處・人事室・總務處 相關問題皆可詢問",
     uploadTitle: "上傳圖片",
     voiceTitle: "語音輸入",
     recording: "錄音中，再按一次停止…",
@@ -57,7 +57,7 @@ const LABELS = {
     langLabel: "Language",
     welcome: "How can I help you?",
     welcomeSub:
-      "Ask about Sports, General Education, Languages, Academic Affairs, Student Affairs, or Human Resources",
+      "Ask about Sports, General Education, Languages, Academic Affairs, Student Affairs, Human Resources, or General Affairs",
     uploadTitle: "Upload image",
     voiceTitle: "Voice input",
     recording: "Recording… click again to stop",

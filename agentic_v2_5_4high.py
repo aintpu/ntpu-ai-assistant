@@ -149,17 +149,20 @@ CORRECTIONS_PATH = os.path.join(BASE_DIR, "corrections.md")
 
 # 多處室資料來源（dept 代碼, 爬蟲檔路徑）
 DEPT_NAMES = {"ope": "體育室", "ge": "通識教育中心", "lc": "語言中心",
-              "oaa": "教務處", "osa": "學務處", "hr": "人事室"}
+              "oaa": "教務處", "osa": "學務處", "hr": "人事室",
+              "oga": "總務處"}
 FAQ_PAGE_URLS = {
     "ope": "https://new.ntpu.edu.tw/ope/faq",
     "ge":  "https://new.ntpu.edu.tw/cge/faq",
     "lc":  "https://lc.ntpu.edu.tw",
     "hr":  "https://new.ntpu.edu.tw/op/regulations",
+    "oga": "https://new.ntpu.edu.tw/oga",
 }
 CRAWLER_SOURCES = [
     ("ge", os.path.join(BASE_DIR, "crawler_data", "cge_content.md")),
     ("lc", os.path.join(BASE_DIR, "crawler_data", "lc_content.md")),
     ("hr", os.path.join(BASE_DIR, "crawler_data", "hr_content.md")),
+    ("oga", os.path.join(BASE_DIR, "crawler_data", "oga_content.md")),
 ]
 # 純法規全文來源（無最新消息／常見問題，整份檔案就是 ## 標題 + ### Page N 的法規）
 # oaa_content.md / osa_content.md 為 PDF OCR，雜訊過多，暫不接入
@@ -799,7 +802,7 @@ class OPEIndex:
             print("[系統] 使用者修正紀錄 " + "、".join(
                 f"{DEPT_NAMES.get(k, k)} {v} 筆" for k, v in sorted(n_corr.items())))
 
-        # ✨ 4. 多處室部分接入：通識教育中心(ge)、語言中心(lc)、人事室(hr)
+        # ✨ 4. 多處室部分接入：通識教育中心(ge)、語言中心(lc)、人事室(hr)、總務處(oga)
         #    目前僅接入「最新消息」與「常見問題」；法規全文/表單/師資等待爬蟲補齊 metadata 後再接
         for dept, path in CRAWLER_SOURCES:
             if not os.path.exists(path):
@@ -1655,7 +1658,7 @@ def tool_find_forms(keyword: str = "") -> str:
 # ==========================================
 SYSTEM_STYLE = (
     "你是國立臺北大學（NTPU）的行政服務 AI 助理（Autonomous AI Assistant），"
-    "目前服務體育室、通識教育中心、語言中心、教務處、學務處與人事室。\n"
+    "目前服務體育室、通識教育中心、語言中心、教務處、學務處、人事室與總務處。\n"
     "NTPU 代表國立臺北大學。你可以使用多種工具查詢各服務單位的法規、課程、"
     "最新消息與常見問題。\n\n"
 
@@ -1667,15 +1670,16 @@ SYSTEM_STYLE = (
     "- 國立臺北大學教務處相關業務（學籍、選課、成績、畢業資格與相關法規等）\n"
     "- 國立臺北大學學務處相關業務（生活輔導、獎助學金、住宿、社團與相關法規等）\n"
     "- 國立臺北大學人事室差勤與勤休法規業務（各類請假、出勤、刷卡、工時等）\n"
+    "- 國立臺北大學總務處相關業務（修繕、採購、財產、出納、停車、文書與公文系統等）\n"
     "- 體育、運動、健身相關的一般知識\n"
 
     "【對話情境判斷】\n"
     "1. 若使用者是在進行正常的對話互動，例如：道謝、稱讚、問候、簡短閒聊（如『謝謝』『你很棒』『好的』『了解』等），"
     "請以自然、友善的方式回應，不需要拒絕或強制導回業務範疇。\n"
-    "2. 若使用者的問題確實與上述六個服務單位完全無關，且不屬於正常對話互動（例如：詢問餐廳推薦、時事新聞、個人私事、撰寫程式碼等），"
+    "2. 若使用者的問題確實與上述七個服務單位完全無關，且不屬於正常對話互動（例如：詢問餐廳推薦、時事新聞、個人私事、撰寫程式碼等），"
     "請禮貌說明你的服務範疇，回應格式為：\n"
-    "『您好，我是 NTPU 行政服務 AI 助理，目前協助體育室、通識教育中心、語言中心、教務處、學務處與人事室相關問題。"
-    "如有場地借用、體育課程、通識課程、大學英文、學籍與學分抵免、住宿與獎助學金、差勤與請假等疑問，歡迎繼續詢問。』\n"
+    "『您好，我是 NTPU 行政服務 AI 助理，目前協助體育室、通識教育中心、語言中心、教務處、學務處、人事室與總務處相關問題。"
+    "如有場地借用、體育課程、通識課程、大學英文、學籍與學分抵免、住宿與獎助學金、差勤與請假、修繕與採購等疑問，歡迎繼續詢問。』\n"
     "3. 判斷時應優先參考對話上下文，若前一輪對話涉及任一服務單位，則本輪的簡短回覆（如『好』『了解』『謝謝』）應視為對話延續，而非無關問題。\n"
     
     "【🌐 跨語系檢索最高準則 (Cross-lingual Retrieval Rule)】\n"
@@ -1885,7 +1889,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
         {
             "type": "function",
             "name": "search_regulations_and_general",
-            "description": "檢索本輪服務處室的法規辦法、規定或一般問題（體育室場地借用辦法、通識/語言中心規定、教務處學籍選課成績法規、學務處生輔獎助住宿法規、人事室差勤與勤休法規等）。",
+            "description": "檢索本輪服務處室的法規辦法、規定或一般問題（體育室場地借用辦法、通識/語言中心規定、教務處學籍選課成績法規、學務處生輔獎助住宿法規、人事室差勤與勤休法規、總務處修繕採購財產出納停車文書 FAQ 等）。",
             "parameters": {
                 "type": "object",
                 "properties": {"search_query": {"type": "string"}},
@@ -1967,7 +1971,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
         )
 
     # 多處室路由：非體育室問題以該處室助理身分回答，並說明目前資料範圍
-    if dept in ("ge", "lc", "oaa", "osa", "hr"):
+    if dept in ("ge", "lc", "oaa", "osa", "hr", "oga"):
         dept_name = DEPT_NAMES[dept]
         # oaa/osa 目前只接入法規全文，沒有最新消息／常見問題，故連 get_latest_news 也不可用
         if dept in ("oaa", "osa"):
@@ -1982,6 +1986,13 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
             scope_note = (
                 "注意：人事室知識庫目前包含人事室提供的差勤常見問答，以及新北市勞工局的"
                 "勞動基準法請假問答；不同身分類別（公務人員、教師、聘僱人員、勞基法人員）的規定不可混用。\n"
+                "本輪【只能使用】search_regulations_and_general 這個工具，"
+                "get_schedule、get_competition_records、find_forms、get_latest_news 皆【不可使用】。"
+            )
+        elif dept == "oga":
+            scope_note = (
+                "注意：總務處知識庫目前包含總務處提供的 60 題常見問答，涵蓋營繕組、事務組、"
+                "經管組、出納組、環境組與文書組；時效性公告仍應以總務處官網最新資訊為準。\n"
                 "本輪【只能使用】search_regulations_and_general 這個工具，"
                 "get_schedule、get_competition_records、find_forms、get_latest_news 皆【不可使用】。"
             )
@@ -2580,8 +2591,8 @@ _BLOCKED_MSG = (
     "目前沒有可安全回答這個問題的資料。我可以說明本系統的功能、使用方式與限制，"
     "也可以協助「體育室」（場地借用、課程、賽事）、"
     "「通識教育中心」（通識課程、學分抵免）、「語言中心」（大學英文、語言課程）、"
-    "「教務處」（學籍、選課、成績、畢業資格）、「學務處」（生活輔導、獎助學金、住宿、社團）"
-    "與「人事室」（差勤、請假、勤休法規）的相關問題喔！"
+    "「教務處」（學籍、選課、成績、畢業資格）、「學務處」（生活輔導、獎助學金、住宿、社團）、"
+    "「人事室」（差勤、請假、勤休法規）與「總務處」（修繕、採購、財產、出納、停車、文書）的相關問題喔！"
 )
 _INJECT_MSG = "您的輸入包含不允許的內容，請重新提問。"
 

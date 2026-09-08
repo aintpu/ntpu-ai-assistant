@@ -20,10 +20,10 @@ class SystemFAQTests(unittest.TestCase):
     def setUpClass(cls):
         cls.retriever = SystemFAQRetriever(CONTENT)
 
-    def test_domain_contract_contains_system_and_six_offices(self):
+    def test_domain_contract_contains_system_and_seven_offices(self):
         self.assertEqual(
             {domain.value for domain in QueryDomain},
-            {"SYSTEM", "OPE", "GE", "LC", "OAA", "OSA", "HR", "OTHER"},
+            {"SYSTEM", "OPE", "GE", "LC", "OAA", "OSA", "HR", "OGA", "OTHER"},
         )
 
     def test_content_has_at_least_15_bilingual_entries(self):
@@ -72,6 +72,7 @@ class SystemFAQTests(unittest.TestCase):
             "我要辦理休學需要什麼？",
             "宿舍如何申請？",
             "教職員請病假可以請幾天？",
+            "總務處設備報修要怎麼申請？",
             "綜合體育館怎麼借？",
             "Can you tell me how to apply for a dorm?",
             "Can I ask how many General Education credits I need?",

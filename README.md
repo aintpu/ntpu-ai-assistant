@@ -1,6 +1,6 @@
 # NTPU AI Assistant
 
-國立臺北大學行政服務 AI 助理，現階段支援以下六個單位：
+國立臺北大學行政服務 AI 助理，現階段支援以下七個單位：
 
 - 體育室
 - 通識教育中心
@@ -8,6 +8,7 @@
 - 教務處（僅法規辦法全文）
 - 學務處（僅法規辦法全文）
 - 人事室（差勤與勤休法規常見問答）
+- 總務處（營繕、事務、經管、出納、環境與文書常見問答）
 
 系統會先判斷問題屬於 `SYSTEM` 或哪個校務單位。SYSTEM 問題直接從核准的系統 FAQ
 回答；校務問題再使用 RAG（檢索增強生成）從爬蟲資料、法規與常見問題中搜尋相關
@@ -23,7 +24,7 @@
 
 ## 主要功能
 
-- 體育室、通識教育中心、語言中心、教務處、學務處、人事室問題自動分類
+- 體育室、通識教育中心、語言中心、教務處、學務處、人事室、總務處問題自動分類
 - SYSTEM FAQ：回答系統功能、使用方式、來源、限制、隱私與追問機制
 - 法規、公告、常見問題與表單的語意檢索
 - FAISS 向量檢索與 BM25 關鍵字檢索
@@ -46,7 +47,7 @@ Cloudflare Worker：ntpu-aia-api
   ├─ Durable Object（conversation state）
   └─ /api/* → Cloudflare Container（FastAPI + FAISS + BM25）
                   ├─ SYSTEM FAQ
-                  ├─ 六處室 Router / Agent 工具呼叫
+                  ├─ 七處室 Router / Agent 工具呼叫
                   └─ 設定的 LLM、Embedding、Whisper / TTS API
 ```
 
@@ -163,6 +164,7 @@ Repository 目前包含：
 - `crawler_data/oaa_regulations.md`：教務處法規全文
 - `crawler_data/osa_regulations.md`：學務處法規全文
 - `crawler_data/hr_content.md`：人事室差勤與勞動基準法請假常見問答
+- `crawler_data/oga_content.md`：總務處六組共 60 題常見問答
 - `front_end/sports-ai-chat/public/documents/hr/`：人事室原始附件（1 份 DOCX、3 份 PDF），供回答來源直接開啟
 - `crawler_data/北大學術單位法規彙整.xlsx`：ge/lc 法規 metadata（每處室一個分頁，英文欄名）
 - `crawler_data/北大行政單位法規彙整.xlsx`：oaa/osa 法規 metadata（單一 Sheet1、中文欄名，以「處室」欄篩選）
