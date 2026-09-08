@@ -156,6 +156,22 @@ class ConversationGuardrailTests(unittest.TestCase):
         )
         self.assertEqual(scope.office_hint, "oga")
 
+    def test_general_affairs_priority_overrides_conflicting_model_guess(self):
+        completer = FakeCompleter([{
+            "status": "IN_SCOPE",
+            "office_hint": "oaa",
+            "confidence": 0.92,
+            "reason": "模型誤判為教務處學雜費業務",
+        }])
+        scope = run_scope_guardrail(
+            "學雜費繳費單要去哪裡查詢與繳納？",
+            {},
+            completer,
+            retries=0,
+        )
+        self.assertEqual(scope.status, "IN_SCOPE")
+        self.assertEqual(scope.office_hint, "oga")
+
     def test_similar_language_center_topics_do_not_mix(self):
         state = ConversationState(active_office="lc", active_topic="大學英文免修")
         completer = FakeCompleter([

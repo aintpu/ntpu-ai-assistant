@@ -475,6 +475,18 @@ def run_scope_guardrail(
             return lexical
         if result.status == "AMBIGUOUS" and lexical.status == "IN_SCOPE":
             return lexical
+        if (
+            result.status == "IN_SCOPE"
+            and lexical.status == "IN_SCOPE"
+            and result.office_hint
+            and lexical.office_hint
+            and result.office_hint != lexical.office_hint
+            and lexical.confidence >= 0.88
+        ):
+            # An explicit office name or office-specific workflow phrase is
+            # more reliable than a conflicting model guess.  For example,
+            # tuition-payment slips belong to OGA cashier FAQs, not OAA rules.
+            return lexical
         return result
     except Exception:
         return _lexical_scope(standalone_query, context)
