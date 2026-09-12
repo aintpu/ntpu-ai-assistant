@@ -131,7 +131,7 @@ Cloudflare 會自動建立所需的 DNS 記錄並簽發憑證，通常 1–2 分
 ### 4.3 驗證
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" https://aia.ntpu.ai/api/health
+curl -s -o /dev/null -w "%{http_code}\n" https://aia.ntpu.ai/api/health/backend
 ```
 
 ```bash
@@ -162,7 +162,11 @@ curl -s -o /dev/null -w "說明頁 %{http_code}\n" https://aia.ntpu.ai/about
 ```
 
 ```bash
+# 淺層：Worker 邊緣回應，不喚醒容器（監控請用這個）
 curl -s https://aia.ntpu.ai/api/health
+
+# 深層：會進容器，用來確認後端與模型設定
+curl -s https://aia.ntpu.ai/api/health/backend
 ```
 
 ### 5.2 各處室抽測

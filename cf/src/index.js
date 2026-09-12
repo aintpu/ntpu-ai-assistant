@@ -7,6 +7,9 @@ import { Container, getContainer } from "@cloudflare/containers";
  * Conversation State 存在 Durable Object storage，並在轉發前注入最新 state。
  */
 
+const HEALTH_PATH = "/api/health";
+const HEALTH_DEEP_PATH = "/api/health/backend";
+
 const SESSION_STORAGE_PREFIX = "conversation-session:";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const SESSION_ROUTES = new Set([
@@ -104,12 +107,20 @@ export class NtpuAiaBackend extends Container {
   }
 
   onStart() {
-    console.log(JSON.stringify({ event: "container_start", severity: "INFO" }));
+    this._startedAt = Date.now();
+    console.log(JSON.stringify({
+      event: "container_start", severity: "INFO",
+      at: new Date().toISOString(),
+    }));
   }
 
   onStop(params) {
+    // awake_s 是本次喚醒實際運行的秒數。Memory / Disk 以「配置資源 × 運行時間」
+    // 計費，把這個數字乘上配置量就是本次喚醒的成本，可用來驗證 sleepAfter 的效果。
     console.log(JSON.stringify({
       event: "container_stop", severity: "INFO",
+      at: new Date().toISOString(),
+      awake_s: this._startedAt ? Math.round((Date.now() - this._startedAt) / 1000) : null,
       exitCode: params?.exitCode, reason: params?.reason,
     }));
   }
@@ -305,6 +316,34 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
+    // 淺層健康檢查在 Worker 邊緣回應，不喚醒容器。
+    // 回應內容本來就只是常數，卻足以把休眠中的容器叫醒；監控服務或爬蟲定期打
+    // 這個路徑時，等於持續產生無謂的 Memory 計費。
+    // 要確認「後端本身」是否正常，改打 HEALTH_DEEP_PATH。
+    if (pathname === HEALTH_PATH) {
+      return Response.json({ status: "ok", served_by: "worker" });
+    }
+
+    // 深層健康檢查：明確指定才進容器，供部署後驗證後端與模型設定。
+    // 後端只認得 /api/health，因此轉發前把路徑改寫回去。
+    let upstream = request;
+    if (pathname === HEALTH_DEEP_PATH) {
+      const target = new URL(request.url);
+      target.pathname = HEALTH_PATH;
+      upstream = new Request(target, request);
+    }
+
+    // 記錄每個真的會進容器的請求。容器休眠時，這些就是把它叫醒的元凶；
+    // 與 container_start / container_stop 對照即可回答「是誰讓容器一直醒著」。
+    console.log(JSON.stringify({
+      event: "container_request", severity: "INFO",
+      at: new Date().toISOString(),
+      path: pathname,
+      method: request.method,
+      user_agent: (request.headers.get("user-agent") || "").slice(0, 200),
+      country: request.cf?.country || "",
+    }));
+
     // 固定單一執行個體：索引在啟動時載入記憶體，多開一份就多算一份記憶體費用；
     // 對話 state 則由 Durable Object storage 持久保存，不依賴容器記憶體。
     const backend = getContainer(env.BACKEND, "singleton");
@@ -312,7 +351,7 @@ export default {
     try {
       // 用 fetch() 而非 containerFetch()：前者保留串流（/api/chat/stream 是 SSE，
       // 逐字回傳），也是唯一支援 WebSocket 的方法。
-      return await backend.fetch(request);
+      return await backend.fetch(upstream);
     } catch (err) {
       console.log(JSON.stringify({
         event: "proxy_error", severity: "ERROR", error: String(err),

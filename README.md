@@ -20,7 +20,7 @@
 |---|---|
 | 正式網站 | <https://aia.ntpu.ai> |
 | 系統說明 | <https://aia.ntpu.ai/about> |
-| API 健康檢查 | <https://aia.ntpu.ai/api/health> |
+| API 健康檢查 | <https://aia.ntpu.ai/api/health>（淺層，不喚醒容器） |
 
 ## 主要功能
 
@@ -130,7 +130,8 @@ npm run dev
 
 | Method | Path | 說明 |
 |---|---|---|
-| `GET` | `/api/health` | 健康狀態與模型資訊 |
+| `GET` | `/api/health` | 淺層健康檢查；正式環境由 Worker 直接回應，不喚醒容器 |
+| `GET` | `/api/health/backend` | 深層健康檢查；轉進容器，回傳健康狀態與模型資訊 |
 | `POST` | `/api/chat` | 一般問答 |
 | `POST` | `/api/chat/stream` | SSE 串流問答 |
 | `POST` | `/api/voice` | 語音辨識、回答與 TTS |
