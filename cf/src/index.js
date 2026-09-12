@@ -75,8 +75,10 @@ export class NtpuAiaBackend extends Container {
   defaultPort = 8080;
 
   // 休眠即停止計費，但下一位使用者要等喚醒（容器 1-3 秒 + 後端載入索引約 4 秒）。
-  // 校園流量零散，設得比預設 10 分鐘長，用少量費用換掉大部分的喚醒等待。
-  sleepAfter = "30m";
+  // 原本設 30m，是「用少量費用換掉大部分的喚醒等待」；但帳單顯示 idle 時段
+  // 佔掉大部分的 Memory 計費，因此改為成本優先：無人使用 2 分鐘即休眠。
+  // 代價是冷啟動變頻繁。若使用者回報等待明顯變久，往上調（先試 5m）。
+  sleepAfter = "2m";
 
   constructor(ctx, env) {
     super(ctx, env);
