@@ -37,9 +37,12 @@
       "class_name": "NtpuAiaBackend",
       "image": "../Dockerfile",
       "image_build_context": "..",
-      // standard-1：0.5 vCPU / 4 GiB / 8 GB。索引約 5178 筆，本機實測記憶體
-      // 需求低於 2 GiB，4 GiB 留有餘裕。不夠時改 standard-2（1 vCPU / 6 GiB）。
-      "instance_type": "standard-1",
+      // basic：0.25 vCPU / 1 GiB / 4 GB。Memory 與 Disk 依「配置資源 × 運行時間」
+      // 計費，與實際用量無關，因此配置越貼近實需越省。Dashboard 觀測穩態約
+      // 510 MiB RAM、826 MiB Disk，1 GiB / 4 GB 仍有餘裕。
+      // 出現 OOM、CPU 飽和或 latency 明顯上升時，回頭改 standard-1
+      //（0.5 vCPU / 4 GiB / 8 GB）；仍不足再上 standard-2（1 vCPU / 6 GiB）。
+      "instance_type": "basic",
       // 單一執行個體即可：索引在啟動時載入，多開一份就多算一次記憶體費用。
       "max_instances": 1
     }
