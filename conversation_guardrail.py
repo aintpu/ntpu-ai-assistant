@@ -27,7 +27,7 @@ OFFICE_NAMES = {
 OFFICE_KEYWORDS = {
     "ope": (
         "體育", "運動", "場地", "體育館", "崇越館", "課表", "賽事", "競賽",
-        "全大運", "系際盃", "器材", "運動獎學金",
+        "全大運", "系際盃", "器材", "運動獎學金", "健身", "體能", "肌力", "熱身", "伸展",
     ),
     "ge": (
         "通識", "向度", "通識學分", "通識月", "夏季學院", "跨校通識",
@@ -69,6 +69,40 @@ OFFICE_PRIORITY_KEYWORDS = {
     ),
 }
 
+# Service-boundary configuration.  The guardrail is intentionally expressed in
+# terms of a supported service entity rather than a school-specific rule: the
+# same mechanism can be reused by another corpus by replacing these aliases.
+DEFAULT_SERVICE_ENTITY_ALIASES = (
+    "國立臺北大學", "國立台北大學", "臺北大學", "台北大學", "NTPU", "北大",
+)
+# Short aliases cannot be recognized reliably from a suffix pattern alone.
+# Keep only high-precision competing aliases here; full organization names are
+# detected generically below and the structured scope classifier handles other
+# named entities.
+DEFAULT_EXTERNAL_ENTITY_ALIASES = (
+    "台大", "臺大", "NTU", "National Taiwan University",
+)
+ENTITY_SUFFIXES = (
+    "大學", "學院", "高中", "國中", "國小", "學校", "研究院",
+    "公司", "銀行", "醫院", "市政府", "縣政府", "區公所",
+)
+ENTITY_FILLERS = (
+    "那請問", "請問", "想問", "我要問", "幫我查", "查詢", "如何查詢", "收到",
+    "關於", "有關", "請教",
+)
+GENERIC_ENTITY_CANDIDATES = {
+    "學生", "本校", "我校", "校內", "校外", "相關", "大學", "學校",
+    "宿舍", "住宿", "規定", "辦法", "流程", "服務", "系統",
+}
+_CJK_ENTITY_RE = re.compile(
+    r"(?P<entity>[\u4e00-\u9fff]{2,24}(?:" + "|".join(ENTITY_SUFFIXES) + r"))"
+)
+_EN_ENTITY_RE = re.compile(
+    r"(?P<entity>\b(?:[A-Za-z][A-Za-z0-9&.\-]*\s+){1,5}"
+    r"(?:University|College|School|Company|Bank|Hospital|Government)\b)",
+    re.IGNORECASE,
+)
+
 CHAT_PHRASES = {
     "你好", "嗨", "哈囉", "hello", "hi", "謝謝", "謝謝你", "感謝", "好的",
     "好", "了解", "收到", "沒問題", "你是誰", "你能做什麼",
@@ -76,6 +110,16 @@ CHAT_PHRASES = {
 FOLLOWUP_MARKERS = (
     "那", "這個", "這樣", "它", "這些", "呢", "嗎", "可以嗎", "要幾分",
     "多久", "怎麼申請", "要去哪裡", "還有其他", "什麼時候", "需要什麼",
+)
+CONTEXT_FOLLOWUP_BASES = (
+    "這個", "這樣", "它", "這些", "可以嗎", "要幾分", "多久", "怎麼申請",
+    "要去哪裡", "還有其他", "什麼時候", "需要什麼", "多少", "多少錢", "幾點",
+    "哪裡", "怎麼辦", "有沒有", "有哪些", "要什麼", "何時", "如何",
+    "費用多少", "還有嗎", "還有哪些",
+)
+CONTEXT_FOLLOWUP_SUFFIXES = (
+    "證明", "文件", "資料", "條件", "要求", "方式", "流程", "規定", "時間", "日期", "費用", "資格",
+    "規定的申請方式", "流程怎麼走", "還有嗎", "還有哪些",
 )
 
 
@@ -160,6 +204,8 @@ class ScopeDecision:
     office_hint: str | None = None
     confidence: float = 0.0
     reason: str = ""
+    entity_conflict: bool = False
+    entity_hint: str | None = None
 
     @classmethod
     def from_value(cls, value: Any) -> "ScopeDecision":
@@ -173,6 +219,8 @@ class ScopeDecision:
             office_hint=_normalize_office(value.get("office_hint")),
             confidence=_clamp_confidence(value.get("confidence", 0.0)),
             reason=_clean_text(value.get("reason")) or "",
+            entity_conflict=_as_bool(value.get("entity_conflict", False)),
+            entity_hint=_clean_text(value.get("entity_hint")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -227,6 +275,93 @@ def _normalize_office(value: Any) -> str | None:
     return aliases.get(text) or (text if text in VALID_OFFICES else None)
 
 
+def _normalize_entity_text(value: Any) -> str:
+    """Normalize an entity mention without changing ordinary query text."""
+    if not isinstance(value, str):
+        return ""
+    normalized = re.sub(r"[\s\-_（）()·．.。，、：:；;！？!?「」『』\"']+", "", value)
+    return normalized.casefold().replace("台", "臺")
+
+
+def _contains_entity_alias(text: str, alias: str) -> bool:
+    normalized_text = _normalize_entity_text(text)
+    normalized_alias = _normalize_entity_text(alias)
+    if not normalized_text or not normalized_alias:
+        return False
+    if re.fullmatch(r"[a-z0-9]+", normalized_alias):
+        return bool(re.search(
+            rf"(?<![a-z0-9]){re.escape(normalized_alias)}(?![a-z0-9])",
+            normalized_text,
+            flags=re.IGNORECASE,
+        ))
+    return normalized_alias in normalized_text
+
+
+def _configured_aliases(
+    context: dict[str, Any],
+    key: str,
+    default: Iterable[str],
+) -> tuple[str, ...]:
+    value = context.get(key)
+    if value is None:
+        value = default
+    if isinstance(value, str):
+        value = (value,)
+    try:
+        return tuple(str(alias).strip() for alias in value if str(alias).strip())
+    except TypeError:
+        return tuple(str(alias).strip() for alias in default if str(alias).strip())
+
+
+def _clean_entity_candidate(value: str) -> str:
+    candidate = (value or "").strip()
+    for filler in sorted(ENTITY_FILLERS, key=len, reverse=True):
+        if candidate.startswith(filler):
+            candidate = candidate[len(filler):].strip()
+    return candidate.strip("，、：:；;！？!?「」『』 ")
+
+
+def _extract_entity_candidates(text: str) -> list[str]:
+    candidates: list[str] = []
+    for pattern in (_CJK_ENTITY_RE, _EN_ENTITY_RE):
+        for match in pattern.finditer(text or ""):
+            candidate = _clean_entity_candidate(match.group("entity"))
+            normalized = _normalize_entity_text(candidate)
+            if not candidate or normalized in {
+                _normalize_entity_text(item) for item in GENERIC_ENTITY_CANDIDATES
+            }:
+                continue
+            if candidate not in candidates:
+                candidates.append(candidate)
+    return candidates
+
+
+def detect_service_entity_conflict(
+    query: str,
+    *,
+    supported_aliases: Iterable[str] = DEFAULT_SERVICE_ENTITY_ALIASES,
+    external_aliases: Iterable[str] = DEFAULT_EXTERNAL_ENTITY_ALIASES,
+) -> str | None:
+    """Return an explicit competing service entity, if one is present.
+
+    This is deliberately high precision.  It catches configured short aliases
+    and organization names with common entity suffixes; the LLM scope
+    classifier supplies the broader semantic check for names that cannot be
+    safely identified by a lexical rule.
+    """
+    text = query or ""
+    supported = tuple(alias for alias in supported_aliases if alias)
+    for alias in external_aliases:
+        if alias and _contains_entity_alias(text, alias):
+            return str(alias)
+
+    for candidate in _extract_entity_candidates(text):
+        if any(_contains_entity_alias(candidate, alias) for alias in supported):
+            continue
+        return candidate
+    return None
+
+
 def _history_items(history: Iterable[Any] | None) -> list[dict[str, str]]:
     result = []
     for item in history or []:
@@ -247,11 +382,29 @@ def _last_user_query(history: Iterable[Any] | None) -> str:
     return ""
 
 
+def _is_context_only_followup(query: str) -> bool:
+    text = re.sub(r"[\s，、：:；;！？!?。]+", "", (query or "").strip().lower())
+    if not text:
+        return False
+    prefixes = ("", "那")
+    for prefix in prefixes:
+        for base in CONTEXT_FOLLOWUP_BASES:
+            stem = prefix + base
+            if text == stem:
+                return True
+            if text.startswith(stem):
+                suffix = text[len(stem):]
+                if suffix in CONTEXT_FOLLOWUP_SUFFIXES:
+                    return True
+            if text == stem + "呢" or text == stem + "嗎" or text == stem + "可以嗎":
+                return True
+    return text in {"呢", "嗎", "好嗎", "這個呢", "那這個呢"}
+
+
 def _likely_followup(query: str, history: Iterable[Any] | None, state: ConversationState) -> bool:
     if not (_history_items(history) or state.active_topic):
         return False
-    text = query.strip().lower()
-    return len(text) <= 24 or any(marker.lower() in text for marker in FOLLOWUP_MARKERS)
+    return _is_context_only_followup(query)
 
 
 def _parse_json_object(text: Any) -> dict[str, Any]:
@@ -394,15 +547,28 @@ def resolve_conversation(
 
 def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[str, str]]:
     supported = "；".join(f"{code}={name}" for code, name in OFFICE_NAMES.items())
+    service_aliases = _configured_aliases(
+        context,
+        "service_entity_aliases",
+        DEFAULT_SERVICE_ENTITY_ALIASES,
+    )
+    service_entities = "、".join(service_aliases)
+    raw_query = str(context.get("raw_query") or standalone_query)
     system = (
         "你是 NTPU 行政服務 AI 的 Business Scope Guardrail。"
         "你只能判斷問題是否屬於支援範圍，不回答問題。\n"
-        f"支援處室：{supported}。一般問候或系統功能詢問也算 IN_SCOPE，office_hint 可為 null。\n"
+        f"服務主體只包含：{service_entities}；支援處室：{supported}。"
+        "一般問候或系統功能詢問也算 IN_SCOPE，office_hint 可為 null。\n"
+        "如果目前問題明確指向其他學校、公司、機關、地區、產品或服務，"
+        "必須回 OUT_OF_SCOPE，entity_conflict=true，不能因為前文有相似主題而繼承原處室。"
+        "目前問題的明確指向優先於 active_topic、active_office 與歷史來源。\n"
         "資訊不足但仍與支援校務主題有關時回 AMBIGUOUS，不得把資訊不足當 OUT_OF_SCOPE。"
         "只有完整語意確認與所有支援服務無關時才回 OUT_OF_SCOPE。"
-        "只輸出 JSON：{status:'IN_SCOPE|OUT_OF_SCOPE|AMBIGUOUS', office_hint:string|null, confidence:number, reason:string}。"
+        "只輸出 JSON：{status:'IN_SCOPE|OUT_OF_SCOPE|AMBIGUOUS', office_hint:string|null, "
+        "confidence:number, reason:string, entity_conflict:boolean, entity_hint:string|null}。"
     )
     user = (
+        f"原始本輪問題：{raw_query[:1000]}\n"
         f"standalone_query：{standalone_query[:1200]}\n"
         f"context：{json.dumps(context, ensure_ascii=False)}"
     )
@@ -452,29 +618,129 @@ def run_scope_guardrail(
 ) -> ScopeDecision:
     """Classify the already-resolved query into the three SDD scope states."""
     context = context or {}
+    raw_query = str(context.get("raw_query") or standalone_query)
+    service_aliases = _configured_aliases(
+        context,
+        "service_entity_aliases",
+        DEFAULT_SERVICE_ENTITY_ALIASES,
+    )
+    external_aliases = _configured_aliases(
+        context,
+        "external_entity_aliases",
+        DEFAULT_EXTERNAL_ENTITY_ALIASES,
+    )
+    boundary_entity = detect_service_entity_conflict(
+        raw_query,
+        supported_aliases=service_aliases,
+        external_aliases=external_aliases,
+    )
+    if not boundary_entity:
+        boundary_entity = detect_service_entity_conflict(
+            standalone_query,
+            supported_aliases=service_aliases,
+            external_aliases=external_aliases,
+        )
+    if boundary_entity:
+        return ScopeDecision(
+            "OUT_OF_SCOPE",
+            None,
+            0.99,
+            f"目前問題明確指向「{boundary_entity}」，不屬於本服務主體。",
+            True,
+            boundary_entity,
+        )
+    has_context = bool(context.get("active_topic") or context.get("active_office"))
+    context_only_followup = _is_context_only_followup(raw_query)
+    classifier_query = standalone_query
+    classifier_context = context
+    if has_context and not context_only_followup:
+        # A resolved query can contain an old topic by design. For a new
+        # looking turn, classify the raw wording without the old office/topic
+        # so inherited text cannot become scope evidence.
+        classifier_query = raw_query
+        classifier_context = dict(context)
+        classifier_context["active_office"] = None
+        classifier_context["active_topic"] = None
     try:
         result = ScopeDecision.from_value(
             _complete_json(
                 complete_fn,
-                _scope_prompt(standalone_query, context),
+                _scope_prompt(classifier_query, classifier_context),
                 max_tokens=220,
                 retries=retries,
             )
         )
+        if result.entity_conflict:
+            entity_hint = result.entity_hint or "其他服務主體"
+            return ScopeDecision(
+                "OUT_OF_SCOPE",
+                None,
+                max(result.confidence, 0.85),
+                result.reason or f"目前問題明確指向「{entity_hint}」，不屬於本服務主體。",
+                True,
+                entity_hint,
+            )
         # The structured classifier is authoritative when it has a clear
         # answer, but a malformed/overly conservative model response must not
         # reintroduce the short-follow-up bug. The lexical check only promotes
         # an answer when the resolved query has an unambiguous supported term.
-        lexical = _lexical_scope(standalone_query, context)
-        has_context = bool(context.get("active_topic") or context.get("active_office"))
+        resolved_lexical = _lexical_scope(standalone_query, context)
+        lexical_query = standalone_query if context_only_followup else raw_query
+        lexical_context = context if context_only_followup else {
+            "service_entity_aliases": service_aliases,
+        }
+        lexical = _lexical_scope(lexical_query, lexical_context)
+        raw_lexical = _lexical_scope(
+            raw_query,
+            {"service_entity_aliases": service_aliases},
+        )
+        inherited_context_only = (
+            has_context
+            and raw_lexical.status == "OUT_OF_SCOPE"
+            and resolved_lexical.status == "IN_SCOPE"
+            and not context_only_followup
+        )
         if (
             result.status == "OUT_OF_SCOPE"
             and has_context
             and lexical.status != "OUT_OF_SCOPE"
         ):
-            return lexical
+            # The old implementation promoted any short raw query back to the
+            # previous office.  That makes an unrelated question such as
+            # "那附近的餐廳呢" inherit a dormitory/financial context.  Only
+            # high-precision context-only followups may reuse the old topic.
+            return result if inherited_context_only else lexical
         if result.status == "AMBIGUOUS" and lexical.status == "IN_SCOPE":
-            return lexical
+            return result if inherited_context_only else lexical
+        if result.status == "IN_SCOPE" and lexical.status == "OUT_OF_SCOPE":
+            # Do not let an optimistic model classification open the RAG route
+            # when the raw turn has no supported-service signal at all. This
+            # covers unrelated questions that do not mention another entity,
+            # such as weather, restaurants, finance, travel, or programming.
+            return ScopeDecision(
+                "OUT_OF_SCOPE",
+                None,
+                max(0.82, result.confidence),
+                "本輪問題沒有可確認的支援服務訊號，不能交給校務資料庫回答。",
+            )
+        if (
+            result.status == "AMBIGUOUS"
+            and lexical.status == "OUT_OF_SCOPE"
+            and (not has_context or inherited_context_only)
+        ):
+            return ScopeDecision(
+                "OUT_OF_SCOPE",
+                None,
+                max(0.78, result.confidence),
+                "本輪問題沒有可確認的支援服務訊號，不能交給校務資料庫回答。",
+            )
+        if inherited_context_only and result.status == "IN_SCOPE":
+            return ScopeDecision(
+                "OUT_OF_SCOPE",
+                None,
+                max(0.82, result.confidence),
+                "本輪問題未明確指向支援範圍；上一輪上下文不能作為回答依據。",
+            )
         if (
             result.status == "IN_SCOPE"
             and lexical.status == "IN_SCOPE"
@@ -489,6 +755,11 @@ def run_scope_guardrail(
             return lexical
         return result
     except Exception:
+        if has_context and not context_only_followup:
+            return _lexical_scope(
+                raw_query,
+                {"service_entity_aliases": service_aliases},
+            )
         return _lexical_scope(standalone_query, context)
 
 
@@ -574,6 +845,14 @@ def check_evidence_sufficiency(query: str, documents: Iterable[Any]) -> Evidence
     requires at least one meaningful query term to be visible in the selected
     evidence before the Agent may present it as an answer.
     """
+    boundary_entity = detect_service_entity_conflict(query)
+    if boundary_entity:
+        return EvidenceDecision(
+            False,
+            0.0,
+            f"問題指向「{boundary_entity}」，目前檢索服務主體不一致。",
+        )
+
     docs = [doc for doc in documents if getattr(doc, "page_content", "")]
     if not docs:
         return EvidenceDecision(False, 0.0, "沒有檢索到可用文件。")

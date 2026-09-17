@@ -38,6 +38,7 @@ from conversation_guardrail import (
     build_updated_state,
     check_evidence_sufficiency,
     clarification_text,
+    detect_service_entity_conflict,
     resolve_conversation,
     run_scope_guardrail,
     select_office,
@@ -1664,6 +1665,8 @@ SYSTEM_STYLE = (
 
     "【重要限制】\n"
     "你只能回答以下範疇的問題：\n"
+    "- 本系統的資料服務主體是國立臺北大學（NTPU）；若使用者明確詢問其他學校、公司、機關、地區、產品或服務，"
+    "不得拿 NTPU 資料代替回答，應清楚說明目前服務邊界與資料不足。\n"
     "- 國立臺北大學體育室相關業務（場地借用、課程、活動、法規、公告等）\n"
     "- 國立臺北大學通識教育中心相關業務（通識課程、學分抵免、活動、法規、公告等）\n"
     "- 國立臺北大學語言中心相關業務（大學英文、外語畢業門檻、語言課程、測驗、法規、公告等）\n"
@@ -1850,6 +1853,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
         resolution_obj
         and resolution_obj.is_followup
         and not resolution_obj.topic_changed
+        and not (scope_obj and scope_obj.entity_conflict)
     ):
         previous_source_docs = load_source_docs(state_obj.previous_source_ids)
 
@@ -2232,6 +2236,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
             not source_ids
             and resolution_obj.is_followup
             and not resolution_obj.topic_changed
+            and not scope_obj.entity_conflict
         ):
             source_ids = state_obj.previous_source_ids
         updated_state = build_updated_state(
@@ -2597,6 +2602,18 @@ _BLOCKED_MSG = (
 _INJECT_MSG = "您的輸入包含不允許的內容，請重新提問。"
 
 
+def _external_entity_message(entity: str) -> str:
+    return (
+        f"目前這個系統只提供國立臺北大學（NTPU）的資料，無法回答「{entity}」的內容。"
+        "請改問本系統支援範圍內的問題，或直接查詢該單位的官方資料。"
+    )
+
+
+def _clear_conversation_context(state: ConversationState) -> ConversationState:
+    """Do not let an explicit service-entity switch reuse old sources."""
+    return ConversationState(conversation_id=state.conversation_id)
+
+
 def run_safety_guardrail(raw_query: str) -> dict:
     """Run only the safety check; business scope is handled separately below."""
     t0 = time.time()
@@ -2630,6 +2647,8 @@ def _log_guardrail_decision(
         "inherited_office": resolution.inherited_office if resolution else None,
         "scope_status": scope.status if scope else None,
         "scope_confidence": scope.confidence if scope else None,
+        "entity_conflict": scope.entity_conflict if scope else None,
+        "entity_hint": scope.entity_hint if scope else None,
         "selected_office": selected_office,
         "route_original": route_original,
         "route_final": route_final,
@@ -2735,6 +2754,36 @@ def prepare_conversation_turn(
             "office": None,
         }
 
+    boundary_entity = detect_service_entity_conflict(raw_query)
+    if boundary_entity:
+        blocked_state = _clear_conversation_context(state)
+        scope = ScopeDecision(
+            "OUT_OF_SCOPE",
+            None,
+            0.99,
+            f"目前問題明確指向「{boundary_entity}」，不屬於本服務主體。",
+            True,
+            boundary_entity,
+        )
+        _set_last_conversation_state(blocked_state)
+        _log_guardrail_decision(
+            conversation_id=state.conversation_id,
+            raw_query=raw_query,
+            scope=scope,
+            result="EXTERNAL_ENTITY_BLOCKED",
+            route_original="OTHER",
+            route_final="OTHER",
+        )
+        return {
+            "status": "blocked",
+            "message": _external_entity_message(boundary_entity),
+            "state": blocked_state,
+            "scope": scope,
+            "resolution": None,
+            "office": None,
+            "domain": "OTHER",
+        }
+
     t0 = time.time()
     resolution = resolve_conversation(
         current_query=raw_query,
@@ -2769,6 +2818,7 @@ def prepare_conversation_turn(
         context={
             "active_office": state.active_office,
             "active_topic": state.active_topic,
+            "raw_query": raw_query,
         },
         complete_fn=llm_adapter.complete,
         retries=1,
@@ -2777,15 +2827,22 @@ def prepare_conversation_turn(
 
     if scope.status == "OUT_OF_SCOPE":
         fallback_match = _best_system_match(raw_query, resolution.standalone_query)
-        if should_use_system_fallback(
-            raw_query,
-            fallback_match,
-            threshold=SYSTEM_FALLBACK_THRESHOLD,
-        ) or should_use_system_fallback(
-            resolution.standalone_query,
-            fallback_match,
-            threshold=SYSTEM_FALLBACK_THRESHOLD,
-        ):
+        system_fallback_allowed = (
+            not scope.entity_conflict
+            and (
+                should_use_system_fallback(
+                    raw_query,
+                    fallback_match,
+                    threshold=SYSTEM_FALLBACK_THRESHOLD,
+                )
+                or should_use_system_fallback(
+                    resolution.standalone_query,
+                    fallback_match,
+                    threshold=SYSTEM_FALLBACK_THRESHOLD,
+                )
+            )
+        )
+        if system_fallback_allowed:
             return _system_decision(
                 state=state,
                 raw_query=raw_query,
@@ -2793,7 +2850,8 @@ def prepare_conversation_turn(
                 match=fallback_match,
                 fallback_used=True,
             )
-        _set_last_conversation_state(state)
+        blocked_state = _clear_conversation_context(state) if scope.entity_conflict else state
+        _set_last_conversation_state(blocked_state)
         _log_guardrail_decision(
             conversation_id=state.conversation_id,
             raw_query=raw_query,
@@ -2805,8 +2863,12 @@ def prepare_conversation_turn(
         )
         return {
             "status": "blocked",
-            "message": _BLOCKED_MSG,
-            "state": state,
+            "message": (
+                _external_entity_message(scope.entity_hint)
+                if scope.entity_conflict and scope.entity_hint
+                else _BLOCKED_MSG
+            ),
+            "state": blocked_state,
             "scope": scope,
             "resolution": resolution,
             "office": None,

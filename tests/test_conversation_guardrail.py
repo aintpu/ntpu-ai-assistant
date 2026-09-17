@@ -6,6 +6,7 @@ from conversation_guardrail import (
     ConversationState,
     build_updated_state,
     check_evidence_sufficiency,
+    detect_service_entity_conflict,
     resolve_conversation,
     run_scope_guardrail,
     select_office,
@@ -41,6 +42,97 @@ def resolver_output(**overrides):
 
 
 class ConversationGuardrailTests(unittest.TestCase):
+    def test_supported_service_entity_is_not_blocked(self):
+        self.assertIsNone(detect_service_entity_conflict("國立臺北大學宿舍住宿管理規定"))
+        self.assertIsNone(detect_service_entity_conflict("NTPU 的宿舍申請流程"))
+
+    def test_competing_entity_alias_is_blocked_before_followup_inheritance(self):
+        self.assertEqual(detect_service_entity_conflict("那請問台灣大學的呢"), "台灣大學")
+        self.assertEqual(detect_service_entity_conflict("不是是要台大"), "台大")
+
+    def test_generic_organization_entity_is_blocked(self):
+        self.assertEqual(detect_service_entity_conflict("某某銀行的學生貸款規定"), "某某銀行")
+        self.assertEqual(detect_service_entity_conflict("National Taiwan University dorm rules"), "National Taiwan University")
+
+    def test_scope_guardrail_entity_conflict_wins_over_model_in_scope(self):
+        def should_not_complete(*args, **kwargs):
+            raise AssertionError("lexical entity boundary should run before the LLM scope classifier")
+
+        scope = run_scope_guardrail(
+            "國立臺北大學宿舍住宿管理規定：那請問台灣大學的呢",
+            {
+                "raw_query": "那請問台灣大學的呢",
+                "active_office": "osa",
+                "active_topic": "國立臺北大學宿舍住宿管理規定",
+            },
+            should_not_complete,
+            retries=0,
+        )
+        self.assertEqual(scope.status, "OUT_OF_SCOPE")
+        self.assertTrue(scope.entity_conflict)
+        self.assertEqual(scope.entity_hint, "台灣大學")
+
+    def test_unrelated_short_question_cannot_reuse_previous_context(self):
+        scope = run_scope_guardrail(
+            "國立臺北大學宿舍住宿管理規定：那附近的餐廳呢",
+            {
+                "raw_query": "那附近的餐廳呢",
+                "active_office": "osa",
+                "active_topic": "國立臺北大學宿舍住宿管理規定",
+            },
+            FakeCompleter([
+                {
+                    "status": "IN_SCOPE",
+                    "office_hint": "osa",
+                    "confidence": 0.96,
+                    "reason": "沿用上一輪宿舍主題",
+                },
+            ]),
+            retries=0,
+        )
+        self.assertEqual(scope.status, "OUT_OF_SCOPE")
+        self.assertFalse(scope.entity_conflict)
+        self.assertIn("沒有可確認的支援服務訊號", scope.reason)
+
+    def test_scope_classifier_failure_does_not_restore_old_context(self):
+        def failing_complete(*args, **kwargs):
+            raise RuntimeError("classifier unavailable")
+
+        scope = run_scope_guardrail(
+            "國立臺北大學宿舍住宿管理規定：明天台北會下雨嗎？",
+            {
+                "raw_query": "明天台北會下雨嗎？",
+                "active_office": "osa",
+                "active_topic": "國立臺北大學宿舍住宿管理規定",
+            },
+            failing_complete,
+            retries=0,
+        )
+        self.assertEqual(scope.status, "OUT_OF_SCOPE")
+        self.assertIsNone(scope.office_hint)
+
+    def test_unrelated_fresh_questions_are_blocked_even_if_model_says_in_scope(self):
+        def overoptimistic_model(*args, **kwargs):
+            return json.dumps({
+                "status": "IN_SCOPE",
+                "office_hint": "osa",
+                "confidence": 0.99,
+                "reason": "模型錯誤放行",
+            }, ensure_ascii=False)
+
+        for query in (
+            "明天台北會下雨嗎？",
+            "請推薦附近的餐廳",
+            "比特幣現在多少錢？",
+            "幫我寫一段 Python 程式",
+            "台北大學附近的餐廳",
+            "NTPU 校園天氣如何？",
+        ):
+            with self.subTest(query=query):
+                scope = run_scope_guardrail(query, {}, overoptimistic_model, retries=0)
+                self.assertEqual(scope.status, "OUT_OF_SCOPE")
+                self.assertIsNone(scope.office_hint)
+
     def test_followup_short_query_not_out_of_scope(self):
         state = ConversationState(
             conversation_id="c1",
@@ -144,6 +236,19 @@ class ConversationGuardrailTests(unittest.TestCase):
         self.assertEqual(scope.status, "IN_SCOPE")
         self.assertEqual(scope.office_hint, "oga")
 
+    def test_general_fitness_question_stays_in_scope(self):
+        def failing_complete(*args, **kwargs):
+            raise RuntimeError("classifier unavailable")
+
+        scope = run_scope_guardrail(
+            "如何安排健身與熱身？",
+            {},
+            failing_complete,
+            retries=0,
+        )
+        self.assertEqual(scope.status, "IN_SCOPE")
+        self.assertEqual(scope.office_hint, "ope")
+
     def test_general_affairs_venue_form_beats_generic_venue_keyword(self):
         def failing_complete(*args, **kwargs):
             raise RuntimeError("classifier unavailable")
@@ -221,6 +326,17 @@ class ConversationGuardrailTests(unittest.TestCase):
         )
         self.assertTrue(sufficient.sufficient)
         self.assertFalse(insufficient.sufficient)
+
+    def test_evidence_gate_rejects_competing_entity_even_with_topic_overlap(self):
+        decision = check_evidence_sufficiency(
+            "請問台灣大學的宿舍住宿管理規定是什麼",
+            [SimpleNamespace(
+                page_content="國立臺北大學住宿輔導與管理辦法：宿舍住宿管理規定",
+                metadata={"title": "國立臺北大學住宿輔導與管理辦法"},
+            )],
+        )
+        self.assertFalse(decision.sufficient)
+        self.assertIn("台灣大學", decision.reason)
 
 
 if __name__ == "__main__":
