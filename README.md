@@ -161,19 +161,25 @@ Repository 目前包含：
 - `crawler_data/all_content_v2.md`：體育室網站主要內容
 - `crawler_data/ALL_files_2.md`：體育室法規與表單全文
 - `crawler_data/cge_content.md`：通識教育中心資料
+- `crawler_data/ge_regulations_extra.md`：通識教育中心彙整表中原先缺漏的法規全文
 - `crawler_data/lc_content.md`：語言中心資料
 - `crawler_data/oaa_regulations.md`：教務處法規全文
 - `crawler_data/osa_regulations.md`：學務處法規全文
 - `crawler_data/hr_content.md`：人事室差勤與勞動基準法請假常見問答
+- `crawler_data/hr_regulations.md`：人事室法規全文
 - `crawler_data/oga_content.md`：總務處六組共 60 題常見問答
+- `crawler_data/oga_regulations.md`：總務處法規全文
 - `front_end/sports-ai-chat/public/documents/hr/`：人事室原始附件（1 份 DOCX、3 份 PDF），供回答來源直接開啟
 - `crawler_data/北大學術單位法規彙整.xlsx`：ge/lc 法規 metadata（每處室一個分頁，英文欄名）
-- `crawler_data/北大行政單位法規彙整.xlsx`：oaa/osa 法規 metadata（單一 Sheet1、中文欄名，以「處室」欄篩選）
+- `crawler_data/北大行政單位法規彙整.xlsx`：ope/oaa/osa/hr/oga 法規 metadata（單一 Sheet1、中文欄名，以「處室」欄篩選）
 - `corrections.md`：人工修正內容
 - `system_content.json`：About Page 與 SYSTEM FAQ 共用內容
 
 教務處／學務處目前只接入法規辦法全文，沒有最新消息與常見問題；法規 URL 僅涵蓋
 彙整表收錄的各 20 筆，其餘法規有全文但無來源連結。
+
+可執行 `python knowledge_source_audit.py` 檢查七個支援處室的彙整表項目是否都有可檢索正文；
+若只有標題／連結、正文缺漏或仍含解析失敗標記，檢查會以非零狀態結束。
 
 `all_content_en_v2.md` 仍未接入目前的中文主索引。資料更新必須依序完成 source file
 更新、FAISS/BM25 重建與正式部署；只改網站文案不會更新知識庫。

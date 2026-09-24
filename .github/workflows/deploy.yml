@@ -49,6 +49,7 @@ jobs:
             exit 0
           fi
           pip install --no-cache-dir -r requirements-runtime.txt
+          python knowledge_source_audit.py
           python -c "import agentic_v2_5_4high"
           ls -la .faiss_cache
 

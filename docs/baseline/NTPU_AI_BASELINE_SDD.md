@@ -203,11 +203,12 @@ dept, type, page, title, url, category, date, doc_id
 | 單位 | 主要 repository 資料 |
 | --- | --- |
 | 體育室 | `crawler_data/all_content_v2.md`、`crawler_data/ALL_files_2.md`、`file_index.json` |
-| 通識教育中心 | `crawler_data/cge_content.md` |
+| 通識教育中心 | `crawler_data/cge_content.md`、`crawler_data/ge_regulations_extra.md` |
 | 語言中心 | `crawler_data/lc_content.md` |
 | 教務處 | `crawler_data/oaa_regulations.md` + 行政法規 URL metadata |
 | 學務處 | `crawler_data/osa_regulations.md` + 行政法規 URL metadata |
-| 人事室 | `crawler_data/hr_content.md` |
+| 人事室 | `crawler_data/hr_content.md`、`crawler_data/hr_regulations.md` |
+| 總務處 | `crawler_data/oga_content.md`、`crawler_data/oga_regulations.md` |
 | 跨處室人工修正 | `corrections.md`，以 `dept` metadata 保持處室隔離 |
 
 資料更新分成三件事，不應混為一談：
@@ -215,6 +216,9 @@ dept, type, page, title, url, category, date, doc_id
 1. 更新 crawler/PDF 產出的 source files。
 2. 依 content fingerprint 重建 FAISS 與 BM25。
 3. 經 GitHub Actions 建置並部署新的 Worker/Container。
+
+`python knowledge_source_audit.py` 會逐處室比對 XLSX 彙整表與實際 Markdown 正文；
+缺檔、只有標題／連結、或仍含抽取失敗標記時會回傳失敗。
 
 程式內有 `auto_update()` 排程函式，但 production 是否啟用不能只因函式存在就推定；正式可驗證的更新路徑是 repository 更新後由 CI 重建與部署。
 

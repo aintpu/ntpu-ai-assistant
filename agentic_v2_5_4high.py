@@ -168,8 +168,11 @@ CRAWLER_SOURCES = [
 # 純法規全文來源（無最新消息／常見問題，整份檔案就是 ## 標題 + ### Page N 的法規）
 # oaa_content.md / osa_content.md 為 PDF OCR，雜訊過多，暫不接入
 REGULATION_SOURCES = [
+    ("ge", os.path.join(BASE_DIR, "crawler_data", "ge_regulations_extra.md")),
     ("oaa", os.path.join(BASE_DIR, "crawler_data", "oaa_regulations.md")),
     ("osa", os.path.join(BASE_DIR, "crawler_data", "osa_regulations.md")),
+    ("hr", os.path.join(BASE_DIR, "crawler_data", "hr_regulations.md")),
+    ("oga", os.path.join(BASE_DIR, "crawler_data", "oga_regulations.md")),
 ]
 AVATAR_PATH = os.path.join(BASE_DIR, "avatar.jpg")
 
@@ -451,10 +454,15 @@ def parse_regulations_content(md_text: str) -> List[Document]:
 REGULATION_XLSX = os.path.join(BASE_DIR, "crawler_data", "北大學術單位法規彙整.xlsx")
 DEPT_XLSX_SHEET = {"ge": "通識教育中心", "lc": "語言中心"}
 
-# 行政單位（oaa/osa）的彙整表格式與學術單位不同：單一 Sheet1、中文欄名，
+# 行政單位（oaa/osa/hr/oga）的彙整表格式與學術單位不同：單一 Sheet1、中文欄名，
 # 各處室混在同一張表裡，以「處室」欄篩選。注意學務處在表內的值是「學生事務處」。
 ADMIN_REGULATION_XLSX = os.path.join(BASE_DIR, "crawler_data", "北大行政單位法規彙整.xlsx")
-DEPT_ADMIN_XLSX_MAP = {"oaa": "教務處", "osa": "學生事務處"}
+DEPT_ADMIN_XLSX_MAP = {
+    "oaa": "教務處",
+    "osa": "學生事務處",
+    "hr": "人事室",
+    "oga": "總務處",
+}
 
 # corrections.md 每筆修正紀錄的「所屬處室」標記；2026-08 之前寫入的舊紀錄沒有這行，
 # 當時全部視為體育室，故 fallback 成 ope 以維持既有行為。
@@ -483,7 +491,7 @@ def _load_regulation_meta(dept: str) -> Dict[str, dict]:
 
     支援兩種彙整表格式：
     - 學術處室（ge/lc）：每個處室一個分頁，英文欄名 title/tags/file_url/source_page/updated_date
-    - 行政處室（oaa/osa）：單一 Sheet1，中文欄名 處室/法規名稱/標籤/上傳日期/檔案連結
+    - 行政處室（oaa/osa/hr/oga）：單一 Sheet1，中文欄名 處室/法規名稱/標籤/上傳日期/檔案連結
     """
     if dept in DEPT_ADMIN_XLSX_MAP:
         return _load_admin_regulation_meta(dept)
@@ -587,7 +595,7 @@ def parse_dept_regulations(page_md: str, dept: str) -> List[Document]:
 
     if unmatched:
         n_total = len(doc_matches)
-        # oaa/osa 的彙整表本來就只收錄各 20 筆，對不到屬預期，降級為一般訊息
+        # 行政處室的彙整表本來就只收錄各 20 筆，對不到屬預期，降級為一般訊息
         tag = "[系統]" if dept in DEPT_ADMIN_XLSX_MAP else "[警示]"
         print(f"{tag} {DEPT_NAMES.get(dept, dept)} 法規 URL 覆蓋 {n_total - len(unmatched)}/{n_total} 份，"
               f"其餘在 xlsx 對不到標題（將無 URL）：{unmatched[:3]}")
@@ -842,7 +850,7 @@ class OPEIndex:
             print(f"[系統] {DEPT_NAMES.get(dept, dept)} 接入 {len(docs) - n_before} 筆"
                   f"（最新消息＋常見問題＋法規切塊 {n_reg} 筆）")
 
-        # ✨ 5. 行政處室接入：教務處(oaa)、學務處(osa)
+        # ✨ 5. 獨立法規全文接入：通識補充、教務、學務、人事、總務
         #    整份檔案就是法規全文（## 標題 + ### Page N），沒有最新消息／常見問題，
         #    直接餵給 parse_dept_regulations 即可（URL metadata 由行政單位彙整 xlsx join）
         for dept, path in REGULATION_SOURCES:
