@@ -3,11 +3,13 @@ import unittest
 from types import SimpleNamespace
 
 from conversation_guardrail import (
+    ConversationResolution,
     ConversationState,
     build_updated_state,
     check_evidence_sufficiency,
     detect_explicit_unsupported_intent,
     detect_service_entity_conflict,
+    resolution_scope_context,
     resolve_conversation,
     run_scope_guardrail,
     select_office,
@@ -552,6 +554,320 @@ class ConversationGuardrailTests(unittest.TestCase):
         )
         self.assertFalse(decision.sufficient)
         self.assertIn("台灣大學", decision.reason)
+
+
+DORM_TOPIC = "國立臺北大學宿舍會客時間"
+DORM_ANSWER = (
+    "依目前查到的《國立臺北大學住宿輔導與管理辦法》相關內容，宿舍會客時間原則上為上午 9 時至下午 9 時。\n\n"
+    "如果你要，我也可以幫你整理成**「可會客時間 / 禁止留宿時段 / 違規後果」**三點版。"
+)
+HR_TOPIC = "行政人員一年有多少天特休？"
+HR_ANSWER = (
+    "行政人員的「特休」不能一律用同一個天數回答，要先看您的任用身分與可採計年資。\n"
+    "如果您要，我也可以直接幫您整理成「不同身分別的特休/休假日數」對照表。"
+)
+BLOCKED_ANSWER = (
+    "目前沒有可安全回答這個問題的資料。我可以說明本系統的功能、使用方式與限制，"
+    "也可以協助「體育室」（場地借用、課程、賽事）的相關問題喔！"
+)
+
+
+class RecordingCompleter(FakeCompleter):
+    def __init__(self, outputs):
+        super().__init__(outputs)
+        self.prompts = []
+
+    def __call__(self, messages, **kwargs):
+        self.prompts.append(json.dumps(messages, ensure_ascii=False))
+        return super().__call__(messages, **kwargs)
+
+
+def verified_state(office, topic):
+    return ConversationState(
+        conversation_id="followup-ctx",
+        active_office=office,
+        active_topic=topic,
+        scope_verified=True,
+        previous_user_query=topic,
+        previous_standalone_query=topic,
+    )
+
+
+def scope_context(state, raw_query, resolution):
+    # Same shape as prepare_conversation_turn() in agentic_v2_5_4high.py.
+    return {
+        "active_office": state.active_office,
+        "active_topic": state.active_topic,
+        "scope_verified": state.scope_verified,
+        "raw_query": raw_query,
+        **resolution_scope_context(resolution),
+    }
+
+
+class ResolverTrustedFollowupTests(unittest.TestCase):
+    """Screenshots 2026-09-24: "我要" and "我是教師 有8年了" were refused."""
+
+    def test_accepting_assistant_offer_keeps_context(self):
+        state = verified_state("osa", DORM_TOPIC)
+        history = [
+            {"role": "user", "content": "宿舍會客時間是幾點到幾點"},
+            {"role": "assistant", "content": DORM_ANSWER},
+        ]
+        for query in ("我要", "好啊，麻煩你", "要，謝謝"):
+            with self.subTest(query=query):
+                completer = RecordingCompleter([
+                    # The resolver misreads the bare reply as a new topic.
+                    resolver_output(
+                        is_followup=False,
+                        topic_changed=True,
+                        standalone_query=query,
+                        inherited_office=None,
+                        topic=query,
+                        confidence=0.60,
+                    ),
+                    # The classifier is over-conservative about the short turn.
+                    {"status": "OUT_OF_SCOPE", "office_hint": None, "confidence": 0.80, "reason": "只看到短句"},
+                ])
+                resolution = resolve_conversation(query, history, state, completer, retries=0)
+                self.assertTrue(resolution.is_followup)
+                self.assertFalse(resolution.topic_changed)
+                self.assertEqual(resolution.followup_basis, "pattern")
+                self.assertEqual(resolution.inherited_office, "osa")
+                self.assertIn("禁止留宿時段", resolution.standalone_query)
+                self.assertTrue(resolution.standalone_query.startswith(DORM_TOPIC))
+
+                scope = run_scope_guardrail(
+                    resolution.standalone_query,
+                    scope_context(state, query, resolution),
+                    completer,
+                    retries=0,
+                )
+                self.assertEqual(scope.status, "IN_SCOPE")
+                self.assertEqual(scope.office_hint, "osa")
+                # The classifier must see the resolved question, not just "我要".
+                self.assertIn("禁止留宿時段", completer.prompts[-1])
+
+    def test_offer_acceptance_keeps_a_real_model_rewrite(self):
+        state = verified_state("hr", HR_TOPIC)
+        resolution = resolve_conversation(
+            "我要",
+            [{"role": "user", "content": HR_TOPIC}, {"role": "assistant", "content": HR_ANSWER}],
+            state,
+            FakeCompleter([resolver_output(
+                is_followup=True,
+                topic_changed=False,
+                standalone_query="請整理不同任用身分別的特休與休假日數對照表",
+                inherited_office="hr",
+                topic=HR_TOPIC,
+                confidence=0.88,
+            )]),
+            retries=0,
+        )
+        self.assertEqual(resolution.standalone_query, "請整理不同任用身分別的特休與休假日數對照表")
+        self.assertEqual(resolution.followup_basis, "pattern")
+
+    def test_offer_acceptance_survives_long_answers(self):
+        state = verified_state("osa", DORM_TOPIC)
+        long_answer = "條文內容。" * 400 + DORM_ANSWER
+        resolution = resolve_conversation(
+            "我要",
+            [{"role": "assistant", "content": long_answer}],
+            state,
+            FakeCompleter([RuntimeError("resolver unavailable")]),
+            retries=0,
+        )
+        self.assertTrue(resolution.is_followup)
+        self.assertIn("禁止留宿時段", resolution.standalone_query)
+
+    def test_affirmative_without_pending_offer_is_not_forced(self):
+        state = verified_state("osa", DORM_TOPIC)
+        resolution = resolve_conversation(
+            "我要",
+            [{"role": "assistant", "content": BLOCKED_ANSWER}],
+            state,
+            FakeCompleter([resolver_output(
+                is_followup=False,
+                topic_changed=True,
+                standalone_query="我要",
+                inherited_office=None,
+                topic="我要",
+                confidence=0.6,
+            )]),
+            retries=0,
+        )
+        self.assertFalse(resolution.is_followup)
+        self.assertIsNone(resolution.followup_basis)
+
+    def test_offer_acceptance_needs_verified_context(self):
+        state = ConversationState(active_office="osa", active_topic=DORM_TOPIC, scope_verified=False)
+        resolution = resolve_conversation(
+            "我要",
+            [{"role": "assistant", "content": DORM_ANSWER}],
+            state,
+            FakeCompleter([resolver_output(
+                is_followup=False,
+                topic_changed=True,
+                standalone_query="我要",
+                inherited_office=None,
+                topic="我要",
+                confidence=0.6,
+            )]),
+            retries=0,
+        )
+        self.assertFalse(resolution.is_followup)
+
+    def test_combined_identity_and_seniority_reply(self):
+        state = verified_state("hr", HR_TOPIC)
+        for query in ("我是教師 有8年了", "我8年，是教師", "年資8年了", "我是專任教師"):
+            with self.subTest(query=query):
+                completer = FakeCompleter([
+                    resolver_output(
+                        is_followup=False,
+                        topic_changed=True,
+                        standalone_query=query,
+                        inherited_office=None,
+                        topic=query,
+                        confidence=0.7,
+                    ),
+                    {"status": "OUT_OF_SCOPE", "office_hint": None, "confidence": 0.8, "reason": "只看到身分"},
+                ])
+                resolution = resolve_conversation(query, [], state, completer, retries=0)
+                self.assertTrue(resolution.is_followup)
+                self.assertEqual(resolution.inherited_office, "hr")
+                self.assertEqual(resolution.standalone_query, f"{HR_TOPIC}：{query}")
+                scope = run_scope_guardrail(
+                    resolution.standalone_query,
+                    scope_context(state, query, resolution),
+                    completer,
+                    retries=0,
+                )
+                self.assertEqual(scope.status, "IN_SCOPE")
+                self.assertEqual(scope.office_hint, "hr")
+
+    def test_model_judged_followup_is_classified_with_context(self):
+        state = verified_state("hr", HR_TOPIC)
+        query = "那兼任的算法一樣嗎"
+        completer = RecordingCompleter([
+            resolver_output(
+                is_followup=True,
+                topic_changed=False,
+                standalone_query="兼任教師的特休天數算法是否與行政人員相同",
+                inherited_office="hr",
+                topic=HR_TOPIC,
+                confidence=0.90,
+            ),
+            {"status": "IN_SCOPE", "office_hint": "hr", "confidence": 0.9, "reason": "人事休假追問"},
+        ])
+        resolution = resolve_conversation(query, [], state, completer, retries=0)
+        self.assertEqual(resolution.followup_basis, "model")
+        scope = run_scope_guardrail(
+            resolution.standalone_query,
+            scope_context(state, query, resolution),
+            completer,
+            retries=0,
+        )
+        self.assertEqual(scope.status, "IN_SCOPE")
+        self.assertEqual(scope.office_hint, "hr")
+        self.assertIn("兼任教師的特休天數", completer.prompts[-1])
+
+    def test_model_judged_followup_rejected_by_classifier_is_not_promoted(self):
+        state = verified_state("hr", HR_TOPIC)
+        query = "那你喜歡看什麼電影"
+        resolution = resolve_conversation(
+            query,
+            [],
+            state,
+            FakeCompleter([resolver_output(
+                is_followup=True,
+                topic_changed=False,
+                standalone_query=f"{HR_TOPIC}：你喜歡看什麼電影",
+                inherited_office="hr",
+                topic=HR_TOPIC,
+                confidence=0.85,
+            )]),
+            retries=0,
+        )
+        scope = run_scope_guardrail(
+            resolution.standalone_query,
+            scope_context(state, query, resolution),
+            FakeCompleter([{"status": "OUT_OF_SCOPE", "office_hint": None, "confidence": 0.9, "reason": "閒聊"}]),
+            retries=0,
+        )
+        # The standalone text still contains "特休", but inherited words are
+        # not evidence once the classifier has seen the full context.
+        self.assertEqual(scope.status, "OUT_OF_SCOPE")
+
+    def test_low_confidence_model_followup_keeps_raw_classification(self):
+        state = verified_state("hr", HR_TOPIC)
+        query = "那你喜歡看什麼電影"
+        resolution = ConversationResolution(
+            is_followup=True,
+            standalone_query=f"{HR_TOPIC}：{query}",
+            inherited_office="hr",
+            topic=HR_TOPIC,
+            confidence=0.60,
+            followup_basis="model",
+        )
+        completer = RecordingCompleter([
+            {"status": "OUT_OF_SCOPE", "office_hint": None, "confidence": 0.9, "reason": "閒聊"},
+        ])
+        scope = run_scope_guardrail(
+            resolution.standalone_query,
+            scope_context(state, query, resolution),
+            completer,
+            retries=0,
+        )
+        self.assertEqual(scope.status, "OUT_OF_SCOPE")
+        # Below the confidence bar the classifier sees only the raw turn.
+        self.assertNotIn(HR_TOPIC, completer.prompts[-1])
+
+    def test_model_followup_cannot_bypass_unrelated_intent_or_entity(self):
+        state = verified_state("osa", DORM_TOPIC)
+        for query, expected_reason in (("那附近的餐廳呢", "餐廳或美食推薦"), ("那台大的呢", "台大")):
+            with self.subTest(query=query):
+                resolution = ConversationResolution(
+                    is_followup=True,
+                    standalone_query=f"{DORM_TOPIC}：{query}",
+                    inherited_office="osa",
+                    topic=DORM_TOPIC,
+                    confidence=0.95,
+                    followup_basis="model",
+                )
+
+                def should_not_complete(*args, **kwargs):
+                    raise AssertionError("deterministic boundary must run first")
+
+                scope = run_scope_guardrail(
+                    resolution.standalone_query,
+                    scope_context(state, query, resolution),
+                    should_not_complete,
+                    retries=0,
+                )
+                self.assertEqual(scope.status, "OUT_OF_SCOPE")
+                self.assertIn(expected_reason, scope.reason)
+
+    def test_model_followup_classifier_failure_asks_for_clarification(self):
+        state = verified_state("hr", HR_TOPIC)
+        query = "那兼任的算法一樣嗎"
+        resolution = ConversationResolution(
+            is_followup=True,
+            standalone_query="兼任教師的特休天數算法是否與行政人員相同",
+            inherited_office="hr",
+            topic=HR_TOPIC,
+            confidence=0.9,
+            followup_basis="model",
+        )
+
+        def failing(*args, **kwargs):
+            raise RuntimeError("classifier unavailable")
+
+        scope = run_scope_guardrail(
+            resolution.standalone_query,
+            scope_context(state, query, resolution),
+            failing,
+            retries=0,
+        )
+        self.assertEqual(scope.status, "AMBIGUOUS")
 
 
 if __name__ == "__main__":

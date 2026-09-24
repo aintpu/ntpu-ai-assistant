@@ -112,7 +112,7 @@ Baseline 的業務分類只有 `ope`、`ge`、`lc`、`oaa`、`osa`、`hr`，另�
 
 1. Safety：regex/heuristic prompt-injection check。
 2. Conversation resolver：LLM structured JSON；失敗時使用 history、短追問 marker 與 state 的 deterministic fallback。
-3. Scope guardrail：LLM structured JSON + lexical fallback，輸出 tri-state 與 `office_hint`。
+3. Scope guardrail：LLM structured JSON + lexical fallback，輸出 tri-state 與 `office_hint`。resolver 的追問判斷會一併傳入（`resolution_scope_context()`）：在上一輪已確認範圍的前提下，高精度追問（補充身分／年資如「我是教師 有8年了」、接受上一輪提議如「我要」）可沿用上一輪主題作為範圍證據；resolver 以 ≥0.80 信心判定的同主題追問，會讓 scope classifier 看到改寫後的完整問題，但 classifier 判 OUT_OF_SCOPE 時不再用沿用的舊主題字詞推翻。外部主體與已知無關意圖仍在此之前直接阻擋。
 4. Office selection：優先本輪明確 office；高信心同主題追問可繼承 `active_office`。
 
 ### 4.3 Conversation State schema
@@ -336,7 +336,7 @@ Baseline repository 可驗證的測試：
 | 類型 | 檔案／方式 | 內容 |
 | --- | --- | --- |
 | Conversation router regression | `tests/test_conversation_guardrail.py` | 追問、換題、處室繼承、resolver fallback、evidence contract |
-| FastAPI integration | `tests/test_chat_endpoint_flow.py` | 同一 conversation 的 LC 追問仍保持 scope/office |
+| FastAPI integration | `tests/test_chat_endpoint_flow.py` | 同一 conversation 的 LC 追問、接受提議與身分年資補充仍保持 scope/office |
 | Frontend lint/build | `npm run lint`、`npm run build` | React/Next 靜態輸出 |
 | CI smoke | workflow 的 cache 與 `out/index.html` 檢查 | 索引與前端產物存在 |
 

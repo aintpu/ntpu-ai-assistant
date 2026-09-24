@@ -98,6 +98,7 @@ EXPLICIT_UNSUPPORTED_PATTERNS = (
 )
 
 SEMANTIC_SCOPE_CONFIDENCE = 0.82
+RESOLVER_FOLLOWUP_CONFIDENCE = 0.80
 
 # Service-boundary configuration.  The guardrail is intentionally expressed in
 # terms of a supported service entity rather than a school-specific rule: the
@@ -156,19 +157,47 @@ CONTEXT_FOLLOWUP_SUFFIXES = (
 # "我5年", "600分", "2學分" or "我是聘僱人員".  These are safe to inherit only
 # when the previous turn already established a verified supported-office topic.
 _CONTEXT_NUMBER = r"(?:\d+(?:\.\d+)?|[零〇一二兩三四五六七八九十百千半]+)"
-_CONTEXT_VALUE_REPLY_RE = re.compile(
-    rf"^(?:我|本人|我的|本人的)?"
-    rf"(?:年資|服務|成績|分數|學分|費用|金額|年級)?"
-    rf"(?:是|有|為|已|已經|目前|約|大約|滿)?"
+_CONTEXT_VALUE_PART = (
+    rf"(?:我|本人|我的|本人的)?"
+    rf"(?:年資|服務|任職|工作|成績|分數|學分|費用|金額|年級)?"
+    rf"(?:是|有|為|已|已經|目前|約|大約|滿)*"
     rf"{_CONTEXT_NUMBER}"
     rf"(?:年|個月|月|日|天|小時|分鐘|分|學分|元|歲|學期|次|門|人|級)"
-    rf"(?:左右|以上|以下|未滿|多|整)?$"
+    rf"(?:左右|以上|以下|未滿|多|整)?"
 )
-_CONTEXT_CATEGORY_REPLY_RE = re.compile(
-    r"^(?:我|本人)?(?:是|屬於|讀|念)?"
-    r"(?:聘僱人員|約用人員|公務人員|教職員|教師|學生|大學生|研究生|"
+_CONTEXT_CATEGORY_PART = (
+    r"(?:我|本人)?(?:是|屬於|讀|念|身分是|身份是)?"
+    r"(?:聘僱人員|約用人員|約聘人員|專案人員|契約進用人員|公務人員|教職員|職員|"
+    r"專任教師|兼任教師|教師|助教|學生|大學生|研究生|"
     r"碩士生|博士生|在職專班|大[一二三四五六]|碩[一二三]|博[一二三四五六]|"
-    r"本國籍|外籍生|僑生|交換生)$"
+    r"本國籍|外籍生|僑生|交換生)"
+)
+_CONTEXT_VALUE_REPLY_RE = re.compile(rf"^{_CONTEXT_VALUE_PART}$")
+_CONTEXT_CATEGORY_REPLY_RE = re.compile(rf"^{_CONTEXT_CATEGORY_PART}$")
+# Users often supply both missing values at once: "我是教師 有8年了".
+_CONTEXT_COMBINED_REPLY_RE = re.compile(
+    rf"^(?:{_CONTEXT_CATEGORY_PART}(?:也|且|而且|並且)?{_CONTEXT_VALUE_PART}"
+    rf"|{_CONTEXT_VALUE_PART}(?:也|且|而且|並且)?{_CONTEXT_CATEGORY_PART})$"
+)
+_REPLY_TRAILING_PARTICLES_RE = re.compile(r"(?:了|啦|喔|哦|囉|唷|耶|呀|啊|吧)+$")
+
+# Accepting the assistant's own offer ("如果你要，我也可以幫你整理成…" → "我要").
+# Only honoured when the immediately preceding assistant turn made an offer.
+_AFFIRMATIVE_REPLY_RE = re.compile(
+    r"^(?:好的|好啊|好呀|好喔|好哦|好|我要|要的|要啊|要|我需要|需要|可以的|可以啊|可以|"
+    r"麻煩你了|麻煩您了|麻煩你|麻煩您|麻煩了|麻煩|請幫我|幫我|拜託|請|當然|對啊|對|"
+    r"是的|嗯嗯|嗯|ok|okay|yes|沒問題){1,4}"
+    r"(?:整理|整理一下|列出來|列一下|做|弄|處理)?"
+    r"(?:一下)?(?:了|吧|喔|哦|啊|呀|囉)*(?:謝謝|感謝|謝謝你|謝謝您)?$",
+    re.IGNORECASE,
+)
+_PENDING_OFFER_RE = re.compile(
+    r"如果(?:你|您)(?:要|需要|想|願意)|(?:需要|要|想)的話|"
+    r"(?:我|也)(?:也)?可以(?:再|直接|幫|替|為)|要不要|是否需要|需要我|需不需要"
+)
+_OFFER_ACTION_RE = re.compile(
+    r"(?:幫(?:你|您)|為(?:你|您)|替(?:你|您))?(?:再|直接)?"
+    r"(?P<action>(?:整理成|整理|列出|提供|做成|製作|比較|說明|查詢|換算|計算).+)$"
 )
 
 
@@ -225,6 +254,10 @@ class ConversationResolution:
     ambiguity: bool = False
     ambiguity_reason: str | None = None
     confidence: float = 0.0
+    # "pattern": deterministic, high-precision follow-up (compact value reply,
+    # accepted offer, context-only phrase).  "model": the resolver LLM judged
+    # it a follow-up.  None: not a follow-up.  Never read from model output.
+    followup_basis: str | None = None
 
     @classmethod
     def from_value(cls, value: Any) -> "ConversationResolution":
@@ -429,7 +462,12 @@ def _history_items(history: Iterable[Any] | None) -> list[dict[str, str]]:
         content = item.get("content")
         if role not in {"user", "assistant"} or not isinstance(content, str):
             continue
-        result.append({"role": role, "content": content.strip()[:1200]})
+        content = content.strip()
+        if len(content) > 1200:
+            # Keep the tail: follow-up offers ("如果你要，我也可以…") are
+            # written at the end of an answer and must stay visible.
+            content = f"{content[:800]}\n…\n{content[-400:]}"
+        result.append({"role": role, "content": content})
     return result
 
 
@@ -461,12 +499,58 @@ def _is_context_only_followup(query: str) -> bool:
 
 def _is_compact_context_reply(query: str) -> bool:
     """Return whether a short turn looks like a value/category supplied to the prior topic."""
-    text = re.sub(r"[\s，、：:；;！？!?。]+", "", (query or "").strip().lower())
+    text = re.sub(r"[\s，,、：:；;！？!?。.]+", "", (query or "").strip().lower())
+    text = _REPLY_TRAILING_PARTICLES_RE.sub("", text)
     if not text or len(text) > 24:
         return False
     return bool(
         _CONTEXT_VALUE_REPLY_RE.fullmatch(text)
         or _CONTEXT_CATEGORY_REPLY_RE.fullmatch(text)
+        or _CONTEXT_COMBINED_REPLY_RE.fullmatch(text)
+    )
+
+
+def _is_affirmative_reply(query: str) -> bool:
+    text = re.sub(r"[\s，,、：:；;！？!?。.~～]+", "", (query or "").strip().lower())
+    if not text or len(text) > 16:
+        return False
+    return bool(_AFFIRMATIVE_REPLY_RE.fullmatch(text))
+
+
+def _pending_offer(history: Iterable[Any] | None, current_query: str = "") -> str | None:
+    """Return the offer made at the end of the immediately preceding answer."""
+    items = _history_items(history)
+    current = (current_query or "").strip()
+    # The client may or may not include the current user turn in history.
+    while items and items[-1]["role"] == "user" and items[-1]["content"] == current:
+        items = items[:-1]
+    if not items or items[-1]["role"] != "assistant":
+        return None
+    tail = items[-1]["content"][-500:].replace("**", "")
+    sentences = re.split(r"(?<=[。！？!?])|\n", tail)
+    for sentence in reversed(sentences):
+        sentence = (sentence or "").strip()
+        if sentence and _PENDING_OFFER_RE.search(sentence):
+            return sentence[-300:]
+    return None
+
+
+def _offer_action(offer: str) -> str:
+    """Turn "如果你要，我也可以幫你整理成X。" into "整理成X"."""
+    match = _OFFER_ACTION_RE.search(offer or "")
+    action = match.group("action") if match else (offer or "")
+    return action.strip().rstrip("。！？!?.")
+
+
+def _is_offer_acceptance(query: str, history: Iterable[Any] | None) -> bool:
+    return bool(_is_affirmative_reply(query) and _pending_offer(history, query))
+
+
+def _has_verified_context(state: "ConversationState") -> bool:
+    return bool(
+        state.scope_verified
+        and state.active_office in VALID_OFFICES
+        and state.active_topic
     )
 
 
@@ -484,10 +568,8 @@ def _likely_followup(query: str, history: Iterable[Any] | None, state: Conversat
     if _is_context_only_followup(query):
         return True
     return bool(
-        state.scope_verified
-        and state.active_office in VALID_OFFICES
-        and state.active_topic
-        and _is_compact_context_reply(query)
+        _has_verified_context(state)
+        and (_is_compact_context_reply(query) or _is_offer_acceptance(query, history))
     )
 
 
@@ -548,6 +630,9 @@ def _resolver_prompt(current_query: str, history: list[dict[str, str]], state: C
         "短句、省略主詞或含有『那／呢／這個／多久／要幾分／怎麼申請』不代表超出服務範圍。"
         "若上一輪已確認校務主題，『我5年／600分／2學分／我是聘僱人員』等短句通常是補充條件，"
         "應結合上一輪主題改寫成完整問題。"
+        "若上一輪助理回答結尾提出可再提供的內容（例如『如果你要，我也可以幫你整理成…』），"
+        "而本輪是『我要／好／麻煩你』等肯定回覆，代表接受該提議：is_followup=true，"
+        "standalone_query 應改寫成該提議的具體內容並保留原主題。"
         "若前文能補足語意，必須視為追問；若補足後仍有實質不同的解釋，ambiguity=true。"
         "不得創造前文不存在的條件。只輸出符合 schema 的 JSON。\n\n"
         "schema={is_followup:boolean, topic_changed:boolean, standalone_query:string, "
@@ -565,8 +650,10 @@ def _resolver_prompt(current_query: str, history: list[dict[str, str]], state: C
 def _fallback_resolution(current_query: str, history: list[dict[str, str]], state: ConversationState) -> ConversationResolution:
     previous = state.active_topic or state.previous_standalone_query or _last_user_query(history)
     followup = _likely_followup(current_query, history, state)
+    offer = _pending_offer(history, current_query) if followup else None
     if followup and previous:
-        standalone = f"{previous}：{current_query.strip()}"
+        detail = _offer_action(offer) if offer and _is_affirmative_reply(current_query) else current_query.strip()
+        standalone = f"{previous}：{detail}"
         topic = state.active_topic or previous
     else:
         standalone = current_query.strip()
@@ -578,6 +665,7 @@ def _fallback_resolution(current_query: str, history: list[dict[str, str]], stat
         inherited_office=state.active_office if followup else None,
         topic=topic,
         confidence=0.55 if followup else 0.45,
+        followup_basis="pattern" if followup else None,
     )
 
 
@@ -613,12 +701,12 @@ def resolve_conversation(
         and not _is_compact_context_reply(current_query)
         and not _has_explicit_context_reference(current_query)
     )
+    verified_context = _has_verified_context(state_obj)
     compact_verified_followup = bool(
-        state_obj.scope_verified
-        and state_obj.active_office in VALID_OFFICES
-        and state_obj.active_topic
-        and _is_compact_context_reply(current_query)
+        verified_context and _is_compact_context_reply(current_query)
     )
+    pending_offer = _pending_offer(history_items, current_query) if verified_context else None
+    offer_acceptance = bool(pending_offer and _is_affirmative_reply(current_query))
     if not has_context:
         result.is_followup = False
         result.topic_changed = False
@@ -649,10 +737,30 @@ def resolve_conversation(
         result.topic = state_obj.active_topic
         result.standalone_query = f"{state_obj.active_topic}：{current_query}"
         result.confidence = max(result.confidence, 0.90)
+        result.followup_basis = "pattern"
+    elif offer_acceptance:
+        # "我要" right after "如果你要，我也可以幫你整理成…" accepts that offer.
+        # Keep a genuine model rewrite; otherwise rewrite from the offer text.
+        model_rewrite = (
+            result.is_followup
+            and not result.topic_changed
+            and result.standalone_query.strip() not in {"", current_query}
+        )
+        result.is_followup = True
+        result.topic_changed = False
+        result.inherited_office = state_obj.active_office
+        result.topic = state_obj.active_topic
+        if not model_rewrite:
+            result.standalone_query = f"{state_obj.active_topic}：{_offer_action(pending_offer)}"
+        result.ambiguity = False
+        result.ambiguity_reason = None
+        result.confidence = max(result.confidence, 0.90)
+        result.followup_basis = "pattern"
     elif _likely_followup(current_query, history_items, state_obj) and not result.topic_changed:
         # A model occasionally labels a four-word continuation as a new query.
         # The conservative correction prevents the old raw-short-query bug.
         result.is_followup = True
+        result.followup_basis = "pattern"
 
     topic_hint = state_obj.active_topic or _last_user_query(history_items)
     if result.is_followup and not result.topic_changed:
@@ -668,7 +776,23 @@ def resolve_conversation(
         result.topic = topic_hint or current_query or None
     if result.topic_changed:
         result.inherited_office = None
+    if not result.is_followup or result.topic_changed:
+        result.followup_basis = None
+    elif not result.followup_basis:
+        result.followup_basis = "model"
     return result
+
+
+def resolution_scope_context(resolution: ConversationResolution | None) -> dict[str, Any]:
+    """Resolver verdict forwarded to ``run_scope_guardrail`` (server-side only)."""
+    if resolution is None:
+        return {}
+    return {
+        "resolved_is_followup": bool(resolution.is_followup),
+        "resolved_topic_changed": bool(resolution.topic_changed),
+        "resolved_confidence": float(resolution.confidence),
+        "resolved_followup_basis": resolution.followup_basis,
+    }
 
 
 def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[str, str]]:
@@ -691,6 +815,9 @@ def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[s
         "自然語句不一定包含處室名稱；例如行政人員午休、特別休假、差勤等仍屬 hr 人事室，"
         "學生團體保險、學生平安保險等仍屬 osa 學務處。"
         "資訊不足但仍與支援校務主題有關時回 AMBIGUOUS，不得把資訊不足當 OUT_OF_SCOPE。"
+        "若 context 的 scope_verified=true 且 resolved_is_followup=true，代表本輪是對已確認校務主題的追問"
+        "（例如接受上一輪提議『我要』、補充身分或年資），請依 standalone_query 判斷；"
+        "但若原始本輪問題本身明確轉向無關主題，仍應回 OUT_OF_SCOPE。"
         "只有完整語意確認與所有支援服務無關時才回 OUT_OF_SCOPE。"
         "只輸出 JSON：{status:'IN_SCOPE|OUT_OF_SCOPE|AMBIGUOUS', office_hint:string|null, "
         "confidence:number, reason:string, entity_conflict:boolean, entity_hint:string|null}。"
@@ -786,15 +913,34 @@ def run_scope_guardrail(
             f"本輪問題屬於{unsupported_intent}，不在目前支援的校務服務範圍。",
         )
     has_context = bool(context.get("active_topic") or context.get("active_office"))
-    context_only_followup = bool(
-        _is_context_only_followup(raw_query)
-        or (
-            context.get("scope_verified")
-            and _normalize_office(context.get("active_office"))
-            and context.get("active_topic")
-            and _is_compact_context_reply(raw_query)
-        )
+    verified_context = bool(
+        _as_bool(context.get("scope_verified"))
+        and _normalize_office(context.get("active_office"))
+        and context.get("active_topic")
     )
+    resolved_followup = bool(
+        _as_bool(context.get("resolved_is_followup"))
+        and not _as_bool(context.get("resolved_topic_changed"))
+    )
+    resolved_basis = str(context.get("resolved_followup_basis") or "")
+    # High-precision follow-ups: the inherited topic may also serve as lexical
+    # evidence when the classifier is over-conservative.
+    pattern_followup = bool(
+        _is_context_only_followup(raw_query)
+        or (verified_context and _is_compact_context_reply(raw_query))
+        or (verified_context and resolved_followup and resolved_basis == "pattern")
+    )
+    # The resolver LLM read the history and judged this a same-topic
+    # continuation.  Let the scope classifier see the resolved query, but its
+    # verdict stays authoritative: inherited words never override it.
+    model_followup = bool(
+        not pattern_followup
+        and verified_context
+        and resolved_followup
+        and resolved_basis == "model"
+        and _clamp_confidence(context.get("resolved_confidence")) >= RESOLVER_FOLLOWUP_CONFIDENCE
+    )
+    context_only_followup = pattern_followup or model_followup
     classifier_query = standalone_query
     classifier_context = context
     if has_context and not context_only_followup:
@@ -844,6 +990,10 @@ def run_scope_guardrail(
             and resolved_lexical.status == "IN_SCOPE"
             and not context_only_followup
         )
+        if model_followup and result.status == "OUT_OF_SCOPE":
+            # The classifier saw the full resolved context and still rejected
+            # it; words inherited from the old topic are not evidence.
+            return result
         if result.status == "OUT_OF_SCOPE" and lexical.status == "IN_SCOPE":
             # The old implementation promoted any short raw query back to the
             # previous office.  That makes an unrelated question such as
@@ -900,6 +1050,10 @@ def run_scope_guardrail(
             return lexical
         return result
     except Exception:
+        if model_followup:
+            # Without a classifier verdict, a model-judged follow-up asks for
+            # clarification instead of answering from inherited words.
+            return _lexical_scope(raw_query, context)
         if has_context and not context_only_followup:
             return _lexical_scope(
                 raw_query,
