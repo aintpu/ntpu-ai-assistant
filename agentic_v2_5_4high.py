@@ -2411,17 +2411,77 @@ def synthesize_agentic_answer_stream(user_query: str, language: str, history: li
 # ==========================================
 # 7. 多模態模組 (Audio & Vision)
 # ==========================================
+# 語音轉文字：預設 gpt-transcribe（OpenAI 2026 建議的轉寫模型），失敗時改用 whisper-1。
+STT_MODEL = os.getenv("STT_MODEL", "").strip() or "gpt-transcribe"
+STT_FALLBACK_MODELS = [
+    m.strip() for m in os.getenv("STT_FALLBACK_MODELS", "whisper-1").split(",") if m.strip()
+]
+# 提示詞同時是「繁體中文輸出」與「校務專有名詞」的提示；Whisper 對中文常輸出簡體字。
+STT_PROMPT = os.getenv(
+    "STT_PROMPT",
+    "以下是國立臺北大學（NTPU）校務問答，中文請使用繁體中文。"
+    "常見詞彙：學務處、教務處、人事室、總務處、體育室、語言中心、通識教育中心、"
+    "宿舍、會客、選課、學分、抵免、休學、獎助學金、就學貸款、特休、請假、差勤。",
+)
+# 語音回覆：預設 gpt-4o-mini-tts（可用 instructions 控制口音與語氣），失敗時改用 tts-1。
+TTS_MODEL = os.getenv("TTS_MODEL", "").strip() or "gpt-4o-mini-tts"
+TTS_FALLBACK_MODELS = [
+    m.strip() for m in os.getenv("TTS_FALLBACK_MODELS", "tts-1").split(",") if m.strip()
+]
+MAX_AUDIO_BYTES = 25 * 1024 * 1024  # OpenAI 轉寫 API 上限
+
+_AUDIO_FORMATS = (
+    (b"\x1a\x45\xdf\xa3", 0, "webm", "audio/webm"),
+    (b"OggS", 0, "ogg", "audio/ogg"),
+    (b"RIFF", 0, "wav", "audio/wav"),
+    (b"ftyp", 4, "mp4", "audio/mp4"),
+    (b"ID3", 0, "mp3", "audio/mpeg"),
+    (b"fLaC", 0, "flac", "audio/flac"),
+)
+
+
+def _sniff_audio_format(raw: bytes) -> tuple[str, str]:
+    """依檔頭判斷實際格式。Safari 的 MediaRecorder 錄的是 mp4，不是 webm。"""
+    for magic, offset, ext, mime in _AUDIO_FORMATS:
+        if raw[offset:offset + len(magic)] == magic:
+            return ext, mime
+    if len(raw) > 1 and raw[0] == 0xFF and (raw[1] & 0xE0) == 0xE0:
+        return "mp3", "audio/mpeg"
+    return "webm", "audio/webm"
+
+
+def transcribe_audio_bytes(raw: bytes) -> str:
+    """把錄音轉成文字；失敗或聽不到內容時回傳空字串。"""
+    if not raw:
+        return ""
+    ext, mime = _sniff_audio_format(raw)
+    models = list(dict.fromkeys([STT_MODEL, *STT_FALLBACK_MODELS]))
+    for model in models:
+        try:
+            kwargs = {"model": model, "file": (f"voice.{ext}", raw, mime)}
+            if STT_PROMPT:
+                kwargs["prompt"] = STT_PROMPT
+            tr = audio_client.audio.transcriptions.create(**kwargs)
+            text = (getattr(tr, "text", "") or "").strip()
+            # 模型偶爾會把提示詞原樣吐回來（例如錄音幾乎沒聲音），不能當成問題。
+            if len(text) >= 20 and text in STT_PROMPT:
+                print(f"[語音轉寫] {model} 回傳提示詞內容，視為沒有語音")
+                return ""
+            return text
+        except Exception as e:
+            print(f"[語音轉寫] {model} 失敗：{e}")
+    return ""
+
+
 def transcribe_audio(audio_path: str) -> str:
+    """相容舊呼叫：讀檔後轉寫；失敗回傳空字串。"""
     try:
-        if audio_client is None:
-            raise RuntimeError("語音功能尚未設定獨立的 OPENAI_API_KEY")
         with open(audio_path, "rb") as f:
-            tr = audio_client.audio.transcriptions.create(model="whisper-1", file=f)
-        return tr.text
-    except Exception as e:
-        print(f"Whisper 錯誤: {e}")
-        return "（語音轉寫失敗）"
-    
+            return transcribe_audio_bytes(f.read())
+    except OSError as e:
+        print(f"[語音轉寫] 無法讀取音檔：{e}")
+        return ""
+
 # ==========================================
 # 7.5 語音輸出模組 (Text-to-Speech)
 # ==========================================
@@ -2429,35 +2489,67 @@ def transcribe_audio(audio_path: str) -> str:
 def summarize_for_speech(answer: str, lang: str) -> str:
     """讓 AI 將完整回答精煉成適合朗讀的口語摘要（約 80-100 字）"""
     sys_prompt = (
-        "你是語音播報助手。請將以下回答濃縮成約 80-100 字的口語化摘要供 TTS 朗讀。"
+        "你是語音播報助手。請將以下回答濃縮成約 80-100 字的繁體中文口語化摘要供 TTS 朗讀。"
         "要求：1.去除所有 Markdown 符號(#*`[]連結等) 2.使用自然口語句子 3.保留最重要的核心資訊"
+        "（日期、時間、金額、條件）4.不要唸出來源清單"
     ) if lang == "zh-TW" else (
         "Summarize the following into a natural 80-word spoken summary for TTS. "
         "Remove all Markdown, use natural sentences, keep only key information."
     )
     try:
-        return llm_adapter.complete(
+        summary = llm_adapter.complete(
             [{"role": "system", "content": sys_prompt},
              {"role": "user", "content": answer}],
-            temperature=0.3, max_tokens=200)
+            temperature=0.3, max_tokens=300)
+        if isinstance(summary, str) and summary.strip():
+            return summary.strip()
     except Exception as e:
         print(f"[TTS 摘要錯誤] {e}")
-        return re.sub(r"[#*`>\[\]!]|https?://\S+", "", answer)[:200].strip()
+    return _plain_text_for_speech(answer)[:200]
 
-def synthesize_speech(text: str, lang: str) -> Optional[str]:
-    """將文字合成語音 MP3，回傳暫存檔路徑；失敗回傳 None"""
-    voice = "nova" if lang == "zh-TW" else "alloy"
-    try:
-        if audio_client is None:
-            raise RuntimeError("語音功能尚未設定獨立的 OPENAI_API_KEY")
-        response = audio_client.audio.speech.create(model="tts-1", voice=voice, input=text, speed=1.2)
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-        response.stream_to_file(tmp.name)
-        print(f"[TTS] 語音合成成功：{tmp.name}")
-        return tmp.name
-    except Exception as e:
-        print(f"[TTS 錯誤] {e}")
+
+def _plain_text_for_speech(text: str) -> str:
+    text = re.sub(r"https?://\S+", "", text or "")
+    text = re.split(r"\n#+\s*(?:來源|參考來源|Sources?)\b", text)[0]
+    text = re.sub(r"[#*`>\[\]!|_]", "", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def synthesize_speech(text: str, lang: str = "zh-TW") -> Optional[str]:
+    """將文字合成 MP3，回傳 base64 字串（前端直接播放）；失敗回傳 None。"""
+    text = _plain_text_for_speech(text)[:1000]
+    if not text:
         return None
+    zh = lang == "zh-TW"
+    instructions = (
+        "請用自然、清楚、友善的台灣華語口音朗讀，語速略快但清晰。"
+        if zh else "Speak in a clear, friendly, natural tone at a slightly brisk pace."
+    )
+    for model in dict.fromkeys([TTS_MODEL, *TTS_FALLBACK_MODELS]):
+        try:
+            kwargs = {"model": model, "voice": "nova" if zh else "alloy",
+                      "input": text, "response_format": "mp3"}
+            if model.startswith("gpt-"):
+                # openai==1.66.3 尚無 instructions 參數，改由 extra_body 傳送。
+                kwargs["extra_body"] = {"instructions": instructions}
+            else:
+                kwargs["speed"] = 1.15
+            response = audio_client.audio.speech.create(**kwargs)
+            audio = response.content
+            if audio:
+                return base64.b64encode(audio).decode("ascii")
+        except Exception as e:
+            print(f"[TTS] {model} 失敗：{e}")
+    return None
+
+
+def speech_for_answer(answer: str) -> Optional[str]:
+    """完整回答 → 口語摘要 → MP3 base64。"""
+    if not answer:
+        return None
+    lang = detect_language(answer)
+    return synthesize_speech(summarize_for_speech(answer, lang), lang)
+
 
 def _prepare_vision_image(pil_img: Image.Image) -> Image.Image:
     """把任何上傳格式整理成 RGB，並限制長邊。
@@ -3353,15 +3445,29 @@ async def voice_endpoint(req: VoiceRequest, request: Request):
     conversation_id = _request_conversation_id(req)
     message_id = _new_message_id()
     _set_request_ctx(conversation_id, message_id)
+
+    audio_b64 = (req.audio_base64 or "").strip()
+    if audio_b64.startswith("data:") and "," in audio_b64:
+        audio_b64 = audio_b64.split(",", 1)[1]
     try:
-        import tempfile, base64 as _b64
-        raw = _b64.b64decode(req.audio_base64)
-        with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as f:
-            f.write(raw); tmp = f.name
-        transcribed = transcribe_audio(tmp)
-        import os as _os; _os.unlink(tmp)
-    except Exception as e:
-        return {"status": "error", "message": f"語音轉文字失敗：{e}"}
+        raw = base64.b64decode(audio_b64, validate=False)
+    except Exception:
+        raw = b""
+    if len(raw) > MAX_AUDIO_BYTES:
+        return {"status": "error", "message": "錄音太長了，請縮短後再試一次。",
+                "message_id": message_id, "conversation_id": conversation_id}
+
+    transcribed = await asyncio.to_thread(transcribe_audio_bytes, raw)
+    # await 期間其他請求可能改寫 thread-local 的請求脈絡，回來後重新設定。
+    _set_request_ctx(conversation_id, message_id)
+    if not transcribed:
+        return {
+            "status": "error",
+            "message": "沒有聽清楚您的問題，請靠近麥克風再說一次，或改用文字輸入。",
+            "message_id": message_id,
+            "conversation_id": conversation_id,
+            "conversation_state": req.conversation_state or {},
+        }
 
     decision = prepare_conversation_turn(
         transcribed,
@@ -3377,10 +3483,7 @@ async def voice_endpoint(req: VoiceRequest, request: Request):
             message_id=message_id,
         )
         payload["question"] = transcribed
-        try:
-            payload["audio_base64"] = synthesize_speech(payload["answer"][:500])
-        except Exception:
-            payload["audio_base64"] = None
+        payload["audio_base64"] = await asyncio.to_thread(speech_for_answer, payload.get("answer", ""))
         return payload
     if decision["status"] == "blocked":
         return {
@@ -3394,6 +3497,7 @@ async def voice_endpoint(req: VoiceRequest, request: Request):
     if decision["status"] == "clarification":
         return {
             "status": "ok", "answer": decision["message"],
+            "audio_base64": await asyncio.to_thread(synthesize_speech, decision["message"]),
             "question": transcribed, "sources": [],
             "message_id": message_id, "conversation_id": conversation_id,
             "conversation_state": _state_to_dict(decision["state"]),
@@ -3413,15 +3517,13 @@ async def voice_endpoint(req: VoiceRequest, request: Request):
         selected_office=decision["office"],
     )
     sources = get_last_sources()
-    tts_b64 = None
-    try:
-        tts_b64 = synthesize_speech(answer[:500])
-    except Exception:
-        pass
+    # 這兩個值存在事件迴圈執行緒的 thread-local；await 期間其他請求可能覆寫，先取出。
+    conversation_state = get_last_conversation_state()
+    tts_b64 = await asyncio.to_thread(speech_for_answer, answer)
     return {"status": "ok", "answer": answer, "question": transcribed,
             "sources": sources, "audio_base64": tts_b64, "message_id": message_id,
             "conversation_id": conversation_id,
-            "conversation_state": get_last_conversation_state(),
+            "conversation_state": conversation_state,
             "scope_status": _scope_status(decision.get("scope")),
             "domain": decision.get("domain", "OTHER")}
 

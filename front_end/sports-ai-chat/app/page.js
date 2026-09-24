@@ -142,7 +142,7 @@ function fileToBase64(blob) {
   });
 }
 
-function playBase64Audio(base64, mime = "audio/mp3") {
+function playBase64Audio(base64, mime = "audio/mpeg") {
   const audio = new Audio(`data:${mime};base64,${base64}`);
   audio.play().catch(() => {});
 }
@@ -905,7 +905,8 @@ export default function ChatPage() {
       recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        // Safari 錄的是 audio/mp4；沿用錄音器實際格式，後端也會再依檔頭判斷。
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
         const b64 = await fileToBase64(blob);
         sendMessage(labels.voiceLabel, true, b64);
       };

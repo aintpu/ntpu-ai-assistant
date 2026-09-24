@@ -99,7 +99,7 @@ flowchart TD
 ### 3.2 非串流、圖片與語音
 
 - `POST /api/chat`：與主流程相同，但一次回傳完整 JSON；圖片 base64 分支直接進 vision model，不走六處室 Router/RAG。圖片會先轉為 RGB（透明補白、EXIF 轉正，支援 HEIC），同時帶有問題時會先檢查 prompt injection，再請模型針對問題回答；分析在 worker thread 執行，避免阻塞其他請求。
-- `POST /api/voice`：先以 Whisper 相容模型轉錄，再把文字送入同一 conversation guardrail 與 RAG；可嘗試產生 TTS base64 回覆。
+- `POST /api/voice`：依檔頭判斷實際音訊格式（Safari 為 mp4）後轉錄；轉錄失敗或無語音時直接請使用者重說，不進 RAG。成功時送入同一 conversation guardrail 與 RAG，再把回答濃縮成口語摘要並以 TTS 產生 base64 MP3。
 - 圖片追問有獨立的圖片歷史／vision prompt；目前不與六處室文件檢索合併。
 
 ## 4. Router 與 Guardrail
@@ -326,6 +326,8 @@ dept, type, page, title, url, category, date, doc_id
 | `EMBEDDING_MODEL` | embedding model |
 | `EMBEDDING_MAX_RETRIES` | embedding API retry |
 | `ALLOWED_ORIGINS` | FastAPI CORS allowlist |
+| `STT_MODEL` / `STT_FALLBACK_MODELS` | 語音轉文字，預設 `gpt-transcribe`，備援 `whisper-1`；`STT_PROMPT` 提示繁體中文與校務詞彙 |
+| `TTS_MODEL` / `TTS_FALLBACK_MODELS` | 語音回覆，預設 `gpt-4o-mini-tts`（台灣華語語氣 instructions），備援 `tts-1`；回傳 base64 MP3 |
 | `VISION_MODEL` | 圖片解析主模型，預設 `gpt-5.5`（reasoning effort `VISION_REASONING_EFFORT`，預設 `low`） |
 | `VISION_FALLBACK_MODELS` | 主模型失敗時依序嘗試的備援模型，預設 `gpt-5.4-mini,gpt-4o` |
 | `VISION_FOLLOWUP_MODEL` | 圖片追問模型，未設定時沿用 `VISION_MODEL` |
