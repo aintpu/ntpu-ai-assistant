@@ -42,7 +42,8 @@ OFFICE_KEYWORDS = {
     ),
     "osa": (
         "學務", "住宿", "宿舍", "獎助學金", "助學金", "就學貸款", "學生請假",
-        "社團", "兵役", "心理諮商", "健康中心", "學生保險",
+        "社團", "兵役", "心理諮商", "健康中心", "學生保險", "學生團體保險",
+        "團體保險", "學生平安保險",
     ),
     "hr": (
         "人事", "差勤", "刷卡", "請假", "事假", "病假", "身心調適假", "婚假",
@@ -600,7 +601,8 @@ def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[s
         "如果目前問題明確指向其他學校、公司、機關、地區、產品或服務，"
         "必須回 OUT_OF_SCOPE，entity_conflict=true，不能因為前文有相似主題而繼承原處室。"
         "目前問題的明確指向優先於 active_topic、active_office 與歷史來源。\n"
-        "自然語句不一定包含處室名稱；例如行政人員午休、特別休假、差勤等仍屬 hr 人事室。"
+        "自然語句不一定包含處室名稱；例如行政人員午休、特別休假、差勤等仍屬 hr 人事室，"
+        "學生團體保險、學生平安保險等仍屬 osa 學務處。"
         "資訊不足但仍與支援校務主題有關時回 AMBIGUOUS，不得把資訊不足當 OUT_OF_SCOPE。"
         "只有完整語意確認與所有支援服務無關時才回 OUT_OF_SCOPE。"
         "只輸出 JSON：{status:'IN_SCOPE|OUT_OF_SCOPE|AMBIGUOUS', office_hint:string|null, "
@@ -747,15 +749,14 @@ def run_scope_guardrail(
             and resolved_lexical.status == "IN_SCOPE"
             and not context_only_followup
         )
-        if (
-            result.status == "OUT_OF_SCOPE"
-            and has_context
-            and lexical.status != "OUT_OF_SCOPE"
-        ):
+        if result.status == "OUT_OF_SCOPE" and lexical.status == "IN_SCOPE":
             # The old implementation promoted any short raw query back to the
             # previous office.  That makes an unrelated question such as
             # "那附近的餐廳呢" inherit a dormitory/financial context.  Only
             # high-precision context-only followups may reuse the old topic.
+            # A fresh query with an unambiguous supported-service term is safe
+            # to promote because explicit external entities and known
+            # unrelated intents were already rejected above.
             return result if inherited_context_only else lexical
         if result.status == "AMBIGUOUS" and lexical.status == "IN_SCOPE":
             return result if inherited_context_only else lexical

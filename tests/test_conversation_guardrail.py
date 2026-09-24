@@ -159,6 +159,21 @@ class ConversationGuardrailTests(unittest.TestCase):
                 self.assertEqual(scope.status, "IN_SCOPE")
                 self.assertEqual(scope.office_hint, "hr")
 
+    def test_student_group_insurance_is_routed_even_if_model_is_overly_conservative(self):
+        scope = run_scope_guardrail(
+            "115至116學年度學生團體保險的身故保險金是多少？",
+            {},
+            FakeCompleter([{
+                "status": "OUT_OF_SCOPE",
+                "office_hint": None,
+                "confidence": 0.91,
+                "reason": "模型誤判為一般保險問題",
+            }]),
+            retries=0,
+        )
+        self.assertEqual(scope.status, "IN_SCOPE")
+        self.assertEqual(scope.office_hint, "osa")
+
     def test_high_confidence_semantic_office_can_cover_unknown_paraphrase(self):
         scope = run_scope_guardrail(
             "同仁中午可以休息多久",
