@@ -38,6 +38,8 @@ class SystemFAQTests(unittest.TestCase):
     def test_primary_system_questions_route_to_expected_faq(self):
         cases = {
             "你可以回答哪些問題？": "system-capabilities",
+            "你知道甚麼？": "system-capabilities",
+            "你知道什麼？": "system-capabilities",
             "這個系統怎麼使用？": "system-how-to-use",
             "需要登入嗎？": "system-login",
             "你的資料來源是哪裡？": "system-sources",

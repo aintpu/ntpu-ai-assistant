@@ -46,7 +46,8 @@ OFFICE_KEYWORDS = {
     ),
     "hr": (
         "人事", "差勤", "刷卡", "請假", "事假", "病假", "身心調適假", "婚假",
-        "產假", "陪產假", "喪假", "勞基法", "變形工時",
+        "產假", "陪產假", "喪假", "勞基法", "變形工時", "行政人員", "午休",
+        "差假", "勤休", "特休", "特別休假", "休假天數", "補休",
     ),
     "oga": (
         "總務", "營繕", "設備報修", "報修", "緊急修繕", "停電", "停水", "空調", "冷氣", "採購",
@@ -68,6 +69,34 @@ OFFICE_PRIORITY_KEYWORDS = {
         "汽車應該停", "機車應該停", "腳踏車應該停",
     ),
 }
+
+# High-precision intents that are clearly outside the seven supported offices.
+# These are deliberately narrower than a general keyword denylist: an unknown
+# paraphrase may still be accepted by the semantic scope classifier, while
+# known unrelated topics cannot be opened by an over-optimistic model result.
+EXPLICIT_UNSUPPORTED_PATTERNS = (
+    ("天氣或氣象", re.compile(r"天氣|氣象|下雨|降雨|氣溫|weather|forecast", re.IGNORECASE)),
+    (
+        "餐廳或美食推薦",
+        re.compile(
+            r"(?:推薦|附近|哪間|哪家|吃什麼|好吃).{0,12}(?:餐廳|美食|餐點|宵夜)"
+            r"|(?:餐廳|美食|餐點|宵夜).{0,12}(?:推薦|附近|哪間|哪家|好吃)",
+            re.IGNORECASE,
+        ),
+    ),
+    ("投資或市場行情", re.compile(r"比特幣|虛擬貨幣|加密貨幣|股票|股價|匯率|投資標的", re.IGNORECASE)),
+    (
+        "程式撰寫",
+        re.compile(
+            r"\b(?:python|javascript|typescript|java|c\+\+|sql)\b"
+            r"|(?:寫|產生|生成|除錯).{0,8}(?:程式|程式碼|code)|\bdebug\b",
+            re.IGNORECASE,
+        ),
+    ),
+    ("旅遊規劃", re.compile(r"機票|訂房|飯店推薦|旅遊景點|行程規劃", re.IGNORECASE)),
+)
+
+SEMANTIC_SCOPE_CONFIDENCE = 0.82
 
 # Service-boundary configuration.  The guardrail is intentionally expressed in
 # terms of a supported service entity rather than a school-specific rule: the
@@ -362,6 +391,15 @@ def detect_service_entity_conflict(
     return None
 
 
+def detect_explicit_unsupported_intent(query: str) -> str | None:
+    """Return a high-precision unrelated topic without treating silence as denial."""
+    text = (query or "").strip()
+    for label, pattern in EXPLICIT_UNSUPPORTED_PATTERNS:
+        if pattern.search(text):
+            return label
+    return None
+
+
 def _history_items(history: Iterable[Any] | None) -> list[dict[str, str]]:
     result = []
     for item in history or []:
@@ -562,6 +600,7 @@ def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[s
         "如果目前問題明確指向其他學校、公司、機關、地區、產品或服務，"
         "必須回 OUT_OF_SCOPE，entity_conflict=true，不能因為前文有相似主題而繼承原處室。"
         "目前問題的明確指向優先於 active_topic、active_office 與歷史來源。\n"
+        "自然語句不一定包含處室名稱；例如行政人員午休、特別休假、差勤等仍屬 hr 人事室。"
         "資訊不足但仍與支援校務主題有關時回 AMBIGUOUS，不得把資訊不足當 OUT_OF_SCOPE。"
         "只有完整語意確認與所有支援服務無關時才回 OUT_OF_SCOPE。"
         "只輸出 JSON：{status:'IN_SCOPE|OUT_OF_SCOPE|AMBIGUOUS', office_hint:string|null, "
@@ -649,6 +688,14 @@ def run_scope_guardrail(
             True,
             boundary_entity,
         )
+    unsupported_intent = detect_explicit_unsupported_intent(raw_query)
+    if unsupported_intent:
+        return ScopeDecision(
+            "OUT_OF_SCOPE",
+            None,
+            0.98,
+            f"本輪問題屬於{unsupported_intent}，不在目前支援的校務服務範圍。",
+        )
     has_context = bool(context.get("active_topic") or context.get("active_office"))
     context_only_followup = _is_context_only_followup(raw_query)
     classifier_query = standalone_query
@@ -712,16 +759,25 @@ def run_scope_guardrail(
             return result if inherited_context_only else lexical
         if result.status == "AMBIGUOUS" and lexical.status == "IN_SCOPE":
             return result if inherited_context_only else lexical
-        if result.status == "IN_SCOPE" and lexical.status == "OUT_OF_SCOPE":
-            # Do not let an optimistic model classification open the RAG route
-            # when the raw turn has no supported-service signal at all. This
-            # covers unrelated questions that do not mention another entity,
-            # such as weather, restaurants, finance, travel, or programming.
+        if inherited_context_only and result.status == "IN_SCOPE":
             return ScopeDecision(
                 "OUT_OF_SCOPE",
                 None,
                 max(0.82, result.confidence),
-                "本輪問題沒有可確認的支援服務訊號，不能交給校務資料庫回答。",
+                "本輪問題未明確指向支援範圍；上一輪上下文不能作為回答依據。",
+            )
+        if result.status == "IN_SCOPE" and lexical.status == "OUT_OF_SCOPE":
+            # Lexical matching is supporting evidence, not a complete
+            # allowlist. Accept a high-confidence semantic mapping to a real
+            # office so natural paraphrases can reach retrieval. Explicit
+            # external entities and known unrelated intents were denied above.
+            if result.office_hint and result.confidence >= SEMANTIC_SCOPE_CONFIDENCE:
+                return result
+            return ScopeDecision(
+                "OUT_OF_SCOPE",
+                None,
+                max(0.82, result.confidence),
+                "本輪問題沒有足夠可信的支援處室訊號，不能交給校務資料庫回答。",
             )
         if (
             result.status == "AMBIGUOUS"
@@ -733,13 +789,6 @@ def run_scope_guardrail(
                 None,
                 max(0.78, result.confidence),
                 "本輪問題沒有可確認的支援服務訊號，不能交給校務資料庫回答。",
-            )
-        if inherited_context_only and result.status == "IN_SCOPE":
-            return ScopeDecision(
-                "OUT_OF_SCOPE",
-                None,
-                max(0.82, result.confidence),
-                "本輪問題未明確指向支援範圍；上一輪上下文不能作為回答依據。",
             )
         if (
             result.status == "IN_SCOPE"

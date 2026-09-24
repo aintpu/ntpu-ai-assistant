@@ -6,6 +6,7 @@ from conversation_guardrail import (
     ConversationState,
     build_updated_state,
     check_evidence_sufficiency,
+    detect_explicit_unsupported_intent,
     detect_service_entity_conflict,
     resolve_conversation,
     run_scope_guardrail,
@@ -92,7 +93,7 @@ class ConversationGuardrailTests(unittest.TestCase):
         )
         self.assertEqual(scope.status, "OUT_OF_SCOPE")
         self.assertFalse(scope.entity_conflict)
-        self.assertIn("沒有可確認的支援服務訊號", scope.reason)
+        self.assertIn("餐廳或美食推薦", scope.reason)
 
     def test_scope_classifier_failure_does_not_restore_old_context(self):
         def failing_complete(*args, **kwargs):
@@ -130,6 +131,62 @@ class ConversationGuardrailTests(unittest.TestCase):
         ):
             with self.subTest(query=query):
                 scope = run_scope_guardrail(query, {}, overoptimistic_model, retries=0)
+                self.assertEqual(scope.status, "OUT_OF_SCOPE")
+                self.assertIsNone(scope.office_hint)
+
+    def test_explicit_unrelated_intents_are_detected_without_a_model(self):
+        cases = {
+            "明天台北會下雨嗎？": "天氣或氣象",
+            "請推薦附近的餐廳": "餐廳或美食推薦",
+            "比特幣現在多少錢？": "投資或市場行情",
+            "幫我寫一段 Python 程式": "程式撰寫",
+        }
+        for query, expected in cases.items():
+            with self.subTest(query=query):
+                self.assertEqual(detect_explicit_unsupported_intent(query), expected)
+
+    def test_natural_hr_paraphrases_are_not_treated_as_unrelated(self):
+        def failing_complete(*args, **kwargs):
+            raise RuntimeError("classifier unavailable")
+
+        for query in (
+            "行政人員的午休時間是幾點到幾點",
+            "特休幾天",
+            "特別休假有幾日",
+        ):
+            with self.subTest(query=query):
+                scope = run_scope_guardrail(query, {}, failing_complete, retries=0)
+                self.assertEqual(scope.status, "IN_SCOPE")
+                self.assertEqual(scope.office_hint, "hr")
+
+    def test_high_confidence_semantic_office_can_cover_unknown_paraphrase(self):
+        scope = run_scope_guardrail(
+            "同仁中午可以休息多久",
+            {},
+            FakeCompleter([{
+                "status": "IN_SCOPE",
+                "office_hint": "hr",
+                "confidence": 0.93,
+                "reason": "行政人員勤休問題",
+            }]),
+            retries=0,
+        )
+        self.assertEqual(scope.status, "IN_SCOPE")
+        self.assertEqual(scope.office_hint, "hr")
+
+    def test_semantic_scope_without_office_or_confidence_remains_blocked(self):
+        cases = (
+            {"status": "IN_SCOPE", "office_hint": None, "confidence": 0.99, "reason": "沒有處室"},
+            {"status": "IN_SCOPE", "office_hint": "hr", "confidence": 0.60, "reason": "低信心"},
+        )
+        for output in cases:
+            with self.subTest(output=output):
+                scope = run_scope_guardrail(
+                    "這是一個沒有關鍵詞的問題",
+                    {},
+                    FakeCompleter([output]),
+                    retries=0,
+                )
                 self.assertEqual(scope.status, "OUT_OF_SCOPE")
                 self.assertIsNone(scope.office_hint)
 
