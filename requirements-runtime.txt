@@ -25,5 +25,6 @@ pydantic
 deep-translator==1.11.4   # 中英翻譯
 openpyxl==3.1.5           # 讀法規彙整 xlsx
 pillow==11.3.0            # 圖片分析（PIL）
+pillow-heif==1.8.0        # iPhone HEIC/HEIF 照片
 requests==2.32.3
 apscheduler               # 定期重建索引的排程器

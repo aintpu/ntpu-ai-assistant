@@ -760,7 +760,9 @@ export default function ChatPage() {
   };
 
   const handleImageSelect = async (file) => {
-    if (!file || !file.type.startsWith("image/")) return;
+    // Chrome/Firefox 常把 .heic 的 MIME type 留空，改以副檔名判斷。
+    const isHeic = /\.(heic|heif)$/i.test(file?.name ?? "");
+    if (!file || !(file.type.startsWith("image/") || isHeic)) return;
     setImagePreview(URL.createObjectURL(file));
     setImageBase64(await fileToBase64(file));
   };
@@ -1129,7 +1131,7 @@ export default function ChatPage() {
               >
                 <ImageIcon className="w-5 h-5" />
               </button>
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleImageSelect(e.target.files?.[0])} />
+              <input ref={fileInputRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={(e) => handleImageSelect(e.target.files?.[0])} />
 
               {/* 語音 */}
               <button

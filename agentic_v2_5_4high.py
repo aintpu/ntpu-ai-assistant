@@ -2,6 +2,7 @@
 # NTPU OPE Chatbot (Agentic RAG) — v3.0 完整版
 # 架構：Modular RAG (Agentic Loop & Tool Calling) + Multimodal UI
 
+import asyncio
 import os
 import re
 import io
@@ -21,7 +22,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
+try:
+    # iPhone 預設的 HEIC/HEIF 照片；缺套件時其他格式照常運作。
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass
 import requests
 
 from langchain_core.documents import Document
@@ -112,7 +119,18 @@ NIM_MODEL_MAIN = os.getenv("NVIDIA_MODEL", "mistralai/mistral-large-3-675b-instr
 NIM_MODEL_FALL = os.getenv("NVIDIA_MODEL_FALL", "microsoft/phi-4-multimodal-instruct")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 client_vision = google_genai.Client(api_key=GOOGLE_API_KEY) if (google_genai and GOOGLE_API_KEY) else None
-VISION_MODEL = "gemma-3-27b-it-litert-preview"
+# 圖片解析模型（OpenAI 相容 API，與 OPENAI_BASE_URL 共用 client）。
+# 預設 gpt-5.5（2026 旗艦、支援圖片輸入）；帳號無權限或模型下架時改用備援模型。
+VISION_MODEL = os.getenv("VISION_MODEL", "").strip() or "gpt-5.5"
+# 逗號分隔，依序嘗試；gpt-4o 是舊版正式環境已驗證可用的最後防線。
+VISION_FALLBACK_MODELS = [
+    m.strip() for m in os.getenv("VISION_FALLBACK_MODELS", "gpt-5.4-mini,gpt-4o").split(",") if m.strip()
+]
+VISION_FOLLOWUP_MODEL = os.getenv("VISION_FOLLOWUP_MODEL", "").strip()
+VISION_REASONING_EFFORT = os.getenv("VISION_REASONING_EFFORT", "low").strip()
+VISION_MAX_COMPLETION_TOKENS = int(os.getenv("VISION_MAX_COMPLETION_TOKENS", "4000"))
+# 公告、課表等小字需要較高解析度；1024 會讓小字糊掉而被誤讀。
+VISION_MAX_EDGE = int(os.getenv("VISION_MAX_EDGE", "2048"))
 
 MAX_B64_SIZE = 3_500_000
 MIN_EDGE_LIMIT = 640
@@ -2441,143 +2459,175 @@ def synthesize_speech(text: str, lang: str) -> Optional[str]:
         print(f"[TTS 錯誤] {e}")
         return None
 
+def _prepare_vision_image(pil_img: Image.Image) -> Image.Image:
+    """把任何上傳格式整理成 RGB，並限制長邊。
+
+    截圖與多數 PNG 是 RGBA，調色盤圖是 P，灰階透明圖是 LA；這些模式都不能直接
+    存成 JPEG（先前正式環境回「cannot write mode RGBA as JPEG」）。透明區域補白底，
+    並依 EXIF 轉正手機照片。
+    """
+    try:
+        pil_img = ImageOps.exif_transpose(pil_img)
+    except Exception:
+        pass
+    has_alpha = pil_img.mode in ("RGBA", "LA", "PA") or (
+        pil_img.mode == "P" and "transparency" in pil_img.info
+    )
+    if has_alpha:
+        rgba = pil_img.convert("RGBA")
+        background = Image.new("RGB", rgba.size, (255, 255, 255))
+        background.paste(rgba, mask=rgba.getchannel("A"))
+        pil_img = background
+    elif pil_img.mode != "RGB":
+        try:
+            pil_img = pil_img.convert("RGB")
+        except (ValueError, OSError):
+            # 16-bit 等特殊模式先轉 8-bit 灰階
+            pil_img = pil_img.convert("I").point(lambda v: v / 256).convert("L").convert("RGB")
+    else:
+        pil_img = pil_img.copy()
+    pil_img.thumbnail((VISION_MAX_EDGE, VISION_MAX_EDGE))
+    return pil_img
+
+
 def _encode_b64(pil_img: Image.Image) -> str:
+    pil_img = _prepare_vision_image(pil_img)
     buf = io.BytesIO()
-    pil_img.save(buf, format="JPEG", quality=80, optimize=True)
+    pil_img.save(buf, format="JPEG", quality=90, optimize=True)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
-def analyze_image(img_path: str) -> str:
-    input_time = _now_iso()
-    try:
-        img = Image.open(img_path)
-        img.thumbnail((1024, 1024))
-        b64 = _encode_b64(img)
-        
-        prompt = (
-            "請詳細分析這張圖片的內容。請客觀提取並總結圖片中「實際可見」的文字與重要資訊"
-            "（例如：宣傳主題、規定、流程、日期等）。\n"
-            "【重要約束】：請勿自行猜測或捏造圖片中未明確標示的資訊。\n"
-            "若圖片為圖表、系統截圖或流程圖，請說明其主要功能與步驟。請注意：NTPU 代表國立臺北大學。\n"
-            "【語言要求】：請依照圖片中文字的主要語言來回答。"
-            "若圖片內容主要為英文，請以英文回答；"
-            "若圖片內容主要為中文，請務必使用「繁體中文」回答，不可使用簡體中文。"
-        )
-        
-        # payload = {
-        #     "model": NIM_MODEL_MAIN,
-        #     "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}],
-        #     "max_tokens": 500, 
-        #     "temperature": 0.1  # 🌟 修改重點：降低溫度，減少模型腦補的機率
-        # }
-        
-        # headers = {"Authorization": f"Bearer {NVIDIA_API_KEY}", "Content-Type": "application/json"}
-        # resp = requests.post(NIM_INVOKE_URL, headers=headers, json=payload, timeout=120)
-        # resp.raise_for_status()
-        
-        # answer = f"## 🖼️ 圖片內容分析\n\n{resp.json()['choices'][0]['message']['content'].strip()}"
-        resp = client.chat.completions.create(
-            model=os.getenv("VISION_MODEL", "gpt-4o"),
-            messages=[{"role": "user", "content": [
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-            ]}],
-            max_tokens=500,
-            temperature=0.1
-        )
-        answer = f"## 🖼️ 圖片內容分析\n\n{resp.choices[0].message.content.strip()}"
-        
-        # 👇 新增 CSV 寫入邏輯 👇
+
+def _is_reasoning_model(model: str) -> bool:
+    name = (model or "").lower().split("/")[-1]
+    return name.startswith(("gpt-5", "gpt-6", "o1", "o3", "o4"))
+
+
+def _vision_request_kwargs(model: str, prompt: str, b64: str) -> dict:
+    """依模型家族組出相容的參數（GPT-5 系列不接受 max_tokens/temperature）。"""
+    kwargs = {
+        "model": model,
+        "messages": [{"role": "user", "content": [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {
+                "url": f"data:image/jpeg;base64,{b64}",
+                "detail": "high",
+            }},
+        ]}],
+    }
+    if _is_reasoning_model(model):
+        # 推理 token 也計入上限，需保留足夠空間給最終回答。
+        kwargs["max_completion_tokens"] = VISION_MAX_COMPLETION_TOKENS
+        if VISION_REASONING_EFFORT:
+            kwargs["reasoning_effort"] = VISION_REASONING_EFFORT
+    else:
+        kwargs["max_tokens"] = 800
+        kwargs["temperature"] = 0.1
+    return kwargs
+
+
+def _vision_complete(prompt: str, b64: str, primary_model: str | None = None) -> tuple[str, str]:
+    """呼叫視覺模型；主模型失敗（例如帳號無權限或模型下架）時改用備援模型。"""
+    models = [m for m in [primary_model or VISION_MODEL, *VISION_FALLBACK_MODELS] if m]
+    models = list(dict.fromkeys(models))
+    last_error: Exception | None = None
+    for model in models:
         try:
-            _append_csv({
-                "session_id": _get_session_id(),
-                "event_type": "image",
-                "language": "zh-TW",
-                "user_query": "上傳圖片分析",
-                "input_time": input_time,
-                "output_time": _now_iso(),
-                "retrieved_titles": "視覺大模型 (Vision Model)",
-                "retrieved_context": answer,  # 👉 將圖片分析出的文本內容記錄下來
-                "answer": answer,
-                "rerank": "",
-                "extra_json": ""
-            })
-            print("[系統] 成功寫入一筆圖片分析紀錄至 CSV！")
-        except Exception as e:
-            print(f"[圖片分析錯誤] {e}"); return "抱歉，目前系統無法順利解析這張圖片，請確認圖片格式或稍後再試。"
-            
+            resp = client.chat.completions.create(**_vision_request_kwargs(model, prompt, b64))
+            content = (resp.choices[0].message.content or "").strip()
+            if content:
+                return content, model
+            last_error = RuntimeError(f"{model} 回傳空白內容")
+        except Exception as exc:
+            last_error = exc
+        print(f"[圖片分析] {model} 失敗，嘗試下一個模型：{last_error}")
+    raise last_error or RuntimeError("沒有可用的視覺模型")
+
+
+_VISION_RULES = (
+    "【重要約束】：只根據圖片中「實際可見」的內容回答，不要猜測或捏造圖片未標示的資訊；"
+    "看不清楚的文字、數字或日期請明確說明無法辨識，不要自行補上。"
+    "請注意：NTPU 代表國立臺北大學。\n"
+    "【語言要求】：使用者有提問時，依提問語言回答；否則依圖片主要文字的語言回答。"
+    "中文一律使用「繁體中文」，不可使用簡體中文。"
+)
+_VISION_NOTICE = "\n\n> 以上內容由 AI 辨識圖片產生，日期、時間與金額等細節請以原圖或學校官方公告為準。"
+
+
+def _log_image_event(event_type: str, question: str, answer: str, context: str, input_time: str, model: str):
+    try:
+        _append_csv({
+            "session_id": _get_session_id(),
+            "event_type": event_type,
+            "language": "zh-TW",
+            "user_query": question or "上傳圖片分析",
+            "input_time": input_time,
+            "output_time": _now_iso(),
+            "retrieved_titles": f"視覺大模型 ({model})",
+            "retrieved_context": context,
+            "answer": answer,
+            "rerank": "",
+            "extra_json": "",
+        })
+    except Exception as e:
+        # 紀錄失敗不能讓整個圖片分析失敗。
+        print(f"[圖片分析 CSV 寫入錯誤] {e}")
+
+
+def analyze_image(img_path: str, question: str = "") -> str:
+    """分析上傳圖片；使用者一併輸入問題時，直接針對問題回答。"""
+    input_time = _now_iso()
+    question = (question or "").strip()[:1000]
+    try:
+        with Image.open(img_path) as img:
+            b64 = _encode_b64(img)
+
+        if question:
+            prompt = (
+                f"使用者上傳了一張圖片，並提問：「{question}」\n\n"
+                "請先根據圖片內容直接回答這個問題；必要時再簡短補充圖片中與問題相關的資訊。"
+                "如果圖片中找不到答案，請直接說明圖片中沒有相關資訊。\n"
+                + _VISION_RULES
+            )
+            title = "## 🖼️ 圖片問題回覆"
+        else:
+            prompt = (
+                "請詳細分析這張圖片的內容。請客觀提取並總結圖片中「實際可見」的文字與重要資訊"
+                "（例如：宣傳主題、規定、流程、日期等）。"
+                "若圖片為圖表、系統截圖或流程圖，請說明其主要功能與步驟。\n"
+                + _VISION_RULES
+            )
+            title = "## 🖼️ 圖片內容分析"
+
+        content, model = _vision_complete(prompt, b64)
+        answer = f"{title}\n\n{content}{_VISION_NOTICE}"
+        _log_image_event("image", question, answer, answer, input_time, model)
         return answer
     except Exception as e:
-        return f"⚠️ 圖片分析失敗: {e}"
+        print(f"[圖片分析錯誤] {e}")
+        return "⚠️ 圖片分析失敗，請確認檔案是可開啟的圖片（JPG、PNG、WebP、HEIC 等），或稍後再試。"
+
 
 def analyze_image_with_question(img_path: str, question: str, prev_analysis: str) -> str:
-    input_time = _now_iso()
     """追問圖片：把原圖 + 前次分析 + 新問題一起送給視覺模型"""
+    input_time = _now_iso()
     try:
-        img = Image.open(img_path)
-        img.thumbnail((1024, 1024))
-        b64 = _encode_b64(img)
+        with Image.open(img_path) as img:
+            b64 = _encode_b64(img)
 
         prompt = (
             f"這張圖片先前已經分析過，分析摘要如下：\n{prev_analysis}\n\n"
             f"使用者現在針對這張圖片追問：「{question}」\n\n"
             "請根據圖片的實際內容直接回答使用者的追問。"
-            "不需要重複描述整張圖片，只需聚焦在使用者的問題上。"
-            "【重要約束】：請勿猜測或捏造圖片中未明確標示的資訊。"
-            "【語言要求】：請依照圖片中文字的主要語言來回答。"
-            "若圖片內容主要為英文，請以英文回答；"
-            "若圖片內容主要為中文，請務必使用「繁體中文」回答，不可使用簡體中文。"
+            "不需要重複描述整張圖片，只需聚焦在使用者的問題上。\n"
+            + _VISION_RULES
         )
-
-        # payload = {
-        #     "model": NIM_MODEL_MAIN,
-        #     "messages": [{
-        #         "role": "user",
-        #         "content": [
-        #             {"type": "text", "text": prompt},
-        #             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-        #         ]
-        #     }],
-        #     "max_tokens": 300,
-        #     "temperature": 0.1
-        # }
-
-        # headers = {"Authorization": f"Bearer {NVIDIA_API_KEY}", "Content-Type": "application/json"}
-        # resp = requests.post(NIM_INVOKE_URL, headers=headers, json=payload, timeout=60)
-        # resp.raise_for_status()
-
-        # answer = f"## 🖼️ 圖片追問回覆\n\n{resp.json()['choices'][0]['message']['content'].strip()}"
-        resp = client.chat.completions.create(
-            model=os.getenv("VISION_FOLLOWUP_MODEL", "gpt-4o-mini"),
-            messages=[{"role": "user", "content": [
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-            ]}],
-            max_tokens=500,
-            temperature=0.1
-        )
-        answer = f"## 🖼️ 圖片追問回覆\n\n{resp.choices[0].message.content.strip()}"
-
-        try:
-            _append_csv({
-                "session_id": _get_session_id(),
-                "event_type": "image_followup",
-                "language": "zh-TW",
-                "user_query": question,
-                "input_time":input_time,
-                "output_time": _now_iso(),
-                "retrieved_titles": "視覺大模型追問 (Vision Follow-up)",
-                "retrieved_context": prev_analysis,
-                "answer": answer,
-                "rerank": "",
-                "extra_json": ""
-            })
-        except Exception as e:
-            print(f"[圖片追問 CSV 寫入錯誤] {e}")
-
+        content, model = _vision_complete(prompt, b64, VISION_FOLLOWUP_MODEL or VISION_MODEL)
+        answer = f"## 🖼️ 圖片追問回覆\n\n{content}{_VISION_NOTICE}"
+        _log_image_event("image_followup", question, answer, prev_analysis, input_time, model)
         return answer
-
     except Exception as e:
-        return f"⚠️ 圖片追問失敗：{e}"
+        print(f"[圖片追問錯誤] {e}")
+        return "⚠️ 圖片追問失敗，請稍後再試。"
 
 # ==========================================
 # 8. 多模態輔助（原 Gradio UI 事件已移除，改由 FastAPI 前端呼叫）
@@ -3075,6 +3125,36 @@ def _is_rate_limited(request: Request) -> bool:
     return not _check_rate_limit(ip)
 
 
+MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", str(15 * 1024 * 1024)))
+
+
+def _analyze_uploaded_image(image_base64: str, question: str = "") -> str:
+    """解碼前端傳來的 base64 圖片並交給視覺模型（在 worker thread 執行）。"""
+    payload = (image_base64 or "").strip()
+    if payload.startswith("data:") and "," in payload:
+        payload = payload.split(",", 1)[1]
+    try:
+        raw = base64.b64decode(payload, validate=False)
+    except Exception:
+        return "⚠️ 圖片資料無法解析，請重新上傳。"
+    if not raw:
+        return "⚠️ 圖片資料是空的，請重新上傳。"
+    if len(raw) > MAX_IMAGE_BYTES:
+        return f"⚠️ 圖片太大（上限 {MAX_IMAGE_BYTES // (1024 * 1024)} MB），請壓縮後再上傳。"
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".img", delete=False) as f:
+            f.write(raw)
+            tmp = f.name
+        return analyze_image(tmp, question)
+    finally:
+        if tmp:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+
+
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest, request: Request):
     if _is_rate_limited(request):
@@ -3088,15 +3168,13 @@ async def chat_endpoint(req: ChatRequest, request: Request):
     _set_request_ctx(conversation_id, message_id)
 
     if req.image_base64:
-        try:
-            import tempfile, base64 as _b64
-            raw = _b64.b64decode(req.image_base64)
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as f:
-                f.write(raw); tmp = f.name
-            answer = analyze_image(tmp)
-            import os as _os; _os.unlink(tmp)
-        except Exception as e:
-            answer = f"⚠️ 圖片分析失敗：{e}"
+        if q and not run_safety_guardrail(q)["allowed"]:
+            return {
+                "status": "blocked", "message": _INJECT_MSG,
+                "message_id": message_id, "conversation_id": conversation_id,
+                "conversation_state": req.conversation_state or {},
+            }
+        answer = await asyncio.to_thread(_analyze_uploaded_image, req.image_base64, q)
         return {
             "status": "ok", "answer": answer, "sources": [],
             "message_id": message_id, "conversation_id": conversation_id,
