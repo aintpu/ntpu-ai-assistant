@@ -573,6 +573,9 @@ function createConversationId() {
 
 const CONVERSATION_ID_STORAGE_KEY = "ntpu-ai-assistant:conversation-id";
 const CONVERSATION_STATE_STORAGE_PREFIX = "ntpu-ai-assistant:conversation-state:";
+const CONVERSATION_MESSAGES_STORAGE_PREFIX = "ntpu-ai-assistant:conversation-messages:";
+const MAX_STORED_MESSAGES = 20;
+const MAX_STORED_MESSAGE_CHARS = 12000;
 
 function getInitialConversationId() {
   if (typeof window !== "undefined") {
@@ -604,6 +607,56 @@ function getInitialConversationState() {
   return {};
 }
 
+function sanitizeStoredMessages(value) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(-MAX_STORED_MESSAGES).flatMap((message) => {
+    if (!message || typeof message !== "object") return [];
+    const role = message.role === "user" || message.role === "assistant" ? message.role : null;
+    const content = typeof message.content === "string"
+      ? message.content.slice(0, MAX_STORED_MESSAGE_CHARS)
+      : "";
+    if (!role || !content) return [];
+
+    const rawAnswer = typeof message.rawAnswer === "string"
+      ? message.rawAnswer.slice(0, MAX_STORED_MESSAGE_CHARS)
+      : undefined;
+    const sources = Array.isArray(message.sources)
+      ? message.sources.slice(0, 10).flatMap((source) => {
+          if (!source || typeof source !== "object") return [];
+          return [{
+            title: typeof source.title === "string" ? source.title.slice(0, 300) : "",
+            url: typeof source.url === "string" ? source.url.slice(0, 1200) : "",
+            type: typeof source.type === "string" ? source.type.slice(0, 40) : undefined,
+            faq_id: typeof source.faq_id === "string" ? source.faq_id.slice(0, 120) : undefined,
+          }];
+        })
+      : [];
+
+    return [{
+      role,
+      content,
+      rawAnswer,
+      status: typeof message.status === "string" ? message.status : "ok",
+      sources,
+      messageId: typeof message.messageId === "string" ? message.messageId : undefined,
+      isVoice: Boolean(message.isVoice),
+    }];
+  });
+}
+
+function getStoredConversationMessages(conversationId) {
+  if (!conversationId || typeof window === "undefined") return null;
+  try {
+    const rawMessages = window.sessionStorage.getItem(
+      `${CONVERSATION_MESSAGES_STORAGE_PREFIX}${conversationId}`,
+    );
+    if (rawMessages === null) return null;
+    return sanitizeStoredMessages(JSON.parse(rawMessages));
+  } catch {
+    return null;
+  }
+}
+
 // ─── 主頁面 ───────────────────────────────────────────────────────────────────
 
 export default function ChatPage() {
@@ -612,6 +665,7 @@ export default function ChatPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [sessionReady, setSessionReady] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
@@ -655,19 +709,47 @@ export default function ChatPage() {
   }, [sidebarOpen]);
 
   useEffect(() => {
-    if (!sessionId || typeof window === "undefined") return;
-    try {
-      // sessionStorage survives reloads in this tab, while keeping separate tabs
-      // from accidentally sharing a conversation without an account system.
-      window.sessionStorage.setItem(CONVERSATION_ID_STORAGE_KEY, sessionId);
-      window.sessionStorage.setItem(
-        `${CONVERSATION_STATE_STORAGE_PREFIX}${sessionId}`,
-        JSON.stringify(conversationState),
-      );
-    } catch {
-      // The server-side Durable Object store remains the source of truth.
-    }
-  }, [sessionId, conversationState]);
+    if (typeof window === "undefined") return;
+    const timer = window.setTimeout(() => {
+      const storedConversationId = window.sessionStorage.getItem(CONVERSATION_ID_STORAGE_KEY);
+      if (storedConversationId) {
+        const storedMessages = getStoredConversationMessages(storedConversationId);
+        if (storedMessages === null) {
+          // Older clients kept a server-side state but not the visible transcript.
+          // Start clean rather than silently applying context the user cannot see.
+          setSessionId(createConversationId());
+          setConversationState({});
+          setMessages([]);
+        } else {
+          setMessages(storedMessages);
+        }
+      }
+      setSessionReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!sessionReady || !sessionId || typeof window === "undefined") return;
+    // Streaming updates arrive token by token. Debounce storage writes so the
+    // final visible transcript and the structured server state stay aligned.
+    const timer = window.setTimeout(() => {
+      try {
+        window.sessionStorage.setItem(CONVERSATION_ID_STORAGE_KEY, sessionId);
+        window.sessionStorage.setItem(
+          `${CONVERSATION_STATE_STORAGE_PREFIX}${sessionId}`,
+          JSON.stringify(conversationState),
+        );
+        window.sessionStorage.setItem(
+          `${CONVERSATION_MESSAGES_STORAGE_PREFIX}${sessionId}`,
+          JSON.stringify(sanitizeStoredMessages(messages)),
+        );
+      } catch {
+        // The server-side Durable Object store remains the source of truth.
+      }
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [sessionId, conversationState, messages, sessionReady]);
 
   const buildHistory = (msgs) =>
     msgs.map((m) => ({ role: m.role, content: m.role === "user" ? m.content : (m.rawAnswer ?? m.content) }));
@@ -700,7 +782,7 @@ export default function ChatPage() {
 
   const sendMessage = async (overrideText, isVoice = false, voiceBase64 = null) => {
     const question = (overrideText ?? input).trim();
-    if ((!question && !imageBase64 && !voiceBase64) || loading) return;
+    if (!sessionReady || (!question && !imageBase64 && !voiceBase64) || loading) return;
 
     const userMsg = { role: "user", content: question, imagePreview: imagePreview ?? null, isVoice };
     const nextMessages = [...messages, userMsg];

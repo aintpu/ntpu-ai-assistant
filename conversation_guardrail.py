@@ -152,6 +152,25 @@ CONTEXT_FOLLOWUP_SUFFIXES = (
     "規定的申請方式", "流程怎麼走", "還有嗎", "還有哪些",
 )
 
+# A user often answers a clarification with only the missing value, for example
+# "我5年", "600分", "2學分" or "我是聘僱人員".  These are safe to inherit only
+# when the previous turn already established a verified supported-office topic.
+_CONTEXT_NUMBER = r"(?:\d+(?:\.\d+)?|[零〇一二兩三四五六七八九十百千半]+)"
+_CONTEXT_VALUE_REPLY_RE = re.compile(
+    rf"^(?:我|本人|我的|本人的)?"
+    rf"(?:年資|服務|成績|分數|學分|費用|金額|年級)?"
+    rf"(?:是|有|為|已|已經|目前|約|大約|滿)?"
+    rf"{_CONTEXT_NUMBER}"
+    rf"(?:年|個月|月|日|天|小時|分鐘|分|學分|元|歲|學期|次|門|人|級)"
+    rf"(?:左右|以上|以下|未滿|多|整)?$"
+)
+_CONTEXT_CATEGORY_REPLY_RE = re.compile(
+    r"^(?:我|本人)?(?:是|屬於|讀|念)?"
+    r"(?:聘僱人員|約用人員|公務人員|教職員|教師|學生|大學生|研究生|"
+    r"碩士生|博士生|在職專班|大[一二三四五六]|碩[一二三]|博[一二三四五六]|"
+    r"本國籍|外籍生|僑生|交換生)$"
+)
+
 
 @dataclass
 class ConversationState:
@@ -440,10 +459,36 @@ def _is_context_only_followup(query: str) -> bool:
     return text in {"呢", "嗎", "好嗎", "這個呢", "那這個呢"}
 
 
+def _is_compact_context_reply(query: str) -> bool:
+    """Return whether a short turn looks like a value/category supplied to the prior topic."""
+    text = re.sub(r"[\s，、：:；;！？!?。]+", "", (query or "").strip().lower())
+    if not text or len(text) > 24:
+        return False
+    return bool(
+        _CONTEXT_VALUE_REPLY_RE.fullmatch(text)
+        or _CONTEXT_CATEGORY_REPLY_RE.fullmatch(text)
+    )
+
+
+def _has_explicit_context_reference(query: str) -> bool:
+    """Return whether the current turn explicitly points back to prior context."""
+    text = re.sub(r"^[\s，、：:；;！？!?。]+", "", (query or "").strip().lower())
+    return text.startswith((
+        "那", "那麼", "這", "這個", "這項", "上述", "前面", "剛才", "同樣", "也",
+    ))
+
+
 def _likely_followup(query: str, history: Iterable[Any] | None, state: ConversationState) -> bool:
     if not (_history_items(history) or state.active_topic):
         return False
-    return _is_context_only_followup(query)
+    if _is_context_only_followup(query):
+        return True
+    return bool(
+        state.scope_verified
+        and state.active_office in VALID_OFFICES
+        and state.active_topic
+        and _is_compact_context_reply(query)
+    )
 
 
 def _parse_json_object(text: Any) -> dict[str, Any]:
@@ -501,6 +546,8 @@ def _resolver_prompt(current_query: str, history: list[dict[str, str]], state: C
         "你只負責理解目前這句話與前文的關係，不回答使用者問題。\n"
         "請判斷是否為追問、是否切換主題，並將目前問題改寫成不依賴前文的完整 standalone_query。"
         "短句、省略主詞或含有『那／呢／這個／多久／要幾分／怎麼申請』不代表超出服務範圍。"
+        "若上一輪已確認校務主題，『我5年／600分／2學分／我是聘僱人員』等短句通常是補充條件，"
+        "應結合上一輪主題改寫成完整問題。"
         "若前文能補足語意，必須視為追問；若補足後仍有實質不同的解釋，ambiguity=true。"
         "不得創造前文不存在的條件。只輸出符合 schema 的 JSON。\n\n"
         "schema={is_followup:boolean, topic_changed:boolean, standalone_query:string, "
@@ -558,10 +605,50 @@ def resolve_conversation(
         return _fallback_resolution(current_query, history_items, state_obj)
 
     has_context = bool(history_items or state_obj.active_topic)
+    raw_scope = _lexical_scope(current_query, {})
+    self_contained_supported_query = bool(
+        raw_scope.status == "IN_SCOPE"
+        and raw_scope.office_hint in VALID_OFFICES
+        and not _is_context_only_followup(current_query)
+        and not _is_compact_context_reply(current_query)
+        and not _has_explicit_context_reference(current_query)
+    )
+    compact_verified_followup = bool(
+        state_obj.scope_verified
+        and state_obj.active_office in VALID_OFFICES
+        and state_obj.active_topic
+        and _is_compact_context_reply(current_query)
+    )
     if not has_context:
         result.is_followup = False
         result.topic_changed = False
         result.inherited_office = None
+    elif self_contained_supported_query:
+        # A complete supported-service question must stand on its own.  This
+        # prevents an old hidden session value (for example "我7年") from being
+        # silently injected into a later visible question about annual leave.
+        result.is_followup = False
+        result.topic_changed = bool(
+            state_obj.active_topic
+            and _normalize_entity_text(state_obj.active_topic)
+            != _normalize_entity_text(current_query)
+        )
+        result.standalone_query = current_query
+        result.inherited_office = None
+        result.topic = current_query
+        result.ambiguity = False
+        result.ambiguity_reason = None
+        result.confidence = max(result.confidence, 0.90)
+    elif compact_verified_followup:
+        # The structured resolver may interpret a bare value as a new topic.
+        # A value/category-only reply is deterministic when it follows a
+        # verified supported-office turn, so preserve that context.
+        result.is_followup = True
+        result.topic_changed = False
+        result.inherited_office = state_obj.active_office
+        result.topic = state_obj.active_topic
+        result.standalone_query = f"{state_obj.active_topic}：{current_query}"
+        result.confidence = max(result.confidence, 0.90)
     elif _likely_followup(current_query, history_items, state_obj) and not result.topic_changed:
         # A model occasionally labels a four-word continuation as a new query.
         # The conservative correction prevents the old raw-short-query bug.
@@ -699,7 +786,15 @@ def run_scope_guardrail(
             f"本輪問題屬於{unsupported_intent}，不在目前支援的校務服務範圍。",
         )
     has_context = bool(context.get("active_topic") or context.get("active_office"))
-    context_only_followup = _is_context_only_followup(raw_query)
+    context_only_followup = bool(
+        _is_context_only_followup(raw_query)
+        or (
+            context.get("scope_verified")
+            and _normalize_office(context.get("active_office"))
+            and context.get("active_topic")
+            and _is_compact_context_reply(raw_query)
+        )
+    )
     classifier_query = standalone_query
     classifier_context = context
     if has_context and not context_only_followup:

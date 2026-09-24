@@ -34,8 +34,9 @@ conversation-session:<conversation_id> → {
 
 Worker 轉發 `/api/chat`、`/api/chat/stream`、`/api/voice` 前，會先用
 `conversation_id` 讀取這份 state；回答完成後再把後端回傳的最新 state 寫回去。
-只保存 resolver 所需的精簡欄位，不保存完整 `history`。目前 state 閒置 30 天後，
-下次讀取時會被視為過期並清除。
+伺服器只保存 resolver 所需的精簡欄位，不保存完整 `history`。瀏覽器同一分頁的
+`sessionStorage` 另保存最近 20 則可見訊息，供 reload 後還原畫面並隨下一次 request
+送出 history。目前伺服器 state 閒置 30 天後，下次讀取時會被視為過期並清除。
 
 | 項目 | 值 |
 |---|---|
@@ -204,9 +205,12 @@ curl -s -X POST https://aia.ntpu.ai/api/chat -H "Content-Type: application/json"
 
 1. 先問「外語能力畢業門檻」並記下回應。
 2. 接著問「要幾分」，確認回答仍使用語言中心的上一個主題。
-3. 重新整理頁面後再問「那需要什麼證明」，確認同一分頁的 `conversation_id`
-   仍能從 Durable Object storage 讀回上一輪 state。
+3. 重新整理頁面，確認最近對話仍顯示；再問「那需要什麼證明」，確認同一分頁的
+   `conversation_id` 能從 Durable Object storage 讀回上一輪 state，且前端 history 與畫面一致。
 4. 點「新對話」後再問同一句，確認已使用新的 `conversation_id`，不會沿用舊主題。
+5. 問「行政人員一年有多少天特休？」時，確認回答列出級距而不自行假設使用者年資；
+   接著回答「我是十年」，確認系統將短值補充改寫為同一個人事室主題，而不是回覆
+   `OUT_OF_SCOPE`。
 
 ### 5.5 回饋機制
 

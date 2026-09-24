@@ -1749,6 +1749,13 @@ SYSTEM_STYLE = (
     "3. 若使用者追問『來源是什麼』，必須優先回答文件名稱、頁碼與連結；不要改說是一般常識整理，除非這次回答真的沒有使用文件。\n"
     "4. 若文件只列出重點項目，回答時就維持重點條列，不要自行延伸成完整醫學解釋。\n"
     "5. 只有在使用者明確要求補充說明、延伸解釋或一般背景知識時，才可以在文件內容之外做少量補充，且要明確說明『以下為補充說明』。\n\n"
+
+    "【禁止臆測使用者條件】\n"
+    "1. 不得把文件中的範例、級距或其中一個數字，當成使用者本人的身分、年資、年級、分數或其他條件。\n"
+    "2. 只有原始問題或本輪 Standalone Query 明確提供的條件，才可套用到使用者本人。\n"
+    "3. 若答案會因身分、年資、年級、學制或其他條件而不同，但使用者尚未提供該條件，"
+    "必須列出適用級距並請使用者補充；不得自行選擇其中一個級距。\n"
+    "4. 例如使用者只問『行政人員一年有多少天特休』時，不得自行寫成使用者年資七年、五年或任何年資。\n\n"
     
     "【🚫 能力邊界與回覆限制】\n"
     "1. 你只能根據目前系統已提供的工具能力回答，不可假裝自己具備未實作的功能。\n"
@@ -2826,6 +2833,7 @@ def prepare_conversation_turn(
         context={
             "active_office": state.active_office,
             "active_topic": state.active_topic,
+            "scope_verified": state.scope_verified,
             "raw_query": raw_query,
         },
         complete_fn=llm_adapter.complete,
@@ -2954,7 +2962,12 @@ def classify_department(query: str, history: list = None) -> str:
         return "system"
     scope = run_scope_guardrail(
         resolution.standalone_query,
-        {"active_office": state.active_office, "active_topic": state.active_topic},
+        {
+            "active_office": state.active_office,
+            "active_topic": state.active_topic,
+            "scope_verified": state.scope_verified,
+            "raw_query": query,
+        },
         llm_adapter.complete,
         retries=1,
     )

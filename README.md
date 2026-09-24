@@ -201,7 +201,7 @@ push `main` 後由 GitHub Actions 預建 FAISS、建置 Next.js static export，
 ## 目前限制
 
 - 尚未提供登入、使用者帳號與權限管理。
-- 前端在同一分頁的 `sessionStorage` 保存 `conversation_id` 與精簡 state；Cloudflare 正式環境再以 Durable Object storage 依 key 保存同一份 Conversation State（主題、處室、上一輪 query、來源 ID），重新整理後仍可接續追問，但畫面上的舊訊息不會自動還原。
+- 前端在同一分頁的 `sessionStorage` 保存 `conversation_id`、精簡 state 與最近 20 則可見訊息；Cloudflare 正式環境再以 Durable Object storage 依 key 保存 Conversation State（主題、處室、上一輪 query、來源 ID）。重新整理後會同步還原畫面與上下文；若偵測到只有舊 state、沒有可見訊息的舊版 session，會改開新對話，避免套用使用者看不到的背景上下文。
 - 結構化事件寫到 stdout；本機另可寫 `events.jsonl`，Container 檔案不可視為永久儲存。
 - Cloudflare 正式環境不依賴 Firestore；session state 存在 Durable Object storage。
 - CI 若無法預建 `.faiss_cache`，Container 冷啟動時才會完整建索引，首次回應較慢。

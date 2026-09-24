@@ -232,6 +232,149 @@ class ConversationGuardrailTests(unittest.TestCase):
         self.assertEqual(result.standalone_query, "外語能力畢業門檻：要幾分")
         self.assertTrue(result.is_followup)
 
+    def test_verified_compact_value_reply_inherits_topic_and_office(self):
+        state = ConversationState(
+            conversation_id="hr-years-1",
+            active_office="hr",
+            active_topic="行政人員一年有多少天特休？",
+            scope_verified=True,
+            previous_user_query="行政人員一年有多少天特休？",
+            previous_standalone_query="行政人員一年有多少天特休？",
+        )
+        completer = FakeCompleter([
+            resolver_output(
+                is_followup=False,
+                topic_changed=True,
+                standalone_query="我5年",
+                inherited_office=None,
+                topic="我5年",
+                confidence=0.72,
+            ),
+            {
+                "status": "OUT_OF_SCOPE",
+                "office_hint": None,
+                "confidence": 0.90,
+                "reason": "模型只看到簡短數值",
+            },
+        ])
+
+        resolution = resolve_conversation("我5年", [], state, completer, retries=0)
+        self.assertTrue(resolution.is_followup)
+        self.assertFalse(resolution.topic_changed)
+        self.assertEqual(resolution.inherited_office, "hr")
+        self.assertEqual(
+            resolution.standalone_query,
+            "行政人員一年有多少天特休？：我5年",
+        )
+
+        scope = run_scope_guardrail(
+            resolution.standalone_query,
+            state.to_dict() | {"raw_query": "我5年"},
+            completer,
+            retries=0,
+        )
+        self.assertEqual(scope.status, "IN_SCOPE")
+        self.assertEqual(scope.office_hint, "hr")
+
+    def test_compact_value_reply_needs_verified_supported_context(self):
+        state = ConversationState(
+            active_office="hr",
+            active_topic="行政人員一年有多少天特休？",
+            scope_verified=False,
+        )
+        resolution = resolve_conversation(
+            "我5年",
+            [],
+            state,
+            FakeCompleter([resolver_output(
+                is_followup=False,
+                topic_changed=False,
+                standalone_query="我5年",
+                inherited_office=None,
+                topic="我5年",
+            )]),
+            retries=0,
+        )
+        self.assertFalse(resolution.is_followup)
+        self.assertEqual(resolution.standalone_query, "我5年")
+
+    def test_common_compact_answers_are_resolved_as_verified_followups(self):
+        cases = (
+            ("600分", "lc", "大學英文免修門檻"),
+            ("2學分", "ge", "通識學分抵免"),
+            ("我是聘僱人員", "hr", "行政人員特別休假"),
+            ("我是十年", "hr", "行政人員特別休假"),
+        )
+        for query, office, topic in cases:
+            with self.subTest(query=query):
+                state = ConversationState(
+                    active_office=office,
+                    active_topic=topic,
+                    scope_verified=True,
+                )
+                resolution = resolve_conversation(
+                    query,
+                    [],
+                    state,
+                    FakeCompleter([resolver_output(
+                        is_followup=False,
+                        topic_changed=True,
+                        standalone_query=query,
+                        inherited_office=None,
+                        topic=query,
+                    )]),
+                    retries=0,
+                )
+                self.assertTrue(resolution.is_followup)
+                self.assertFalse(resolution.topic_changed)
+                self.assertEqual(resolution.inherited_office, office)
+                self.assertEqual(resolution.standalone_query, f"{topic}：{query}")
+
+    def test_self_contained_supported_query_drops_hidden_stale_condition(self):
+        state = ConversationState(
+            active_office="hr",
+            active_topic="行政人員一年有多少天特休？",
+            scope_verified=True,
+            previous_user_query="我是7年",
+            previous_standalone_query="行政人員一年有多少天特休？：我是7年",
+        )
+        query = "行政人員一年有多少天特休？"
+        resolution = resolve_conversation(
+            query,
+            [],
+            state,
+            FakeCompleter([resolver_output(
+                is_followup=True,
+                topic_changed=False,
+                standalone_query="行政人員一年有多少天特休？：年資七年",
+                inherited_office="hr",
+                topic="行政人員一年有多少天特休？",
+            )]),
+            retries=0,
+        )
+        self.assertFalse(resolution.is_followup)
+        self.assertFalse(resolution.topic_changed)
+        self.assertIsNone(resolution.inherited_office)
+        self.assertEqual(resolution.standalone_query, query)
+
+    def test_unrelated_numeric_query_still_cannot_inherit_verified_context(self):
+        def should_not_complete(*args, **kwargs):
+            raise AssertionError("explicit unsupported intent should run before context inheritance")
+
+        scope = run_scope_guardrail(
+            "行政人員一年有多少天特休？：比特幣5年走勢",
+            {
+                "raw_query": "比特幣5年走勢",
+                "active_office": "hr",
+                "active_topic": "行政人員一年有多少天特休？",
+                "scope_verified": True,
+            },
+            should_not_complete,
+            retries=0,
+        )
+        self.assertEqual(scope.status, "OUT_OF_SCOPE")
+        self.assertIn("投資或市場行情", scope.reason)
+
     def test_followup_inherits_office(self):
         state = ConversationState(active_office="lc", active_topic="外語能力畢業門檻")
         resolution = resolver_output()

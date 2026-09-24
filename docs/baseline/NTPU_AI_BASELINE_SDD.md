@@ -81,7 +81,7 @@ flowchart TD
 
 實際步驟：
 
-1. `page.js` 產生／沿用 `sessionId`，從 `sessionStorage` 取出 `conversation_state`，送出最近對話 history。
+1. `page.js` 產生／沿用 `sessionId`，從 `sessionStorage` 取出 `conversation_state` 與最近 20 則可見訊息，還原畫面並送出最近對話 history。
 2. Cloudflare Worker 對 `/api/*` 取得 singleton `NtpuAiaBackend` Durable Object。若 request 未帶完整 state，Worker 由 Durable Object storage 補入該 conversation 的 JSON state。
 3. FastAPI `/api/chat/stream` 建立 `message_id` 與 request context，呼叫 `prepare_conversation_turn()`。
 4. safety guardrail 先檢查 prompt injection。
@@ -94,7 +94,7 @@ flowchart TD
 11. 一般知識檢索由 `tool_search_database()` 呼叫 `retrieve_and_rerank()`，預設取 6 筆。
 12. 回答生成後，只保留被答案引用或與答案最相關的候選來源，形成 `sources`。
 13. 後端依序送出 SSE `status`、`delta`、`sources`、`done`；`done` 含 answer、message ID、conversation ID 與更新後 state。
-14. Worker 將 response 中的 `conversation_state` 寫回 Durable Object storage；前端同步寫入 `sessionStorage`。
+14. Worker 將 response 中的 `conversation_state` 寫回 Durable Object storage；前端同步把 state 與最近 20 則可見訊息寫入 `sessionStorage`。
 
 ### 3.2 非串流、圖片與語音
 
@@ -131,7 +131,7 @@ Baseline 的業務分類只有 `ope`、`ge`、`lc`、`oaa`、`osa`、`hr`，另�
 }
 ```
 
-Client state 只做 UX cache；正式跨 request 的 source of truth 是 Worker Durable Object storage。Worker 會限制 key、型別、字串長度與 source ID 數量。
+Client state 與最近訊息只做 UX cache；正式跨 request 的結構化 state source of truth 是 Worker Durable Object storage。Worker 會限制 key、型別、字串長度與 source ID 數量。若前端只有舊 state 而沒有可還原的可見訊息，會建立新的 conversation ID，避免隱藏上下文。
 
 ### 4.4 Fallback
 

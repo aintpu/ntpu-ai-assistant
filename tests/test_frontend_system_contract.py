@@ -38,6 +38,15 @@ class FrontendSystemContractTests(unittest.TestCase):
         self.assertIn('source.type === "system"', page)
         self.assertIn('systemSources: "系統說明"', page)
 
+    def test_chat_ui_persists_visible_messages_with_session_state(self):
+        page = (FRONTEND / "app" / "page.js").read_text(encoding="utf-8")
+        self.assertIn("CONVERSATION_MESSAGES_STORAGE_PREFIX", page)
+        self.assertIn("sanitizeStoredMessages(messages)", page)
+        self.assertIn("setMessages(storedMessages)", page)
+        self.assertIn("storedMessages === null", page)
+        self.assertIn("setSessionId(createConversationId())", page)
+        self.assertIn("if (!sessionReady", page)
+
 
 if __name__ == "__main__":
     unittest.main()
