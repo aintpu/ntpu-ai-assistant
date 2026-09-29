@@ -8,6 +8,14 @@
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
 
+  // 每次 deploy／dev 前掃描前端靜態輸出，計算 inline script／style 的 CSP hash，
+  // 寫入 src/csp-hashes.generated.js（因此前端必須先 build）。
+  // watch_dir 指向 scripts/，避免產生檔案寫進 src/ 時觸發 dev 無限重建。
+  "build": {
+    "command": "node scripts/generate-csp-hashes.mjs",
+    "watch_dir": "scripts"
+  },
+
   // 正式網域。以設定檔宣告而非在後台點選，好處是版本控制、可重現，
   // 且與部署同一個流程。Cloudflare 會自動建立 DNS 記錄並簽發憑證
   // （ntpu.ai 的 zone 已在同一帳號下，故不需指定 zone_id）。

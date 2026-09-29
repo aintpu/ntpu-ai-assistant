@@ -56,6 +56,8 @@ front_end/sports-ai-chat/.next/
 front_end/sports-ai-chat/public/system_content.json
 # wrangler 的本機狀態
 .wrangler/
+# 由 cf/scripts/generate-csp-hashes.mjs 在 wrangler build 時產生
+cf/src/csp-hashes.generated.js
 
 # OS
 .DS_Store

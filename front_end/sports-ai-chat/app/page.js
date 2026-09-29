@@ -128,9 +128,8 @@ const QUICK_QUESTIONS = {
 };
 
 // ─── 品牌主色 ─────────────────────────────────────────────────────────────────
-
-const BRAND = "#1e3a6e";
-const BRAND_HOVER = "#163059";
+// 主色 #1e3a6e、hover #163059 以 Tailwind class（bg-[#1e3a6e]）套用，不用 inline
+// style：CSP 的 style-src 不允許 'unsafe-inline'，靜態輸出中的 style="" 會被瀏覽器擋掉。
 
 // ─── 工具函式 ──────────────────────────────────────────────────────────────────
 
@@ -164,7 +163,7 @@ function buildTheme(isDark) {
         welcomeTitle:   "text-gray-100",
         welcomeSub:     "text-gray-400",
         quickBtn:       "border-gray-600 text-gray-300 hover:border-blue-400 hover:text-blue-300 bg-transparent",
-        bubbleUser:     "text-white",
+        bubbleUser:     "bg-[#1e3a6e] text-white",
         bubbleAi:       "bg-[#1e2433] text-gray-100",
         bubbleStatus:   "text-gray-500 italic animate-pulse",
         bubbleError:    "bg-red-900/30 text-red-400 border border-red-800",
@@ -180,7 +179,7 @@ function buildTheme(isDark) {
         inputDisabled:  "bg-[#1a2035]",
         inputFocus:     "focus:ring-blue-500",
         iconBtn:        "text-gray-500 hover:text-gray-200",
-        sendEnabled:    `text-white`,
+        sendEnabled:    "bg-[#1e3a6e] hover:bg-[#163059] text-white",
         sendDisabled:   "bg-gray-700 text-gray-500",
         disclaimer:     "text-gray-600",
         clearBtnImg:    "bg-gray-600 hover:bg-red-600 text-white",
@@ -203,7 +202,7 @@ function buildTheme(isDark) {
         welcomeTitle:   "text-gray-900",
         welcomeSub:     "text-gray-400",
         quickBtn:       "border-gray-200 text-gray-600 hover:border-[#1e3a6e] hover:text-[#1e3a6e] bg-white",
-        bubbleUser:     "text-white",
+        bubbleUser:     "bg-[#1e3a6e] text-white",
         bubbleAi:       "bg-gray-100 text-gray-900",
         bubbleStatus:   "text-gray-400 italic animate-pulse",
         bubbleError:    "bg-red-50 text-red-600 border border-red-200",
@@ -219,7 +218,7 @@ function buildTheme(isDark) {
         inputDisabled:  "bg-gray-50",
         inputFocus:     "focus:ring-[#1e3a6e]",
         iconBtn:        "text-gray-400 hover:text-gray-700",
-        sendEnabled:    "text-white",
+        sendEnabled:    "bg-[#1e3a6e] hover:bg-[#163059] text-white",
         sendDisabled:   "bg-gray-300 text-white",
         disclaimer:     "text-gray-400",
         clearBtnImg:    "bg-gray-700 hover:bg-red-600 text-white",
@@ -343,8 +342,7 @@ function ExternalLinkIcon({ className }) {
 function NtpuLogo() {
   return (
     <div
-      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-      style={{ background: BRAND }}
+      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-[#1e3a6e]"
     >
       <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
         <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z" />
@@ -416,7 +414,6 @@ function AnswerFeedback({ messageId, sessionId, lang, T }) {
         <div className="mt-2 flex items-center gap-2">
           <button
             onClick={() => send("down", reasons, comment)}
-            style={{ background: BRAND }}
             className={`rounded-lg px-3 py-1.5 font-medium transition-opacity hover:opacity-90 ${T.sendEnabled}`}
           >
             {labels.fbSubmit}
@@ -468,7 +465,6 @@ function MessageBubble({ msg, lang, T, sessionId }) {
           {msg.content && (
             <div
               className={`rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed break-words flex items-center gap-2 ${T.bubbleUser}`}
-              style={{ background: BRAND }}
             >
               {msg.isVoice && <MicIcon className="w-3.5 h-3.5 shrink-0 opacity-70" />}
               {msg.content}
@@ -1162,9 +1158,6 @@ export default function ChatPage() {
                 onClick={() => sendMessage()}
                 disabled={!canSend}
                 className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${canSend ? T.sendEnabled : T.sendDisabled}`}
-                style={canSend ? { background: BRAND } : {}}
-                onMouseEnter={e => { if (canSend) e.currentTarget.style.background = BRAND_HOVER; }}
-                onMouseLeave={e => { if (canSend) e.currentTarget.style.background = BRAND; }}
               >
                 <SendIcon className="w-4 h-4" />
               </button>

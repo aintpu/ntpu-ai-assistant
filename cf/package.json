@@ -5,7 +5,8 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "csp:hashes": "node scripts/generate-csp-hashes.mjs"
   },
   "dependencies": {
     "@cloudflare/containers": "^0.3.7"

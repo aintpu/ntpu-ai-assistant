@@ -1,5 +1,17 @@
 import { Container, getContainer } from "@cloudflare/containers";
-import { redirectProductionHttp, withSecurityHeaders } from "./security.js";
+import { SCRIPT_HASHES, STYLE_HASHES } from "./csp-hashes.generated.js";
+import {
+  buildContentSecurityPolicy,
+  redirectProductionHttp,
+  withSecurityHeaders,
+} from "./security.js";
+
+// CSP 以 hash 授權前端的 inline script／style（hash 由 wrangler build 步驟產生）。
+const CONTENT_SECURITY_POLICY = buildContentSecurityPolicy({
+  scriptHashes: SCRIPT_HASHES,
+  styleHashes: STYLE_HASHES,
+});
+const secure = (response) => withSecurityHeaders(response, CONTENT_SECURITY_POLICY);
 
 /**
  * 承載既有的 FastAPI 後端（agentic_v2_5_4high.py）。
@@ -319,7 +331,7 @@ export default {
     // run_worker_first 為 true，所有靜態頁面與資產都會先經過這裡，
     // 以便統一加上 CSP、HSTS、X-Frame-Options 等安全標頭。
     if (!pathname.startsWith("/api/")) {
-      return withSecurityHeaders(await env.ASSETS.fetch(request));
+      return secure(await env.ASSETS.fetch(request));
     }
 
     // 淺層健康檢查在 Worker 邊緣回應，不喚醒容器。
@@ -327,7 +339,7 @@ export default {
     // 這個路徑時，等於持續產生無謂的 Memory 計費。
     // 要確認「後端本身」是否正常，改打 HEALTH_DEEP_PATH。
     if (pathname === HEALTH_PATH) {
-      return withSecurityHeaders(Response.json({ status: "ok", served_by: "worker" }));
+      return secure(Response.json({ status: "ok", served_by: "worker" }));
     }
 
     // 深層健康檢查：明確指定才進容器，供部署後驗證後端與模型設定。
@@ -357,13 +369,13 @@ export default {
     try {
       // 用 fetch() 而非 containerFetch()：前者保留串流（/api/chat/stream 是 SSE，
       // 逐字回傳），也是唯一支援 WebSocket 的方法。
-      return withSecurityHeaders(await backend.fetch(upstream));
+      return secure(await backend.fetch(upstream));
     } catch (err) {
       console.log(JSON.stringify({
         event: "proxy_error", severity: "ERROR", error: String(err),
         path: new URL(request.url).pathname,
       }));
-      return withSecurityHeaders(new Response(
+      return secure(new Response(
         JSON.stringify({ status: "error", message: "後端暫時無法連線，請稍後再試。" }),
         { status: 503, headers: { "Content-Type": "application/json; charset=utf-8" } },
       ));
