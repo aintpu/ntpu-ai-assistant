@@ -34,7 +34,6 @@ import requests
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
-from deep_translator import GoogleTranslator
 from openai import OpenAI
 from rank_bm25 import BM25Okapi
 
@@ -46,6 +45,7 @@ from conversation_guardrail import (
     check_evidence_sufficiency,
     clarification_text,
     detect_service_entity_conflict,
+    redact_sensitive_text,
     resolution_scope_context,
     resolve_conversation,
     run_scope_guardrail,
@@ -68,7 +68,7 @@ except ImportError:
     google_types = None
 
 # 👇 新增這行：匯入遞迴切塊器
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from urllib.parse import unquote
 
@@ -195,9 +195,6 @@ REGULATION_SOURCES = [
 ]
 AVATAR_PATH = os.path.join(BASE_DIR, "avatar.jpg")
 
-translator_zh2en = GoogleTranslator(source="zh-TW", target="en")
-translator_en2zh = GoogleTranslator(source="en", target="zh-TW")
-
 SESSION_ID = os.getenv("CHAT_SESSION_ID") or str(uuid.uuid4())
 LOG_CSV = os.path.join(BASE_DIR, "chat_logs.csv")   # 絕對路徑，避免 cwd 不同寫到別處
 MAX_CTX_CHARS = 3000
@@ -239,9 +236,26 @@ def safe_translate_bulk(text: str, max_chars: int = 4500, direction: str = "zh2e
     out = []
     for ck in chunks:
         try:
-            out.append(translator_zh2en.translate(ck) if direction == "zh2en" else translator_en2zh.translate(ck))
+            target = "English" if direction == "zh2en" else "Traditional Chinese"
+            translated = llm_adapter.complete(
+                [
+                    {
+                        "role": "system",
+                        "content": (
+                            f"Translate the user's text into {target}. "
+                            "Preserve Markdown structure, URLs, names, numbers, and meaning. "
+                            "Return only the translation."
+                        ),
+                    },
+                    {"role": "user", "content": ck},
+                ],
+                model=MODEL_FAST,
+                temperature=0,
+                max_tokens=max(512, min(6000, len(ck) * 2)),
+            )
+            out.append(translated or ck)
         except Exception:
-            out.append("")
+            out.append(ck)
     return "\n".join(out)
 
 def roc_to_ad_year(s: str) -> str:
@@ -681,6 +695,17 @@ def parse_all_content(md_text: str) -> Dict[str, Any]:
 # 與 Docker COPY（tar 只保留到秒級），會讓預先建好、隨映像檔帶上去的快取無效化，
 # 導致每次冷啟動都重跑全量 embedding。全部資料檔約 5 MB，雜湊成本僅數十毫秒。
 INDEX_CACHE_DIR = os.path.join(BASE_DIR, ".faiss_cache")
+INDEX_CACHE_VERSION = 2
+
+
+def _sha256_file(path: str) -> str:
+    import hashlib
+
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 def _data_fingerprint() -> str:
     import hashlib
@@ -690,12 +715,12 @@ def _data_fingerprint() -> str:
     parts = []
     for p in paths:
         if os.path.exists(p):
-            h = hashlib.md5()
+            h = hashlib.sha256()
             with open(p, "rb") as f:
                 for block in iter(lambda: f.read(1 << 20), b""):
                     h.update(block)
             parts.append(f"{os.path.basename(p)}:{h.hexdigest()}")
-    return hashlib.md5("|".join(parts).encode("utf-8")).hexdigest()
+    return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
 
 class OPEIndex:
     def __init__(self):
@@ -716,18 +741,51 @@ class OPEIndex:
         )
 
     def _try_load_cache(self, fingerprint: str) -> bool:
-        import pickle
         try:
-            fp_file = os.path.join(INDEX_CACHE_DIR, "fingerprint.txt")
-            if not os.path.exists(fp_file):
+            import faiss
+            from langchain_community.docstore.in_memory import InMemoryDocstore
+
+            manifest_path = os.path.join(INDEX_CACHE_DIR, "manifest.json")
+            docs_path = os.path.join(INDEX_CACHE_DIR, "docs.json")
+            index_path = os.path.join(INDEX_CACHE_DIR, "index.faiss")
+            if not all(os.path.exists(path) for path in (manifest_path, docs_path, index_path)):
                 return False
-            if open(fp_file, encoding="utf-8").read().strip() != fingerprint:
+            with open(manifest_path, encoding="utf-8") as handle:
+                manifest = json.load(handle)
+            if (
+                manifest.get("version") != INDEX_CACHE_VERSION
+                or manifest.get("fingerprint") != fingerprint
+                or manifest.get("docs_sha256") != _sha256_file(docs_path)
+                or manifest.get("index_sha256") != _sha256_file(index_path)
+            ):
                 return False
-            with open(os.path.join(INDEX_CACHE_DIR, "docs.pkl"), "rb") as f:
-                self.docs_zh = pickle.load(f)
-            self.faiss_zh = FAISS.load_local(
-                os.path.join(INDEX_CACHE_DIR, "faiss"), self.embeddings,
-                allow_dangerous_deserialization=True)
+
+            with open(docs_path, encoding="utf-8") as handle:
+                raw_docs = json.load(handle)
+            if not isinstance(raw_docs, list):
+                raise ValueError("docs.json must contain a list")
+            docs = []
+            for item in raw_docs:
+                if not isinstance(item, dict) or not isinstance(item.get("metadata"), dict):
+                    raise ValueError("docs.json contains an invalid document")
+                docs.append(Document(
+                    page_content=str(item.get("page_content") or ""),
+                    metadata=item["metadata"],
+                ))
+
+            index = faiss.read_index(index_path)
+            if int(index.ntotal) != len(docs):
+                raise ValueError(
+                    f"FAISS/document count mismatch ({index.ntotal} != {len(docs)})"
+                )
+            doc_ids = [str(i) for i in range(len(docs))]
+            self.docs_zh = docs
+            self.faiss_zh = FAISS(
+                embedding_function=self.embeddings,
+                index=index,
+                docstore=InMemoryDocstore(dict(zip(doc_ids, docs))),
+                index_to_docstore_id={i: doc_id for i, doc_id in enumerate(doc_ids)},
+            )
             print(f"[系統] 索引快取命中，直接載入 {len(self.docs_zh)} 筆（略過 embedding）")
             return True
         except Exception as e:
@@ -735,14 +793,43 @@ class OPEIndex:
             return False
 
     def _save_cache(self, fingerprint: str):
-        import pickle
         try:
+            import faiss
+
             os.makedirs(INDEX_CACHE_DIR, exist_ok=True)
-            with open(os.path.join(INDEX_CACHE_DIR, "docs.pkl"), "wb") as f:
-                pickle.dump(self.docs_zh, f)
-            self.faiss_zh.save_local(os.path.join(INDEX_CACHE_DIR, "faiss"))
-            with open(os.path.join(INDEX_CACHE_DIR, "fingerprint.txt"), "w", encoding="utf-8") as f:
-                f.write(fingerprint)
+            docs_path = os.path.join(INDEX_CACHE_DIR, "docs.json")
+            index_path = os.path.join(INDEX_CACHE_DIR, "index.faiss")
+            manifest_path = os.path.join(INDEX_CACHE_DIR, "manifest.json")
+            docs_tmp = docs_path + ".tmp"
+            index_tmp = index_path + ".tmp"
+            manifest_tmp = manifest_path + ".tmp"
+
+            docs_payload = [
+                {"page_content": doc.page_content, "metadata": doc.metadata}
+                for doc in self.docs_zh
+            ]
+            with open(docs_tmp, "w", encoding="utf-8") as handle:
+                json.dump(
+                    docs_payload,
+                    handle,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    default=str,
+                )
+            faiss.write_index(self.faiss_zh.index, index_tmp)
+            os.replace(docs_tmp, docs_path)
+            os.replace(index_tmp, index_path)
+
+            manifest = {
+                "version": INDEX_CACHE_VERSION,
+                "fingerprint": fingerprint,
+                "document_count": len(self.docs_zh),
+                "docs_sha256": _sha256_file(docs_path),
+                "index_sha256": _sha256_file(index_path),
+            }
+            with open(manifest_tmp, "w", encoding="utf-8") as handle:
+                json.dump(manifest, handle, ensure_ascii=False, indent=2)
+            os.replace(manifest_tmp, manifest_path)
             print("[系統] 索引快取已更新")
         except Exception as e:
             print(f"[系統] 索引快取寫入失敗（不影響運作）：{e}")
@@ -1091,7 +1178,7 @@ def _source_id_for_doc(d: Document) -> str:
     source_key = "|".join(str(metadata.get(field, "") or "") for field in (
         "dept", "type", "page", "title", "url",
     ))
-    content_fingerprint = hashlib.sha1(
+    content_fingerprint = hashlib.sha256(
         str(d.page_content or "").encode("utf-8", errors="ignore")
     ).hexdigest()[:12]
     return f"src:{source_key}:{content_fingerprint}".strip(":")
@@ -1299,11 +1386,21 @@ def get_last_conversation_state() -> dict:
 EVENTS_JSONL = os.getenv("EVENTS_LOG_PATH", os.path.join(BASE_DIR, "events.jsonl"))
 _ON_CLOUD_RUN = bool(os.getenv("K_SERVICE"))
 _events_lock = threading.Lock()
+_SENSITIVE_LOG_TEXT_FIELDS = {
+    "raw_query", "user_query", "question", "query", "standalone_query",
+    "active_topic", "answer", "comment",
+}
 
 def _log_event(event: str, **fields):
     try:
         rec = {"event": event, "severity": "INFO", "ts": _now_iso()}
-        rec.update({k: v for k, v in fields.items() if v not in (None, "")})
+        rec.update({
+            key: redact_sensitive_text(value)
+            if key in _SENSITIVE_LOG_TEXT_FIELDS and isinstance(value, str)
+            else value
+            for key, value in fields.items()
+            if value not in (None, "")
+        })
         line = json.dumps(rec, ensure_ascii=False)
     except Exception as e:  # 記錄失敗不可影響回答
         print(f"[警告] 結構化日誌序列化失敗：{e}")
@@ -2287,7 +2384,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
         updated_state = state_obj
     _set_last_conversation_state(updated_state)
 
-    # CSV 寫入邏輯 —— 完全不變
+    # Legacy CSV analytics must follow the same PII policy as structured logs.
     try:
         called_tools = [m.get("name") for m in tool_msgs]
         all_context = "\n\n---\n\n".join([str(m.get("content", "")) for m in tool_msgs])
@@ -2309,12 +2406,12 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
             "session_id": session_id or SESSION_ID,
             "event_type": event_type,
             "language": language,
-            "user_query": user_query,
+            "user_query": redact_sensitive_text(user_query),
             "input_time":input_time,
             "output_time": _now_iso(),
             "retrieved_titles": titles_str,
-            "retrieved_context": all_context,
-            "answer": answer,
+            "retrieved_context": redact_sensitive_text(all_context),
+            "answer": redact_sensitive_text(answer),
             "rerank": "",
             "extra_json": ""
         })

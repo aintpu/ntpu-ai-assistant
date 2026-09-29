@@ -37,6 +37,12 @@ def fake_response(text="圖片中寫著 09:00-21:00"):
 
 @unittest.skipIf(_IMPORT_ERROR, f"backend dependencies unavailable: {_IMPORT_ERROR}")
 class ImageUploadTests(unittest.TestCase):
+    def setUp(self):
+        # The API rate limiter is module-global, so requests issued by earlier
+        # test modules must not leak into these endpoint tests.
+        with core._rate_lock:
+            core._request_times.clear()
+
     def test_every_common_mode_is_encoded_as_rgb_jpeg(self):
         # Production failed with "cannot write mode RGBA as JPEG" for screenshots.
         for mode, fmt in (("RGB", "JPEG"), ("RGBA", "PNG"), ("P", "PNG"), ("LA", "PNG"), ("L", "PNG"), ("I;16", "PNG")):

@@ -56,6 +56,11 @@ class SystemFAQTests(unittest.TestCase):
 
     def test_aliases_are_retrievable(self):
         cases = {
+            "你能幹嘛？": "system-capabilities",
+            "你會回答什麼？": "system-capabilities",
+            "這網站可以問什麼？": "system-capabilities",
+            "可以查哪些處室？": "system-capabilities",
+            "支援哪些業務？": "system-capabilities",
             "這網站怎麼玩": "system-how-to-use",
             "會記得上一題嗎": "system-followups",
             "跟ChatGPT差在哪": "system-vs-chatgpt",
@@ -66,6 +71,7 @@ class SystemFAQTests(unittest.TestCase):
                 match = self.retriever.best(query)
                 self.assertEqual(match.faq_id, faq_id)
                 self.assertTrue(match.exact)
+                self.assertTrue(should_route_system(query, match, threshold=0.56))
 
     def test_department_content_regressions_do_not_route_system(self):
         questions = [
@@ -89,6 +95,29 @@ class SystemFAQTests(unittest.TestCase):
         query = "你有語言中心英文免修的資料嗎？"
         match = self.retriever.best(query)
         self.assertTrue(should_route_system(query, match, threshold=0.56))
+
+    def test_private_record_request_routes_to_safe_system_answer(self):
+        for query in (
+            "你可以幫我查我的成績嗎？",
+            "可以查我的學籍嗎？",
+            "Can you check my grades?",
+        ):
+            with self.subTest(query=query):
+                match = self.retriever.best(query)
+                self.assertEqual(match.faq_id, "system-privacy")
+                self.assertTrue(should_route_system(query, match, threshold=0.56))
+                self.assertIn("cannot", match.answer("en").lower())
+                self.assertIn("無法", match.answer("zh-TW"))
+
+    def test_public_office_procedure_is_not_misread_as_private_data_access(self):
+        for query in (
+            "如何查詢我的成績？",
+            "你可以幫我查宿舍怎麼申請嗎？",
+            "英文免修的資料來源是哪裡？",
+        ):
+            with self.subTest(query=query):
+                match = self.retriever.best(query)
+                self.assertFalse(should_route_system(query, match, threshold=0.56))
 
     def test_fallback_is_stricter_and_weather_remains_unsupported(self):
         system_query = "這網站怎麼玩"

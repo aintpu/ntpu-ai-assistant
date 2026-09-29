@@ -14,12 +14,13 @@ import re
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 import urllib.request
 import zipfile
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
-from xml.etree import ElementTree
+from defusedxml import ElementTree
 
 import openpyxl
 from pypdf import PdfReader
@@ -31,6 +32,12 @@ ADMIN_XLSX = DATA / "北大行政單位法規彙整.xlsx"
 ACADEMIC_XLSX = DATA / "北大學術單位法規彙整.xlsx"
 FAILED_TEXT_MARKERS = ("未能抽出全文", "無法擷取內文", "擷取失敗")
 MIN_SEARCHABLE_CHARS = 200
+MAX_DOWNLOAD_BYTES = 50 * 1024 * 1024
+ALLOWED_DOWNLOAD_HOST_SUFFIXES = (
+    "ntpu.edu.tw",
+    "moj.gov.tw",
+    "dgbas.gov.tw",
+)
 LINK_OVERRIDES = {
     # The XLSX attachment points to a retired DGBAS listing that now returns a
     # Cloudflare challenge.  Keep the current official law-content endpoint.
@@ -113,10 +120,49 @@ def load_missing_ge_items() -> list[InventoryItem]:
         workbook.close()
 
 
+def _validate_download_url(url: str) -> str:
+    parsed = urllib.parse.urlsplit(str(url or "").strip())
+    hostname = (parsed.hostname or "").lower().rstrip(".")
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError(f"unsupported download scheme: {parsed.scheme or '<empty>'}")
+    if parsed.username or parsed.password:
+        raise ValueError("download URL must not contain credentials")
+    if parsed.port not in {None, 80, 443}:
+        raise ValueError(f"download URL uses a disallowed port: {parsed.port}")
+    if not any(
+        hostname == suffix or hostname.endswith("." + suffix)
+        for suffix in ALLOWED_DOWNLOAD_HOST_SUFFIXES
+    ):
+        raise ValueError(f"download host is not allowlisted: {hostname or '<empty>'}")
+    return parsed.geturl()
+
+
+class _ValidatedRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return super().redirect_request(
+            req,
+            fp,
+            code,
+            msg,
+            headers,
+            _validate_download_url(newurl),
+        )
+
+
 def download(url: str) -> bytes:
-    request = urllib.request.Request(url, headers={"User-Agent": "NTPU-AIA-Knowledge-Sync/1.0"})
-    with urllib.request.urlopen(request, timeout=90) as response:
-        content = response.read()
+    safe_url = _validate_download_url(url)
+    request = urllib.request.Request(
+        safe_url,
+        headers={"User-Agent": "NTPU-AIA-Knowledge-Sync/1.0"},
+    )
+    opener = urllib.request.build_opener(_ValidatedRedirectHandler())
+    with opener.open(request, timeout=90) as response:
+        content_length = response.headers.get("Content-Length")
+        if content_length and int(content_length) > MAX_DOWNLOAD_BYTES:
+            raise ValueError(f"download exceeds {MAX_DOWNLOAD_BYTES} bytes")
+        content = response.read(MAX_DOWNLOAD_BYTES + 1)
+    if len(content) > MAX_DOWNLOAD_BYTES:
+        raise ValueError(f"download exceeds {MAX_DOWNLOAD_BYTES} bytes")
     if len(content) < 32:
         raise ValueError(f"downloaded file is unexpectedly small ({len(content)} bytes)")
     return content

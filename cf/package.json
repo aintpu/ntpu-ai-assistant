@@ -4,12 +4,16 @@
   "type": "module",
   "scripts": {
     "deploy": "wrangler deploy",
-    "tail": "wrangler tail"
+    "tail": "wrangler tail",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "@cloudflare/containers": "^0.3.7"
   },
   "devDependencies": {
-    "wrangler": "^4.121.0"
+    "wrangler": "^4.143.0"
+  },
+  "overrides": {
+    "undici": "7.30.0"
   }
 }

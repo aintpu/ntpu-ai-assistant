@@ -24,6 +24,64 @@ except ModuleNotFoundError as exc:
 
 @unittest.skipIf(_IMPORT_ERROR, f"backend dependencies unavailable: {_IMPORT_ERROR}")
 class ChatEndpointFlowTests(unittest.TestCase):
+    def test_structured_logs_redact_sensitive_query_values(self):
+        with patch.object(core, "_ON_CLOUD_RUN", True), patch("builtins.print") as printed:
+            core._log_event(
+                "guardrail",
+                raw_query="我的密碼是 secret123，身分證 A123456789，手機 0912-345-678",
+            )
+
+        record = json.loads(printed.call_args.args[0])
+        self.assertNotIn("secret123", record["raw_query"])
+        self.assertNotIn("A123456789", record["raw_query"])
+        self.assertNotIn("0912-345-678", record["raw_query"])
+        self.assertIn("[REDACTED", record["raw_query"])
+
+    def test_sdd_aliases_and_private_record_boundary_bypass_office_rag(self):
+        cases = {
+            "你能幹嘛？": "system-capabilities",
+            "你會回答什麼？": "system-capabilities",
+            "這網站可以問什麼？": "system-capabilities",
+            "可以查哪些處室？": "system-capabilities",
+            "你可以幫我查我的成績嗎？": "system-privacy",
+        }
+
+        for query, expected_faq in cases.items():
+            with self.subTest(query=query):
+                def fake_complete(messages, **kwargs):
+                    system = messages[0]["content"]
+                    if "Conversation Context Resolver" in system:
+                        return json.dumps({
+                            "is_followup": False,
+                            "topic_changed": False,
+                            "standalone_query": query,
+                            "inherited_office": None,
+                            "topic": query,
+                            "ambiguity": False,
+                            "ambiguity_reason": None,
+                            "confidence": 0.95,
+                        }, ensure_ascii=False)
+                    raise AssertionError("SYSTEM query must not call scope or RAG")
+
+                client = TestClient(core.app)
+                with patch.object(core, "_is_prompt_injection", return_value=False), \
+                        patch.object(core.llm_adapter, "complete", side_effect=fake_complete), \
+                        patch.object(core, "synthesize_agentic_answer") as synthesize:
+                    response = client.post("/api/chat", json={
+                        "question": query,
+                        "conversation_id": f"sdd-system-{expected_faq}-{len(query)}",
+                        "history": [],
+                        "conversation_state": {},
+                    })
+
+                payload = response.json()
+                self.assertEqual(payload["domain"], "SYSTEM")
+                self.assertEqual(payload["sources"][0]["faq_id"], expected_faq)
+                if expected_faq == "system-privacy":
+                    self.assertIn("無法", payload["answer"])
+                    self.assertIn("個人成績", payload["answer"])
+                synthesize.assert_not_called()
+
     def test_system_question_bypasses_seven_office_rag(self):
         def fake_complete(messages, **kwargs):
             system = messages[0]["content"]

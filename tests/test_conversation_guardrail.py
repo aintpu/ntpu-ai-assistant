@@ -9,6 +9,7 @@ from conversation_guardrail import (
     check_evidence_sufficiency,
     detect_explicit_unsupported_intent,
     detect_service_entity_conflict,
+    redact_sensitive_text,
     resolution_scope_context,
     resolve_conversation,
     run_scope_guardrail,
@@ -45,6 +46,39 @@ def resolver_output(**overrides):
 
 
 class ConversationGuardrailTests(unittest.TestCase):
+    def test_sensitive_values_are_redacted_before_logging(self):
+        raw = (
+            "密碼：secret123，身分證 A123456789，學號 412345678，"
+            "Email student@example.com，手機 0912-345-678，OTP=998877"
+        )
+        redacted = redact_sensitive_text(raw)
+        for secret in (
+            "secret123", "A123456789", "412345678", "student@example.com",
+            "0912-345-678", "998877",
+        ):
+            self.assertNotIn(secret, redacted)
+        self.assertIn("[REDACTED", redacted)
+
+    def test_sensitive_logging_keeps_general_security_warning_readable(self):
+        warning = "請勿輸入密碼、驗證碼、金融帳務或其他敏感個資。"
+        self.assertEqual(redact_sensitive_text(warning), warning)
+
+    def test_english_exemption_source_question_prefers_language_center(self):
+        query = "英文免修的資料來源是哪裡？"
+        scope = run_scope_guardrail(
+            query,
+            {"raw_query": query},
+            FakeCompleter([{
+                "status": "IN_SCOPE",
+                "office_hint": "oaa",
+                "confidence": 0.96,
+                "reason": "模型誤認為教務處法規",
+            }]),
+            retries=0,
+        )
+        self.assertEqual(scope.status, "IN_SCOPE")
+        self.assertEqual(scope.office_hint, "lc")
+
     def test_supported_service_entity_is_not_blocked(self):
         self.assertIsNone(detect_service_entity_conflict("國立臺北大學宿舍住宿管理規定"))
         self.assertIsNone(detect_service_entity_conflict("NTPU 的宿舍申請流程"))

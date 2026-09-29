@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "version": "1.1.0",
-  "last_updated": "2026-09-08",
+  "version": "1.2.0",
+  "last_updated": "2026-09-25",
   "service": {
     "name_zh": "NTPU AI 智慧問答助理",
     "name_en": "NTPU AI Assistant",
@@ -34,7 +34,7 @@
       "category": "capabilities",
       "question_zh": "你可以回答哪些問題？",
       "question_en": "What questions can you answer?",
-      "aliases_zh": ["你會什麼", "這個系統能做什麼", "可以查什麼", "服務範圍是什麼", "有哪些功能"],
+      "aliases_zh": ["你會什麼", "你能幹嘛", "你會回答什麼", "這網站可以問什麼", "這個系統能做什麼", "可以查什麼", "可以查哪些處室", "支援哪些業務", "服務範圍是什麼", "有哪些功能"],
       "aliases_en": ["What can you do?", "What does this system support?", "What can I ask?", "What is your scope?"],
       "answer_zh": "目前可查詢體育室、通識教育中心、語言中心、教務處、學務處、人事室與總務處的相關規定、辦法、公告與常見問題。你也可以詢問本系統的服務範圍、使用方式、資料來源、限制與隱私提醒。",
       "answer_en": "You can currently ask about regulations, policies, announcements, and common questions from the Physical Education Office, Center for General Education, Language Center, Office of Academic Affairs, Office of Student Affairs, Personnel Office, and Office of General Affairs. You may also ask about this system's coverage, usage, sources, limitations, and privacy guidance.",
@@ -130,11 +130,11 @@
       "category": "privacy",
       "question_zh": "對話內容會怎麼處理？",
       "question_en": "How is my conversation handled?",
-      "aliases_zh": ["會保存對話嗎", "隱私安全嗎", "可以輸入個資嗎", "對話紀錄"],
-      "aliases_en": ["Is my chat saved?", "What about privacy?", "Can I enter personal data?", "How is chat history handled?"],
-      "answer_zh": "系統會用 conversation ID 與結構化狀態維持同一對話的追問脈絡，並會產生操作與品質改善所需的服務日誌。問題與必要上下文會傳給設定的 AI 服務以產生回答。請勿輸入密碼、身分證字號、學號、金融資訊或其他敏感個資。",
-      "answer_en": "The system uses a conversation ID and structured state to keep follow-up context, and service logs may be produced for operation and quality improvement. Your question and necessary context are sent to the configured AI service to generate an answer. Do not enter passwords, ID or student numbers, financial information, or other sensitive personal data.",
-      "keywords": ["隱私", "個資", "保存", "對話紀錄", "privacy", "personal data", "saved"],
+      "aliases_zh": ["會保存對話嗎", "隱私安全嗎", "可以輸入個資嗎", "對話紀錄", "你可以幫我查我的成績嗎", "可以查我的成績嗎", "可以查我的學籍嗎", "可以查我的帳務嗎"],
+      "aliases_en": ["Is my chat saved?", "What about privacy?", "Can I enter personal data?", "How is chat history handled?", "Can you check my grades?", "Can this system access my student record?"],
+      "answer_zh": "系統無法登入校務系統，也不能存取或查詢個人成績、學籍、帳務或其他非公開資料；只能說明公開的查詢規定與辦理方式。系統會用 conversation ID 與結構化狀態維持同一對話的追問脈絡，並會產生操作與品質改善所需的服務日誌。問題與必要上下文會傳給設定的 AI 服務以產生回答。請勿輸入密碼、身分證字號、學號、金融資訊或其他敏感個資。",
+      "answer_en": "The system cannot sign in to university systems or access personal grades, student records, billing, or other non-public data; it can only explain public lookup rules and procedures. It uses a conversation ID and structured state to keep follow-up context, and service logs may be produced for operation and quality improvement. Your question and necessary context are sent to the configured AI service to generate an answer. Do not enter passwords, ID or student numbers, financial information, or other sensitive personal data.",
+      "keywords": ["隱私", "個資", "保存", "對話紀錄", "個人成績", "個人學籍", "帳務", "privacy", "personal data", "student record", "grades", "saved"],
       "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
     },
     {

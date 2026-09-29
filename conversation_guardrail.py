@@ -64,12 +64,40 @@ OFFICE_KEYWORDS = {
 }
 
 OFFICE_PRIORITY_KEYWORDS = {
+    "lc": (
+        "英文免修", "英語文免修", "大學英文免修", "英語文課程免修",
+        "英文抵免", "英語文抵免", "大學英文抵免", "英語文課程抵免",
+    ),
     "oga": (
         "場地線上登記", "場地借用申請表", "學雜費繳費單", "線上繳費暨多元支付",
         "文件流程控管", "公教優惠存款", "職務宿舍", "學位服",
         "汽車應該停", "機車應該停", "腳踏車應該停",
     ),
 }
+
+# Values written to structured logs must not retain common credentials or
+# personal identifiers.  This is intentionally dependency-free so every API
+# path can apply the same policy before emitting logs.
+_LOG_SECRET_RE = re.compile(
+    r"(?i)(密碼|password|passcode|驗證碼|otp|pin|信用卡(?:號碼)?|"
+    r"銀行帳號|帳戶號碼|account\s*(?:number|no\.?))"
+    r"(\s*(?:[:：=]|是|為)\s*|\s+)([^\s，,。；;]+)"
+)
+_LOG_TW_ID_RE = re.compile(r"(?i)(?<![A-Z0-9])[A-Z][12]\d{8}(?![A-Z0-9])")
+_LOG_EMAIL_RE = re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
+_LOG_PHONE_RE = re.compile(r"(?<!\d)(?:\+?886[-\s]?)?0?9\d{2}[-\s]?\d{3}[-\s]?\d{3}(?!\d)")
+_LOG_LONG_NUMBER_RE = re.compile(r"(?<!\d)(?:\d[ -]?){8,19}(?!\d)")
+
+
+def redact_sensitive_text(value: Any) -> str:
+    """Mask common PII and credentials before text reaches analytics logs."""
+    text = str(value or "")
+    text = _LOG_SECRET_RE.sub(lambda match: f"{match.group(1)}{match.group(2)}[REDACTED]", text)
+    text = _LOG_TW_ID_RE.sub("[REDACTED_ID]", text)
+    text = _LOG_EMAIL_RE.sub("[REDACTED_EMAIL]", text)
+    text = _LOG_PHONE_RE.sub("[REDACTED_PHONE]", text)
+    text = _LOG_LONG_NUMBER_RE.sub("[REDACTED_NUMBER]", text)
+    return text
 
 # High-precision intents that are clearly outside the seven supported offices.
 # These are deliberately narrower than a general keyword denylist: an unknown

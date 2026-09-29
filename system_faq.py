@@ -82,6 +82,17 @@ _OFFICE_CONTENT_CUES = (
     "attendance", "sick leave", "general affairs", "procurement", "parking permit",
 )
 
+_PERSONAL_RECORD_REQUEST_RE = re.compile(
+    r"(?:你|本系統|這個系統|系統|網站).{0,8}(?:可以|能|會).{0,8}"
+    r"(?:幫我|替我|為我)?(?:查|看|讀取|存取|取得).{0,8}"
+    r"(?:我的|本人的|個人).{0,8}(?:成績|學籍|帳務|繳費|帳戶|資料)"
+    r"|(?:幫我|替我|為我)(?:查|看|讀取|存取|取得).{0,8}"
+    r"(?:我的|本人的|個人).{0,8}(?:成績|學籍|帳務|繳費|帳戶|資料)"
+    r"|\bcan\s+(?:you|this\s+(?:system|site))\b.{0,24}"
+    r"\b(?:my\s+)?(?:grades?|student\s+record|account|billing)\b",
+    re.IGNORECASE,
+)
+
 
 def _normalize(text: str) -> str:
     text = str(text or "").strip().lower()
@@ -107,6 +118,11 @@ def detect_language(query: str) -> str:
 def _has_any(text: str, phrases: tuple[str, ...]) -> bool:
     lowered = str(text or "").lower()
     return any(phrase in lowered for phrase in phrases)
+
+
+def _is_personal_record_request(query: str) -> bool:
+    """Return whether the user asks this public FAQ bot to access private records."""
+    return bool(_PERSONAL_RECORD_REQUEST_RE.search(str(query or "")))
 
 
 class SystemFAQRetriever:
@@ -159,6 +175,8 @@ class SystemFAQRetriever:
         # capability FAQ without teaching the lexical retriever every topic.
         if faq.get("id") == "system-capabilities" and _has_any(query, _CAPABILITY_CUES):
             best = max(best, 0.76)
+        if faq.get("id") == "system-privacy" and _is_personal_record_request(query):
+            best = max(best, 0.92)
         return min(1.0, best), exact
 
     def search(self, query: str, top_k: int = 3) -> list[SystemFAQMatch]:
@@ -182,15 +200,20 @@ def should_route_system(
     """Conservatively classify explicit questions about the assistant itself."""
     if match.score < threshold:
         return False
+    personal_record_request = _is_personal_record_request(query)
     has_system_cue = _has_any(query, _SYSTEM_CUES)
-    if match.exact and (has_system_cue or _has_any(query, _CAPABILITY_CUES)):
+    if match.exact and (has_system_cue or _has_any(query, _CAPABILITY_CUES) or personal_record_request):
         return True
-    if not has_system_cue:
+    if not has_system_cue and not personal_record_request:
         return False
 
     # Office-detail questions must keep using the seven-office RAG unless the user
     # is explicitly asking whether the system has/supports that information.
-    if _has_any(query, _OFFICE_CONTENT_CUES) and not _has_any(query, _CAPABILITY_CUES):
+    if (
+        _has_any(query, _OFFICE_CONTENT_CUES)
+        and not _has_any(query, _CAPABILITY_CUES)
+        and not personal_record_request
+    ):
         return False
     return True
 
@@ -206,6 +229,11 @@ def should_use_system_fallback(
         return False
     if match.exact:
         return True
-    if _has_any(query, _OFFICE_CONTENT_CUES) and not _has_any(query, _CAPABILITY_CUES):
+    personal_record_request = _is_personal_record_request(query)
+    if (
+        _has_any(query, _OFFICE_CONTENT_CUES)
+        and not _has_any(query, _CAPABILITY_CUES)
+        and not personal_record_request
+    ):
         return False
-    return _has_any(query, _SYSTEM_CUES)
+    return personal_record_request or _has_any(query, _SYSTEM_CUES)

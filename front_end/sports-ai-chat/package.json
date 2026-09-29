@@ -7,12 +7,12 @@
     "predev": "npm run sync:system-content",
     "dev": "next dev",
     "prebuild": "npm run sync:system-content",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
-    "next": "16.2.9",
+    "next": "16.3.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0"
@@ -20,7 +20,8 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
-    "eslint-config-next": "16.2.9",
-    "tailwindcss": "^4"
+    "eslint-config-next": "16.3.6",
+    "tailwindcss": "^4",
+    "typescript": "6.0.3"
   }
 }
