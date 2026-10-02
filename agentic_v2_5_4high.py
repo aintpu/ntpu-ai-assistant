@@ -1582,8 +1582,10 @@ def tool_search_database(search_query: str, dept: str = None,
         # 未指定哪一位副校長：各副校長室分別檢索，並固定帶入「現任…是誰」那題，
         # 避免合併排序或「有哪些」這類問法漏掉某一位的姓名。
         hits, seen = [], set()
+        # 「校長和副校長是誰」也要帶入校長本人的資料。
+        asks_president = "校長" in search_query.replace("副校長", "")
         for sub_dept in OFFICE_SEARCH_GROUPS[dept]:
-            if sub_dept == dept:
+            if sub_dept == dept and not asks_president:
                 continue
             incumbent = [
                 d for d in INDEX.docs_zh

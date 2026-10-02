@@ -65,6 +65,13 @@ class AddedOfficeBackendTests(unittest.TestCase):
                              ['vpa', 'vpad', 'vpf'])
             for name in ('陳宥杉', '張玉山', '朱炫璉'):
                 self.assertIn(name, context)
+            self.assertNotIn('林道通', context)
+            retrieve.reset_mock()
+            context = core.tool_search_database('校長和副校長是誰', dept='pres')
+            self.assertEqual([c.kwargs['dept'] for c in retrieve.call_args_list],
+                             ['pres', 'vpa', 'vpad', 'vpf'])
+            for name in ('林道通', '陳宥杉', '張玉山', '朱炫璉'):
+                self.assertIn(name, context)
             retrieve.reset_mock()
             core.tool_search_database('現任校長是誰', dept='pres')
             self.assertEqual([c.kwargs['dept'] for c in retrieve.call_args_list], ['pres'])

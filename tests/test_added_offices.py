@@ -105,6 +105,13 @@ class AddedOfficeTests(unittest.TestCase):
                 decision = run_scope_guardrail(query, {}, unavailable, retries=0)
                 self.assertEqual((decision.status, decision.office_hint), ('IN_SCOPE', code))
 
+    def test_scope_prompt_describes_every_faq_office(self):
+        from conversation_guardrail import _scope_prompt
+        system = _scope_prompt('那他們的研究領域呢', {})[0]['content']
+        for code, (zh, _en, keywords) in FAQ_OFFICES.items():
+            self.assertIn(f'{code}={zh}（{keywords[0]}', system)
+        self.assertIn('研究領域', system)
+
     def test_frontend_and_system_coverage_match_router(self):
         content = json.loads((ROOT / 'system_content.json').read_text())
         self.assertEqual(set(content['service']['supported_offices_zh']), set(OFFICE_NAMES.values()))

@@ -852,6 +852,13 @@ def resolution_scope_context(resolution: ConversationResolution | None) -> dict[
     }
 
 
+def _faq_office_topics() -> str:
+    return "；".join(
+        f"{code}={zh}（{'、'.join(keywords[:6])}）"
+        for code, (zh, _en, keywords) in FAQ_OFFICES.items()
+    )
+
+
 def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[str, str]]:
     supported = "；".join(f"{code}={name}" for code, name in OFFICE_NAMES.items())
     service_aliases = _configured_aliases(
@@ -871,6 +878,9 @@ def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[s
         "目前問題的明確指向優先於 active_topic、active_office 與歷史來源。\n"
         "自然語句不一定包含處室名稱；例如行政人員午休、特別休假、差勤等仍屬 hr 人事室，"
         "學生團體保險、學生平安保險等仍屬 osa 學務處。"
+        f"以 FAQ 匯入的單位涵蓋範圍舉例：{_faq_office_topics()}。"
+        "校長室與各副校長室 FAQ 收錄現任首長姓名、學經歷、研究領域、榮譽與聯絡方式，"
+        "詢問本校校長或副校長的這些資訊（含『他們的研究領域呢』這類追問）都屬 IN_SCOPE。"
         "資訊不足但仍與支援校務主題有關時回 AMBIGUOUS，不得把資訊不足當 OUT_OF_SCOPE。"
         "若 context 的 scope_verified=true 且 resolved_is_followup=true，代表本輪是對已確認校務主題的追問"
         "（例如接受上一輪提議『我要』、補充身分或年資），請依 standalone_query 判斷；"
