@@ -11,7 +11,7 @@ import json
 import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Iterable
-from office_catalog import FAQ_OFFICES, FAQ_OFFICE_NAMES, FAQ_OFFICE_ALIASES
+from office_catalog import FAQ_OFFICES, FAQ_OFFICE_NAMES, FAQ_OFFICE_ALIASES, VICE_PRESIDENT_TITLES
 
 
 VALID_OFFICES = {"ope", "ge", "lc", "oaa", "osa", "hr", "oga"}
@@ -70,6 +70,7 @@ OFFICE_KEYWORDS = {
 OFFICE_KEYWORDS.update({code: (zh, en, *keywords) for code, (zh, en, keywords) in FAQ_OFFICES.items()})
 
 OFFICE_PRIORITY_KEYWORDS = {
+    "os": ("與校長有約",),
     "lc": (
         "英文免修", "英語文免修", "大學英文免修", "英語文課程免修",
         "英文抵免", "英語文抵免", "大學英文抵免", "英語文課程抵免",
@@ -888,8 +889,15 @@ def _lexical_scope(standalone_query: str, context: dict[str, Any]) -> ScopeDecis
         return ScopeDecision("IN_SCOPE", office, 0.88, f"專屬關鍵詞與{OFFICE_NAMES[office]}相關。")
 
     matched = []
+    # 「學術副校長」等 contain「校長」; strip the named vice presidents so the
+    # generic 校長 keyword only hits 校長室.  An unnamed 副校長 stays and routes
+    # to 校長室, whose retrieval covers all three vice-president offices.
+    president_text = text
+    for title in VICE_PRESIDENT_TITLES:
+        president_text = president_text.replace(title, "")
     for office, keywords in OFFICE_KEYWORDS.items():
-        if any(keyword.lower() in text for keyword in keywords):
+        haystack = president_text if office == "pres" else text
+        if any(keyword.lower() in haystack for keyword in keywords):
             matched.append(office)
     matched = list(dict.fromkeys(matched))
     if len(matched) == 1:

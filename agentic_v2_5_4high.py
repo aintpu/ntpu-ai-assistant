@@ -168,7 +168,7 @@ FILE_INDEX_PATH = os.path.join(BASE_DIR, "file_index.json")
 CORRECTIONS_PATH = os.path.join(BASE_DIR, "corrections.md")
 
 # 多處室資料來源（dept 代碼, 爬蟲檔路徑）
-from office_catalog import FAQ_OFFICES, FAQ_OFFICE_NAMES
+from office_catalog import FAQ_OFFICES, FAQ_OFFICE_NAMES, OFFICE_SEARCH_GROUPS
 
 DEPT_NAMES = {"ope": "體育室", "ge": "通識教育中心", "lc": "語言中心",
               "oaa": "教務處", "osa": "學務處", "hr": "人事室",
@@ -1056,8 +1056,10 @@ def retrieve_and_rerank(query: str, top_k: int = 8, use_rerank: bool = True,
     """Retrieve fresh results and, for a same-topic follow-up, prior sources."""
     if not INDEX.faiss_zh: return []
 
+    allowed_depts = set(OFFICE_SEARCH_GROUPS.get(dept, (dept,)))
+
     def _dept_ok(d: Document) -> bool:
-        return dept is None or d.metadata.get("dept") == dept
+        return dept is None or d.metadata.get("dept") in allowed_depts
 
     previous_source_docs = [
         d for d in (previous_source_docs or []) if _dept_ok(d)
@@ -2141,6 +2143,12 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
                 "本輪【只能使用】search_regulations_and_general 查詢本處室資料，"
                 "get_schedule、get_competition_records、find_forms、get_latest_news 皆【不可使用】。"
             )
+            if dept in OFFICE_SEARCH_GROUPS:
+                group_names = "、".join(DEPT_NAMES[d] for d in OFFICE_SEARCH_GROUPS[dept] if d != dept)
+                scope_note += (
+                    f"\n本輪檢索範圍同時包含{group_names}；若使用者未指定是哪一位副校長，"
+                    "請依檢索結果逐一列出各位副校長與其所屬單位。"
+                )
         elif dept == "hr":
             scope_note = (
                 "注意：人事室知識庫目前包含人事室提供的差勤常見問答，以及新北市勞工局的"

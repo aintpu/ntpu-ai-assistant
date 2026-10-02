@@ -85,6 +85,19 @@ class AddedOfficeTests(unittest.TestCase):
             'vpf': '財務暨永續發展副校長室怎麼聯絡？',
             'pres': '現任校長是誰？',
         }
+        examples_extra = {
+            '北大校長是誰': 'pres',
+            '國立臺北大學的校長是誰？': 'pres',
+            '與校長有約怎麼報名？': 'os',
+            '副校長有哪些？': 'pres',
+            '北大的副校長是誰': 'pres',
+            '學術副校長是誰': 'vpa',
+            '財務副校長怎麼聯絡': 'vpf',
+        }
+        for query, code in examples_extra.items():
+            with self.subTest(query=query):
+                decision = run_scope_guardrail(query, {}, unavailable, retries=0)
+                self.assertEqual((decision.status, decision.office_hint), ('IN_SCOPE', code))
         for code, query in examples.items():
             with self.subTest(code=code):
                 decision = run_scope_guardrail(query, {}, unavailable, retries=0)
