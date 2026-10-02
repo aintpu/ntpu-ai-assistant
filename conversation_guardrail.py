@@ -217,6 +217,15 @@ _CONTEXT_COMBINED_REPLY_RE = re.compile(
     rf"|{_CONTEXT_VALUE_PART}(?:也|且|而且|並且)?{_CONTEXT_CATEGORY_PART})$"
 )
 _REPLY_TRAILING_PARTICLES_RE = re.compile(r"(?:了|啦|喔|哦|囉|唷|耶|呀|啊|吧)+$")
+# "他們怎麼聯絡" / "那他的研究領域呢": a pronoun for the people in the prior
+# answer plus a fixed office-information ask.  Unrelated asks ("他們附近的餐廳")
+# do not match, so they cannot borrow the previous topic.
+_CONTEXT_PRONOUN_REPLY_RE = re.compile(
+    r"^(?:那|那麼)?(?:他們|她們|他|她|這位|那位|這幾位|這兩位|這三位|兩位|三位|各位)(?:的)?"
+    r"(?:怎麼聯絡|如何聯絡|怎麼聯繫|如何聯繫|聯絡方式|聯絡電話|聯繫方式|電話|分機|信箱|電子郵件|email|e-mail"
+    r"|研究領域|研究興趣|研究專長|專長|學歷|經歷|學經歷|學術經歷|行政經歷|榮譽|背景|辦公室在哪(?:裡)?)"
+    r"(?:呢|嗎|是什麼|有哪些|為何|是多少)?$"
+)
 
 # Accepting the assistant's own offer ("如果你要，我也可以幫你整理成…" → "我要").
 # Only honoured when the immediately preceding assistant turn made an offer.
@@ -564,6 +573,7 @@ def _is_compact_context_reply(query: str) -> bool:
         _CONTEXT_VALUE_REPLY_RE.fullmatch(text)
         or _CONTEXT_CATEGORY_REPLY_RE.fullmatch(text)
         or _CONTEXT_COMBINED_REPLY_RE.fullmatch(text)
+        or _CONTEXT_PRONOUN_REPLY_RE.fullmatch(text)
     )
 
 

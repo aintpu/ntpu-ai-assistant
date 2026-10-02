@@ -114,6 +114,41 @@ class AddedOfficeTests(unittest.TestCase):
                 decision = run_scope_guardrail(query, {'raw_query': query}, guess, retries=0)
                 self.assertEqual((decision.status, decision.office_hint), ('IN_SCOPE', 'pres'))
 
+    def test_pronoun_followup_keeps_verified_leader_topic(self):
+        from conversation_guardrail import ConversationState, resolve_conversation
+        state = ConversationState(
+            active_office='pres', active_topic='學術副校長和行政副校長是誰', scope_verified=True,
+        )
+        history = [
+            {'role': 'user', 'content': '學術副校長和行政副校長是誰'},
+            {'role': 'assistant', 'content': '學術副校長：陳宥杉；行政副校長：張玉山'},
+        ]
+        # The resolver model misreads the turn as a fresh, unrelated query.
+        resolver = lambda *a, **k: json.dumps({
+            'is_followup': False, 'topic_changed': True, 'standalone_query': '他們怎麼聯絡',
+            'inherited_office': None, 'topic': '他們怎麼聯絡', 'confidence': 0.6,
+        })
+        scope_out = lambda *a, **k: json.dumps({
+            'status': 'OUT_OF_SCOPE', 'office_hint': None, 'confidence': 0.8, 'reason': '',
+        })
+        for query in ('他們怎麼聯絡', '那他們的研究領域呢', '他的學歷？'):
+            with self.subTest(query=query):
+                resolution = resolve_conversation(query, history, state, resolver, retries=0)
+                self.assertTrue(resolution.is_followup)
+                self.assertIn('副校長', resolution.standalone_query)
+                context = {**state.to_dict(), 'raw_query': query,
+                           'resolved_is_followup': True, 'resolved_topic_changed': False,
+                           'resolved_confidence': resolution.confidence,
+                           'resolved_followup_basis': resolution.followup_basis}
+                decision = run_scope_guardrail(resolution.standalone_query, context, scope_out, retries=0)
+                self.assertEqual((decision.status, decision.office_hint), ('IN_SCOPE', 'pres'))
+        for query in ('他們附近的餐廳呢', '那附近的餐廳呢'):
+            with self.subTest(query=query):
+                resolution = resolve_conversation(query, history, state, resolver, retries=0)
+                context = {**state.to_dict(), 'raw_query': query}
+                decision = run_scope_guardrail(resolution.standalone_query, context, scope_out, retries=0)
+                self.assertEqual(decision.status, 'OUT_OF_SCOPE')
+
     def test_scope_prompt_describes_every_faq_office(self):
         from conversation_guardrail import _scope_prompt
         system = _scope_prompt('那他們的研究領域呢', {})[0]['content']
