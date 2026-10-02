@@ -1579,14 +1579,25 @@ def tool_search_database(search_query: str, dept: str = None,
                          previous_source_docs: List[Document] = None) -> str:
     """工具3：通用知識與法規檢索（偏文件摘錄）"""
     if dept in OFFICE_SEARCH_GROUPS and "副校長" in (search_query or ""):
-        # 未指定哪一位副校長：各副校長室分別檢索，避免合併排序後漏掉某一位。
-        hits = []
+        # 未指定哪一位副校長：各副校長室分別檢索，並固定帶入「現任…是誰」那題，
+        # 避免合併排序或「有哪些」這類問法漏掉某一位的姓名。
+        hits, seen = [], set()
         for sub_dept in OFFICE_SEARCH_GROUPS[dept]:
             if sub_dept == dept:
                 continue
-            hits.extend(retrieve_and_rerank(
+            incumbent = [
+                d for d in INDEX.docs_zh
+                if d.metadata.get("dept") == sub_dept
+                and str(d.metadata.get("title", "")).startswith("現任")
+            ]
+            retrieved = retrieve_and_rerank(
                 search_query, top_k=2, use_rerank=False, dept=sub_dept,
-            ))
+            )
+            for d in incumbent + retrieved:
+                source_id = _source_id_for_doc(d)
+                if source_id not in seen:
+                    seen.add(source_id)
+                    hits.append(d)
     else:
         hits = retrieve_and_rerank(
             search_query,
