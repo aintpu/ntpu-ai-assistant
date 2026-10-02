@@ -109,6 +109,43 @@ class ConversationGuardrailTests(unittest.TestCase):
         self.assertTrue(scope.entity_conflict)
         self.assertEqual(scope.entity_hint, "台灣大學")
 
+    def test_ungrounded_model_entity_conflict_is_ignored(self):
+        for hint in (None, "", "國立臺北大學", "學術副校長室", "清華大學"):
+            with self.subTest(hint=hint):
+                scope = run_scope_guardrail(
+                    "現任學術副校長是誰？",
+                    {"raw_query": "現任學術副校長是誰？"},
+                    FakeCompleter([{
+                        "status": "OUT_OF_SCOPE",
+                        "office_hint": None,
+                        "confidence": 0.9,
+                        "reason": "其他服務主體",
+                        "entity_conflict": True,
+                        "entity_hint": hint,
+                    }]),
+                    retries=0,
+                )
+                self.assertEqual((scope.status, scope.office_hint), ("IN_SCOPE", "vpa"))
+                self.assertFalse(scope.entity_conflict)
+
+    def test_grounded_model_entity_conflict_still_blocks(self):
+        scope = run_scope_guardrail(
+            "請問中研院的副院長是誰",
+            {"raw_query": "請問中研院的副院長是誰"},
+            FakeCompleter([{
+                "status": "OUT_OF_SCOPE",
+                "office_hint": None,
+                "confidence": 0.9,
+                "reason": "中研院不是本校",
+                "entity_conflict": True,
+                "entity_hint": "中研院",
+            }]),
+            retries=0,
+        )
+        self.assertEqual(scope.status, "OUT_OF_SCOPE")
+        self.assertTrue(scope.entity_conflict)
+        self.assertEqual(scope.entity_hint, "中研院")
+
     def test_unrelated_short_question_cannot_reuse_previous_context(self):
         scope = run_scope_guardrail(
             "國立臺北大學宿舍住宿管理規定：那附近的餐廳呢",

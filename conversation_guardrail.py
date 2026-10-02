@@ -479,6 +479,26 @@ def detect_service_entity_conflict(
     return None
 
 
+def _is_grounded_external_entity(
+    entity_hint: str | None,
+    raw_query: str,
+    standalone_query: str,
+    supported_aliases: Iterable[str],
+) -> bool:
+    """True when a classifier-reported entity literally appears in the query
+    and is neither the supported service entity nor one of its offices."""
+    hint = (entity_hint or "").strip()
+    if not hint:
+        return False
+    if not any(_contains_entity_alias(q or "", hint) for q in (raw_query, standalone_query)):
+        return False
+    own_names = (*supported_aliases, *OFFICE_NAMES.values())
+    return not any(
+        _contains_entity_alias(hint, name) or _contains_entity_alias(name, hint)
+        for name in own_names if name
+    )
+
+
 def detect_explicit_unsupported_intent(query: str) -> str | None:
     """Return a high-precision unrelated topic without treating silence as denial."""
     text = (query or "").strip()
@@ -1007,15 +1027,23 @@ def run_scope_guardrail(
                 retries=retries,
             )
         )
-        if result.entity_conflict:
-            entity_hint = result.entity_hint or "其他服務主體"
+        if result.entity_conflict and _is_grounded_external_entity(
+            result.entity_hint, raw_query, standalone_query, service_aliases,
+        ):
             return ScopeDecision(
                 "OUT_OF_SCOPE",
                 None,
                 max(result.confidence, 0.85),
-                result.reason or f"目前問題明確指向「{entity_hint}」，不屬於本服務主體。",
+                result.reason or f"目前問題明確指向「{result.entity_hint}」，不屬於本服務主體。",
                 True,
-                entity_hint,
+                result.entity_hint,
+            )
+        if result.entity_conflict:
+            # The classifier claimed a competing entity it cannot point to in
+            # the query (e.g. "現任學術副校長是誰？").  Drop the claim and let
+            # the ordinary scope evidence decide.
+            result = ScopeDecision(
+                result.status, result.office_hint, result.confidence, result.reason,
             )
         # The structured classifier is authoritative when it has a clear
         # answer, but a malformed/overly conservative model response must not

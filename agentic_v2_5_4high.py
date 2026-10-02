@@ -1578,13 +1578,23 @@ def tool_get_latest_news(keyword: str = "", dept: str = None) -> str:
 def tool_search_database(search_query: str, dept: str = None,
                          previous_source_docs: List[Document] = None) -> str:
     """工具3：通用知識與法規檢索（偏文件摘錄）"""
-    hits = retrieve_and_rerank(
-        search_query,
-        top_k=6,
-        use_rerank=True,
-        dept=dept,
-        previous_source_docs=previous_source_docs,
-    )
+    if dept in OFFICE_SEARCH_GROUPS and "副校長" in (search_query or ""):
+        # 未指定哪一位副校長：各副校長室分別檢索，避免合併排序後漏掉某一位。
+        hits = []
+        for sub_dept in OFFICE_SEARCH_GROUPS[dept]:
+            if sub_dept == dept:
+                continue
+            hits.extend(retrieve_and_rerank(
+                search_query, top_k=2, use_rerank=False, dept=sub_dept,
+            ))
+    else:
+        hits = retrieve_and_rerank(
+            search_query,
+            top_k=6,
+            use_rerank=True,
+            dept=dept,
+            previous_source_docs=previous_source_docs,
+        )
     _collect_source_docs(hits)
     evidence = check_evidence_sufficiency(search_query, hits)
     _record_evidence(evidence.to_dict())

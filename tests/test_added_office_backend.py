@@ -43,6 +43,18 @@ class AddedOfficeBackendTests(unittest.TestCase):
         ids = [doc.metadata['doc_id'] for doc in index.docs_zh]
         self.assertEqual(len(ids), len(set(ids)))
 
+    def test_unnamed_vice_president_query_searches_each_vice_president_office(self):
+        with patch.object(core, 'retrieve_and_rerank', return_value=[]) as retrieve, \
+                patch.object(core, 'check_evidence_sufficiency') as evidence:
+            evidence.return_value.sufficient = True
+            evidence.return_value.to_dict.return_value = {}
+            core.tool_search_database('副校長有哪些', dept='pres')
+            self.assertEqual([c.kwargs['dept'] for c in retrieve.call_args_list],
+                             ['vpa', 'vpad', 'vpf'])
+            retrieve.reset_mock()
+            core.tool_search_database('現任校長是誰', dept='pres')
+            self.assertEqual([c.kwargs['dept'] for c in retrieve.call_args_list], ['pres'])
+
 
 if __name__ == '__main__':
     unittest.main()
