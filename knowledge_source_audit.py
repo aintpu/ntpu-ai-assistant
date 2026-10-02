@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import openpyxl
+from office_catalog import FAQ_OFFICES
 
 
 ROOT = Path(__file__).resolve().parent
@@ -46,6 +48,10 @@ OFFICE_SPECS = {
         "sources": (DATA / "oga_regulations.md",),
     },
 }
+
+
+OFFICE_SPECS.update({code: {"inventory": ("faq", code), "sources": (DATA / f"{code}_faq.md",)}
+                     for code in FAQ_OFFICES})
 
 
 @dataclass(frozen=True)
@@ -128,6 +134,8 @@ def _readable(body: str) -> bool:
 
 
 def audit_office(office: str) -> AuditResult:
+    if office in FAQ_OFFICES:
+        return audit_faq_office(office)
     spec = OFFICE_SPECS[office]
     titles = _inventory_titles(*spec["inventory"])
     sections = _sections(spec["sources"])
@@ -152,6 +160,35 @@ def audit_office(office: str) -> AuditResult:
         missing_titles=tuple(missing),
         unreadable_titles=tuple(unreadable),
     )
+
+
+def audit_faq_office(office: str) -> AuditResult:
+    """Check the imported question/ID/URL inventory independently of embeddings."""
+    manifest = json.loads((DATA / "office_faq_manifest.json").read_text(encoding="utf-8"))[office]
+    path = DATA / f"{office}_faq.md"
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    sections = re.split(r"(?m)^### ", text)[1:]
+    actual = {}
+    unreadable = []
+    for section in sections:
+        title, _, body = section.partition("\n")
+        id_match = re.search(r"(?m)^FAQ 編號：(.+)$", body)
+        url_match = re.search(r"(?m)^來源網址：(https?://\S+)$", body)
+        if not id_match or not url_match or not body.split('FAQ 編號：')[0].strip():
+            unreadable.append(title)
+            continue
+        faq_id = id_match.group(1).strip()
+        if faq_id in actual:
+            unreadable.append(f"duplicate ID: {faq_id}")
+        actual[faq_id] = (title.strip(), url_match.group(1))
+    missing = [row['id'] for row in manifest['records']
+               if actual.get(row['id']) != (row['question'], row['url'])]
+    if len(sections) != manifest['count'] or len(manifest['records']) != manifest['count']:
+        unreadable.append('FAQ count does not match workbook manifest')
+    if hashlib.sha256(text.encode()).hexdigest() != manifest['markdown_sha256']:
+        unreadable.append('FAQ content hash does not match workbook import')
+    return AuditResult(office, manifest['count'], manifest['count'] - len(missing),
+                       tuple(missing), tuple(unreadable))
 
 
 def audit_all() -> list[AuditResult]:

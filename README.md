@@ -1,6 +1,6 @@
 # NTPU AI Assistant
 
-國立臺北大學行政服務 AI 助理，現階段支援以下七個單位：
+國立臺北大學行政服務 AI 助理，現階段支援 21 個單位（校方列出的 19 個處室，加上既有通識教育中心與語言中心）：
 
 - 體育室
 - 通識教育中心
@@ -9,6 +9,13 @@
 - 學務處（僅法規辦法全文）
 - 人事室（差勤與勤休法規常見問答）
 - 總務處（營繕、事務、經管、出納、環境與文書常見問答）
+- 研究發展處、主計室、圖書館、資訊中心、國際事務處、進修暨推廣部、校友中心、永續辦公室、高等教育深耕計畫辦公室、秘書室、學術副校長室、行政副校長室、財務暨永續發展副校長室、校長室（2026-10-02 匯入 938 題 FAQ）
+
+新增 FAQ 沿用 `crawler_data/*_faq.md` → `CRAWLER_SOURCES` → FAISS/BM25 的既有流程。
+單位代碼與別名位於 `office_catalog.py`。原始 Excel 不修改，可用
+`python scripts/import_office_faqs.py /path/to/ntpu-faq` 重現本批匯入；
+`crawler_data/office_faq_manifest.json` 記錄原檔 SHA-256、各題 ID、問題與來源連結。
+這批資料不是即時公告或完整法規全文，時效性資訊應核對原始官網。
 
 系統會先判斷問題屬於 `SYSTEM` 或哪個校務單位。SYSTEM 問題直接從核准的系統 FAQ
 回答；校務問題再使用 RAG（檢索增強生成）從爬蟲資料、法規與常見問題中搜尋相關
@@ -47,7 +54,7 @@ Cloudflare Worker：ntpu-aia-api
   ├─ Durable Object（conversation state）
   └─ /api/* → Cloudflare Container（FastAPI + FAISS + BM25）
                   ├─ SYSTEM FAQ
-                  ├─ 七處室 Router / Agent 工具呼叫
+                  ├─ 21 單位 Router / Agent 工具呼叫
                   └─ 設定的 LLM、Embedding、Whisper / TTS API
 ```
 
@@ -178,7 +185,7 @@ Repository 目前包含：
 教務處／學務處目前只接入法規辦法全文，沒有最新消息與常見問題；法規 URL 僅涵蓋
 彙整表收錄的各 20 筆，其餘法規有全文但無來源連結。
 
-可執行 `python knowledge_source_audit.py` 檢查七個支援處室的彙整表項目是否都有可檢索正文；
+可執行 `python knowledge_source_audit.py` 檢查既有七個單位的法規正文，以及新增 14 個單位的 FAQ 題數、ID、問題、來源 URL 與內容雜湊；
 若只有標題／連結、正文缺漏或仍含解析失敗標記，檢查會以非零狀態結束。
 
 `all_content_en_v2.md` 仍未接入目前的中文主索引。資料更新必須依序完成 source file

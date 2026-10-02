@@ -7,6 +7,8 @@ on:
     paths:
       - "agentic_v2_5_4high.py"
       - "conversation_guardrail.py"
+      - "office_catalog.py"
+      - "knowledge_source_audit.py"
       - "system_faq.py"
       - "system_content.json"
       - "llm_adapter.py"
@@ -50,6 +52,7 @@ jobs:
           fi
           pip install --no-cache-dir -r requirements-runtime.txt
           python knowledge_source_audit.py
+          NTPU_SKIP_INDEX_BUILD=1 python -m unittest discover -s tests
           python -c "import agentic_v2_5_4high"
           ls -la .faiss_cache
 

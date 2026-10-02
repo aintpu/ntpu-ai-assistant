@@ -11,6 +11,7 @@ import json
 import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Iterable
+from office_catalog import FAQ_OFFICES, FAQ_OFFICE_NAMES, FAQ_OFFICE_ALIASES
 
 
 VALID_OFFICES = {"ope", "ge", "lc", "oaa", "osa", "hr", "oga"}
@@ -23,6 +24,9 @@ OFFICE_NAMES = {
     "hr": "人事室",
     "oga": "總務處",
 }
+
+OFFICE_NAMES.update(FAQ_OFFICE_NAMES)
+VALID_OFFICES.update(FAQ_OFFICES)
 
 OFFICE_KEYWORDS = {
     "ope": (
@@ -63,6 +67,8 @@ OFFICE_KEYWORDS = {
     ),
 }
 
+OFFICE_KEYWORDS.update({code: (zh, en, *keywords) for code, (zh, en, keywords) in FAQ_OFFICES.items()})
+
 OFFICE_PRIORITY_KEYWORDS = {
     "lc": (
         "英文免修", "英語文免修", "大學英文免修", "英語文課程免修",
@@ -99,7 +105,7 @@ def redact_sensitive_text(value: Any) -> str:
     text = _LOG_LONG_NUMBER_RE.sub("[REDACTED_NUMBER]", text)
     return text
 
-# High-precision intents that are clearly outside the seven supported offices.
+# High-precision intents that are clearly outside the supported offices.
 # These are deliberately narrower than a general keyword denylist: an unknown
 # paraphrase may still be accepted by the semantic scope classifier, while
 # known unrelated topics cannot be opened by an over-optimistic model result.
@@ -382,7 +388,7 @@ def _normalize_office(value: Any) -> str | None:
         "hr": "hr", "human resources": "hr", "人事室": "hr",
         "oga": "oga", "general affairs": "oga", "總務處": "oga",
     }
-    return aliases.get(text) or (text if text in VALID_OFFICES else None)
+    return aliases.get(text) or FAQ_OFFICE_ALIASES.get(text) or (text if text in VALID_OFFICES else None)
 
 
 def _normalize_entity_text(value: Any) -> str:
@@ -864,6 +870,11 @@ def _lexical_scope(standalone_query: str, context: dict[str, Any]) -> ScopeDecis
         return ScopeDecision("IN_SCOPE", None, 0.98, "一般對話或系統功能詢問。")
 
     explicit = [office for office, name in OFFICE_NAMES.items() if name.lower() in text]
+    # 校長室 is a suffix of vice-president offices; prefer the full name.
+    explicit = [office for office in explicit if not any(
+        OFFICE_NAMES[office] != OFFICE_NAMES[other]
+        and OFFICE_NAMES[office] in OFFICE_NAMES[other] for other in explicit
+    )]
     if len(explicit) == 1:
         office = explicit[0]
         return ScopeDecision("IN_SCOPE", office, 0.96, f"問題明確指定{OFFICE_NAMES[office]}。")

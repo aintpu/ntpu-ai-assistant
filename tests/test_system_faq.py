@@ -1,6 +1,7 @@
 import json
 import unittest
 from pathlib import Path
+from conversation_guardrail import VALID_OFFICES
 
 from system_faq import (
     QueryDomain,
@@ -23,7 +24,7 @@ class SystemFAQTests(unittest.TestCase):
     def test_domain_contract_contains_system_and_seven_offices(self):
         self.assertEqual(
             {domain.value for domain in QueryDomain},
-            {"SYSTEM", "OPE", "GE", "LC", "OAA", "OSA", "HR", "OGA", "OTHER"},
+            {"SYSTEM", "OTHER"} | {code.upper() for code in VALID_OFFICES},
         )
 
     def test_content_has_at_least_15_bilingual_entries(self):

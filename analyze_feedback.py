@@ -29,11 +29,16 @@ REASON_LABELS = {
     "bad_source": "找不到出處或連結有誤",
     "other":      "其他",
 }
+from office_catalog import FAQ_OFFICE_NAMES
+
 DEPT_LABELS = {
     "ope": "體育室", "ge": "通識教育中心", "lc": "語言中心",
     "oaa": "教務處", "osa": "學務處", "hr": "人事室", "oga": "總務處",
     "": "（閒聊／未分類）",
 }
+
+
+DEPT_LABELS.update(FAQ_OFFICE_NAMES)
 
 
 def load_events(path):
