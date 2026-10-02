@@ -1575,31 +1575,30 @@ def tool_get_latest_news(keyword: str = "", dept: str = None) -> str:
         out_lines.append(f"【日期】：{dt}\n【標題】：{t}\n【公告內容摘要】：\n{preview}\n")
     return "\n---\n".join(out_lines) if out_lines else "查無最新消息。"
 
+def _incumbent_docs(dept: str) -> List[Document]:
+    """校長室／副校長室 FAQ 中「現任…是誰」那一題。"""
+    return [
+        d for d in INDEX.docs_zh
+        if d.metadata.get("dept") == dept
+        and str(d.metadata.get("title", "")).startswith("現任")
+    ]
+
+
 def tool_search_database(search_query: str, dept: str = None,
                          previous_source_docs: List[Document] = None) -> str:
     """工具3：通用知識與法規檢索（偏文件摘錄）"""
     if dept in OFFICE_SEARCH_GROUPS and "副校長" in (search_query or ""):
         # 未指定哪一位副校長：各副校長室分別檢索，並固定帶入「現任…是誰」那題，
         # 避免合併排序或「有哪些」這類問法漏掉某一位的姓名。
-        hits, seen = [], set()
         # 「校長和副校長是誰」也要帶入校長本人的資料。
         asks_president = "校長" in search_query.replace("副校長", "")
+        hits = []
         for sub_dept in OFFICE_SEARCH_GROUPS[dept]:
             if sub_dept == dept and not asks_president:
                 continue
-            incumbent = [
-                d for d in INDEX.docs_zh
-                if d.metadata.get("dept") == sub_dept
-                and str(d.metadata.get("title", "")).startswith("現任")
-            ]
-            retrieved = retrieve_and_rerank(
+            hits += _incumbent_docs(sub_dept) + retrieve_and_rerank(
                 search_query, top_k=2, use_rerank=False, dept=sub_dept,
             )
-            for d in incumbent + retrieved:
-                source_id = _source_id_for_doc(d)
-                if source_id not in seen:
-                    seen.add(source_id)
-                    hits.append(d)
     else:
         hits = retrieve_and_rerank(
             search_query,
@@ -1608,6 +1607,16 @@ def tool_search_database(search_query: str, dept: str = None,
             dept=dept,
             previous_source_docs=previous_source_docs,
         )
+        if dept in OFFICE_SEARCH_GROUPS:
+            # 校長室：固定帶入「現任校長是誰」，避免檢索只撈到經歷而答不出姓名。
+            hits = _incumbent_docs(dept) + hits
+    seen, unique_hits = set(), []
+    for d in hits:
+        source_id = _source_id_for_doc(d)
+        if source_id not in seen:
+            seen.add(source_id)
+            unique_hits.append(d)
+    hits = unique_hits
     _collect_source_docs(hits)
     evidence = check_evidence_sufficiency(search_query, hits)
     _record_evidence(evidence.to_dict())

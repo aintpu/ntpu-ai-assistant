@@ -945,6 +945,10 @@ def _lexical_scope(standalone_query: str, context: dict[str, Any]) -> ScopeDecis
         if any(keyword.lower() in haystack for keyword in keywords):
             matched.append(office)
     matched = list(dict.fromkeys(matched))
+    if matched == ["pres"]:
+        # 校長/副校長 without a named vice president is unambiguous; outrank a
+        # model guess that picks one vice-president office.
+        return ScopeDecision("IN_SCOPE", "pres", 0.9, "問題詢問校長或未指名的副校長。")
     if len(matched) == 1:
         return ScopeDecision("IN_SCOPE", matched[0], 0.72, f"關鍵詞與{OFFICE_NAMES[matched[0]]}相關。")
     group = _covering_search_group(matched)

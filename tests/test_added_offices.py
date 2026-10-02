@@ -105,6 +105,15 @@ class AddedOfficeTests(unittest.TestCase):
                 decision = run_scope_guardrail(query, {}, unavailable, retries=0)
                 self.assertEqual((decision.status, decision.office_hint), ('IN_SCOPE', code))
 
+    def test_unnamed_vice_president_outranks_model_office_guess(self):
+        for query in ('副校長有哪些？', '北大校長是誰'):
+            with self.subTest(query=query):
+                guess = lambda *a, **k: json.dumps({
+                    'status': 'IN_SCOPE', 'office_hint': 'vpad', 'confidence': 0.9, 'reason': '',
+                })
+                decision = run_scope_guardrail(query, {'raw_query': query}, guess, retries=0)
+                self.assertEqual((decision.status, decision.office_hint), ('IN_SCOPE', 'pres'))
+
     def test_scope_prompt_describes_every_faq_office(self):
         from conversation_guardrail import _scope_prompt
         system = _scope_prompt('那他們的研究領域呢', {})[0]['content']

@@ -72,9 +72,12 @@ class AddedOfficeBackendTests(unittest.TestCase):
                              ['pres', 'vpa', 'vpad', 'vpf'])
             for name in ('林道通', '陳宥杉', '張玉山', '朱炫璉'):
                 self.assertIn(name, context)
+            # 只問校長：檢索沒撈到「現任校長是誰」時仍固定帶入。
             retrieve.reset_mock()
-            core.tool_search_database('現任校長是誰', dept='pres')
+            context = core.tool_search_database('北大校長是誰', dept='pres')
             self.assertEqual([c.kwargs['dept'] for c in retrieve.call_args_list], ['pres'])
+            self.assertIn('林道通', context)
+            self.assertNotIn('陳宥杉', context)
 
 
 if __name__ == '__main__':
