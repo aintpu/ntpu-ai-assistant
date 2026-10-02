@@ -43,6 +43,11 @@ class AddedOfficeBackendTests(unittest.TestCase):
         ids = [doc.metadata['doc_id'] for doc in index.docs_zh]
         self.assertEqual(len(ids), len(set(ids)))
 
+    def test_blocked_message_lists_every_supported_office(self):
+        self.assertEqual(len(core.DEPT_NAMES), 21)
+        for name in core.DEPT_NAMES.values():
+            self.assertIn(name, core._BLOCKED_MSG)
+
     def test_unnamed_vice_president_query_searches_each_vice_president_office(self):
         index = core.OPEIndex()
         with patch.object(index, '_try_load_cache', return_value=False), \

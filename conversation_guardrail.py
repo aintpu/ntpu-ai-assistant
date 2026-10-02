@@ -11,7 +11,9 @@ import json
 import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Iterable
-from office_catalog import FAQ_OFFICES, FAQ_OFFICE_NAMES, FAQ_OFFICE_ALIASES, VICE_PRESIDENT_TITLES
+from office_catalog import (
+    FAQ_OFFICES, FAQ_OFFICE_NAMES, FAQ_OFFICE_ALIASES, OFFICE_SEARCH_GROUPS, VICE_PRESIDENT_TITLES,
+)
 
 
 VALID_OFFICES = {"ope", "ge", "lc", "oaa", "osa", "hr", "oga"}
@@ -885,6 +887,16 @@ def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[s
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
+def _covering_search_group(offices: list[str]) -> str | None:
+    """Return the office whose search group covers several matched offices."""
+    if len(set(offices)) < 2:
+        return None
+    for group, members in OFFICE_SEARCH_GROUPS.items():
+        if set(offices) <= set(members):
+            return group
+    return None
+
+
 def _lexical_scope(standalone_query: str, context: dict[str, Any]) -> ScopeDecision:
     text = (standalone_query or "").strip().lower()
     if text in {phrase.lower() for phrase in CHAT_PHRASES}:
@@ -899,6 +911,9 @@ def _lexical_scope(standalone_query: str, context: dict[str, Any]) -> ScopeDecis
     if len(explicit) == 1:
         office = explicit[0]
         return ScopeDecision("IN_SCOPE", office, 0.96, f"問題明確指定{OFFICE_NAMES[office]}。")
+    group = _covering_search_group(explicit)
+    if group:
+        return ScopeDecision("IN_SCOPE", group, 0.96, f"問題同時指定{OFFICE_NAMES[group]}可一併查詢的單位。")
 
     priority = [
         office for office, keywords in OFFICE_PRIORITY_KEYWORDS.items()
@@ -922,6 +937,10 @@ def _lexical_scope(standalone_query: str, context: dict[str, Any]) -> ScopeDecis
     matched = list(dict.fromkeys(matched))
     if len(matched) == 1:
         return ScopeDecision("IN_SCOPE", matched[0], 0.72, f"關鍵詞與{OFFICE_NAMES[matched[0]]}相關。")
+    group = _covering_search_group(matched)
+    if group:
+        # e.g. 學術副校長和行政副校長: 校長室 retrieval covers both offices.
+        return ScopeDecision("IN_SCOPE", group, 0.9, f"問題涉及{OFFICE_NAMES[group]}可一併查詢的多個單位。")
     if len(matched) > 1:
         return ScopeDecision("AMBIGUOUS", None, 0.55, "問題同時涉及多個可能的服務處室。")
 

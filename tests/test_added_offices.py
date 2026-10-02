@@ -93,6 +93,8 @@ class AddedOfficeTests(unittest.TestCase):
             '北大的副校長是誰': 'pres',
             '學術副校長是誰': 'vpa',
             '財務副校長怎麼聯絡': 'vpf',
+            '學術副校長和行政副校長是誰': 'pres',
+            '學術副校長室跟財務暨永續發展副校長室怎麼聯絡': 'pres',
         }
         for query, code in examples_extra.items():
             with self.subTest(query=query):

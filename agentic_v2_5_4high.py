@@ -2167,8 +2167,8 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
             if dept in OFFICE_SEARCH_GROUPS:
                 group_names = "、".join(DEPT_NAMES[d] for d in OFFICE_SEARCH_GROUPS[dept] if d != dept)
                 scope_note += (
-                    f"\n本輪檢索範圍同時包含{group_names}；若使用者未指定是哪一位副校長，"
-                    "請依檢索結果逐一列出各位副校長與其所屬單位。"
+                    f"\n本輪檢索範圍同時包含{group_names}；若使用者同時問多位副校長，"
+                    "只回答被問到的那幾位；若未指定是哪一位，請依檢索結果逐一列出各位副校長與其所屬單位。"
                 )
         elif dept == "hr":
             scope_note = (
@@ -2902,10 +2902,9 @@ def _detect_target_image(question: str, img_history: list) -> dict | None:
 
 _BLOCKED_MSG = (
     "目前沒有可安全回答這個問題的資料。我可以說明本系統的功能、使用方式與限制，"
-    "也可以協助「體育室」（場地借用、課程、賽事）、"
-    "「通識教育中心」（通識課程、學分抵免）、「語言中心」（大學英文、語言課程）、"
-    "「教務處」（學籍、選課、成績、畢業資格）、「學務處」（生活輔導、獎助學金、住宿、學生團體保險、社團）、"
-    "「人事室」（差勤、請假、勤休法規）與「總務處」（修繕、採購、財產、出納、停車、文書）的相關問題喔！"
+    f"也可以協助以下 {len(DEPT_NAMES)} 個單位已匯入範圍內的問題："
+    + "、".join(DEPT_NAMES.values())
+    + "。完整服務範圍請見系統說明頁。"
 )
 _INJECT_MSG = "您的輸入包含不允許的內容，請重新提問。"
 
