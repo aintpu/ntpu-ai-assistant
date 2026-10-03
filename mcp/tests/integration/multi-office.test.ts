@@ -65,6 +65,16 @@ describe("all offices", () => {
     expect(statuses.map((r) => r.status)).toEqual(["active", "inactive"]);
   });
 
+  it("offices whose announcements live on their own site link there (sustainable → esdg)", async () => {
+    deps.fetch = new FakeStrapi([], { sustainable_ntpu: [publication(5)] }).fetch;
+    await runIngestion(deps, { sourceIds: ["sustainable-announcements"], trigger: "test" });
+    const [row] = db.rows<{ source_url: string }>("SELECT source_url FROM entities");
+    expect(row!.source_url).toBe(`https://esdg.ntpu.edu.tw/news/${publication(5)._id}`);
+    for (const source of enabledSources()) {
+      expect(source.newsUrlBase).toMatch(/^https:\/\/[a-z]+\.ntpu\.edu\.tw\/[a-z/]+[^/]$/);
+    }
+  });
+
   it("an office with no announcements completes successfully with zero records", async () => {
     const summary = await runIngestion(deps, { sourceIds: ["cic-announcements"], trigger: "test" });
     expect(summary).toMatchObject({ status: "success", fetched: 1, published: 0, failed: 0 });

@@ -16,7 +16,13 @@ const STRAPI_FETCH = {
  * site key 是學校 Strapi 的 sitesApproved 值。校長室、三位副校長室只有內容頁；
  * 圖書館與語言中心用自己的網站，這些都不是這種來源，沒有列入。
  */
-export const ANNOUNCEMENT_UNITS = [
+export const ANNOUNCEMENT_UNITS: readonly {
+  unit: string;
+  name: string;
+  siteKey: string;
+  /** 公告不在 new.ntpu.edu.tw/{unit}/news 時，填實際公開頁面的前綴。 */
+  newsUrlBase?: string;
+}[] = [
   { unit: "ord", name: "研究發展處", siteKey: "ord_ntpu" },
   { unit: "oga", name: "總務處", siteKey: "oga_ntpu" },
   { unit: "osa", name: "學生事務處", siteKey: "osa_ntpu" },
@@ -28,22 +34,29 @@ export const ANNOUNCEMENT_UNITS = [
   { unit: "alumni", name: "校友服務中心", siteKey: "alumni_ntpu" },
   { unit: "edusp", name: "高教深耕計畫辦公室", siteKey: "edusp_ntpu" },
   { unit: "os", name: "秘書室", siteKey: "os_ntpu" },
-  { unit: "sustainable", name: "永續發展辦公室", siteKey: "sustainable_ntpu" },
+  // 永續辦公室的公告顯示在自己的網站（new.ntpu.edu.tw/sustainable/news 會顯示「找不到」），2026-10-03 確認。
+  {
+    unit: "sustainable",
+    name: "永續發展辦公室",
+    siteKey: "sustainable_ntpu",
+    newsUrlBase: "https://esdg.ntpu.edu.tw/news",
+  },
   { unit: "ope", name: "體育室", siteKey: "ope_ntpu" },
   { unit: "cge", name: "通識教育中心", siteKey: "cge_ntpu" },
   { unit: "op", name: "人事室", siteKey: "op_ntpu" },
-] as const;
+];
 
 /**
  * 所有允許抓取的來源都在這裡宣告（規格 06 §6）。新增來源前需確認資料擁有者、
  * 是否公開、是否需要登入；需要 gm 登入的頁面不得加入。
  */
-export const SOURCES: readonly SourceDefinition[] = ANNOUNCEMENT_UNITS.map(({ unit, siteKey }) => ({
+export const SOURCES: readonly SourceDefinition[] = ANNOUNCEMENT_UNITS.map(({ unit, siteKey, newsUrlBase }) => ({
   id: `${unit}-announcements`,
   sourceUnit: unit,
   sourceType: "official_api",
   trustLevel: "official",
-  homepageUrl: `https://new.ntpu.edu.tw/${unit}/news`,
+  homepageUrl: newsUrlBase ?? `https://new.ntpu.edu.tw/${unit}/news`,
+  newsUrlBase: newsUrlBase ?? `https://new.ntpu.edu.tw/${unit}/news`,
   origin: "https://api-carrier.ntpu.edu.tw",
   allowedPathPrefixes: ["/strapi"],
   entrypoints: ["/strapi"],

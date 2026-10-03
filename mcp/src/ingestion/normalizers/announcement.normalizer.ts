@@ -5,7 +5,6 @@ import type { StrapiPublication } from "../parsers/strapi-publications.parser";
 import type { SourceDefinition } from "../types";
 
 const CMS_ORIGIN = "https://cms-carrier.ntpu.edu.tw";
-const SITE_ORIGIN = "https://new.ntpu.edu.tw";
 
 function absoluteFileUrl(raw: string): string {
   const url = new URL(raw.trim(), `${CMS_ORIGIN}/`);
@@ -55,7 +54,7 @@ export function normalizeAnnouncement(item: StrapiPublication, source: SourceDef
     publishedAt,
     bodyText: htmlToText(typeof item.content === "string" ? item.content : ""),
     attachments,
-    sourceUrl: `${SITE_ORIGIN}/${source.sourceUnit}/news/${id}`,
+    sourceUrl: `${source.newsUrlBase}/${id}`,
   };
   const parsed = AnnouncementSchema.safeParse(candidate);
   if (!parsed.success) {

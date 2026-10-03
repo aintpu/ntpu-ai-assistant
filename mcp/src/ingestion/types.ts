@@ -18,6 +18,8 @@ export interface SourceDefinition {
   trustLevel: "official" | "verified" | "secondary";
   /** 給人看的官方頁面，provenance 與 sources 表使用。 */
   homepageUrl: string;
+  /** 公告的公開頁面前綴；每則公告的官方連結是「前綴/_id」。 */
+  newsUrlBase: string;
 
   origin: string;
   allowedPathPrefixes: string[];

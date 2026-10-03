@@ -130,4 +130,14 @@ export function validateSourceDefinition(source: SourceDefinition): void {
   } catch {
     fail("homepageUrl is not a URL");
   }
+  // 公告連結會原樣回給使用者，只允許學校網域的 https 網址。
+  let news: URL | null = null;
+  try {
+    news = new URL(source.newsUrlBase);
+  } catch {
+    fail("newsUrlBase is not a URL");
+  }
+  if (news!.protocol !== "https:" || !news!.hostname.endsWith(".ntpu.edu.tw") || source.newsUrlBase.endsWith("/")) {
+    fail("newsUrlBase must be an https ntpu.edu.tw URL without a trailing slash");
+  }
 }
