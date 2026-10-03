@@ -1,0 +1,30 @@
+{
+  "name": "ntpu-aia-mcp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:security": "vitest run tests/security",
+    "check": "npm run typecheck && npm test",
+    "dev:ingest": "wrangler dev --config wrangler.ingest.jsonc --test-scheduled",
+    "dev:mcp": "wrangler dev --config wrangler.mcp.jsonc",
+    "db:migrate:dev": "wrangler d1 migrations apply DB --local --config wrangler.ingest.jsonc",
+    "db:migrate:staging": "wrangler d1 migrations apply DB --remote --env staging --config wrangler.ingest.jsonc",
+    "db:migrate:prod": "wrangler d1 migrations apply DB --remote --env production --config wrangler.ingest.jsonc",
+    "deploy:staging": "wrangler deploy --env staging --config wrangler.ingest.jsonc && wrangler deploy --env staging --config wrangler.mcp.jsonc"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261003.1",
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3",
+    "wrangler": "^4.147.0"
+  }
+}
