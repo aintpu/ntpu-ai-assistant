@@ -73,13 +73,74 @@ describe("ingestion vertical slice: ORD announcements", () => {
     expect(item).toEqual({ status: "failed", error_code: "RAW_ARCHIVE_FAILED" });
   });
 
-  it("T-004 validation failure: malformed record is not published and is observable", async () => {
-    strapi.items.push(publication(4, { _id: "not-a-valid-id", title: "壞資料" }));
+  it("T-004 validation failure: malformed record is quarantined, not published, and traceable", async () => {
+    strapi.items.push(publication(4, { title: "   " }));
     const summary = await run();
-    expect(summary.status).toBe("partial");
-    expect(summary.published).toBe(3);
-    expect(summary.errors.some((e) => e.code === "VALIDATION_FAILED")).toBe(true);
+    expect(summary).toMatchObject({ status: "success", published: 3, quarantined: 1, failed: 0 });
     expect(db.count("entities")).toBe(3);
+    const [q] = db.rows<{ stable_key: string; reason: string; raw_snapshot_key: string }>(
+      "SELECT stable_key, reason, raw_snapshot_key FROM quarantined_records",
+    );
+    expect(q!.stable_key).toBe(publication(4)._id);
+    expect(q!.reason).toMatch(/title/);
+    expect(archive.objects.has(q!.raw_snapshot_key)).toBe(true);
+    const [item] = db.rows<{ records_quarantined: number; error_message: string }>(
+      "SELECT records_quarantined, error_message FROM ingestion_items",
+    );
+    expect(item!.records_quarantined).toBe(1);
+    expect(item!.error_message).toContain(publication(4)._id);
+    const [runRow] = db.rows<{ quarantined_count: number }>("SELECT quarantined_count FROM ingestion_runs");
+    expect(runRow!.quarantined_count).toBe(1);
+  });
+
+  it("banner carousel items are skipped by rule, not quarantined or counted as failures", async () => {
+    // 真實資料：研發處 672 筆中有 17 筆 type=banner，標題與內文皆為空字串。
+    strapi.items.push(publication(9, { type: "banner", title: "", content: "", files: [] }));
+    const summary = await run();
+    expect(summary).toMatchObject({ status: "success", published: 3, skipped: 1, quarantined: 0, failed: 0 });
+    expect(db.count("quarantined_records")).toBe(0);
+    const [item] = db.rows<{ records_skipped: number; records_parsed: number }>(
+      "SELECT records_skipped, records_parsed FROM ingestion_items",
+    );
+    expect(item).toEqual({ records_skipped: 1, records_parsed: 4 });
+    expect(strapi.bodies[0]).toContain("_id type title");
+  });
+
+  it("quarantined record is released once the source fixes it, and pruned once it disappears", async () => {
+    strapi.items.push(publication(4, { title: "" }), publication(5, { _id: "bad" }));
+    await run();
+    expect(db.count("quarantined_records")).toBe(2);
+    strapi.items[3] = publication(4);
+    strapi.items.pop();
+    clock.advance(3600);
+    await run();
+    expect(db.count("quarantined_records")).toBe(0);
+    expect(db.count("entities")).toBe(4);
+  });
+
+  it("partial run keeps published data but does not count as a complete success", async () => {
+    strapi.items = Array.from({ length: 230 }, (_, i) => publication(i + 1));
+    await run();
+    const firstSuccess = clock.now;
+    clock.advance(86_400);
+    strapi.items[0] = publication(1, { title: "已更新" });
+    const pageFetch = strapi.fetch;
+    deps.fetch = async (request) => {
+      const body = await request.clone().text();
+      if (body.includes("start:200")) return new Response("busy", { status: 503 });
+      return pageFetch(request);
+    };
+    const summary = await run();
+    expect(summary).toMatchObject({ status: "partial", fetched: 2, published: 1, unchanged: 199 });
+    expect(summary.errors[0]!.code).toBe("FETCH_HTTP_ERROR");
+    const [source] = db.rows<{ last_success_at: string; last_attempt_at: string; last_run_status: string }>(
+      "SELECT last_success_at, last_attempt_at, last_run_status FROM sources",
+    );
+    expect(source).toEqual({ last_success_at: firstSuccess, last_attempt_at: clock.now, last_run_status: "partial" });
+    // 不完整的執行不判斷資料消失
+    const missing = db.rows<{ n: number }>("SELECT COUNT(*) AS n FROM entities WHERE missing_runs > 0");
+    expect(missing[0]!.n).toBe(0);
+    expect(db.count("entities")).toBe(230);
   });
 
   it("T-004 fails closed when too many records are invalid (parser drift)", async () => {
@@ -185,5 +246,6 @@ describe("ingestion vertical slice: ORD announcements", () => {
       "SELECT last_success_at, last_run_status FROM sources",
     );
     expect(source).toEqual({ last_success_at: clock.now, last_run_status: "success" });
+    expect(summary.quarantined).toBe(0);
   });
 });

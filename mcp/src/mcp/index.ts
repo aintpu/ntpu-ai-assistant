@@ -66,7 +66,12 @@ export function createHandler(clock: Clock = systemClock) {
         const sources = await service.freshness().catch(() => null);
         if (!sources) return json({ status: "degraded", service: SERVICE_NAME, error: "DEPENDENCY_UNAVAILABLE" }, 503);
         return json({
-          status: sources.every((s) => s.state === "fresh") ? "ok" : "stale",
+          // ok：全部來源都在時限內完整成功；degraded：最近一次執行不完整；stale：超過時限沒有完整成功。
+          status: sources.some((s) => s.state !== "fresh")
+            ? "stale"
+            : sources.some((s) => s.lastRunStatus !== "success")
+              ? "degraded"
+              : "ok",
           service: SERVICE_NAME,
           version: SERVICE_VERSION,
           environment: env.ENVIRONMENT,

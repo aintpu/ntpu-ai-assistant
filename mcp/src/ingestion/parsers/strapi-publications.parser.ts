@@ -4,6 +4,7 @@ import type { SourceDefinition, SourceRequest } from "../types";
 /** strapi 回傳的公告原始欄位（尚未驗證，屬於不受信任的中間資料）。 */
 export interface StrapiPublication {
   _id?: unknown;
+  type?: unknown;
   title?: unknown;
   publishAt?: unknown;
   content?: unknown;
@@ -39,12 +40,20 @@ export const strapiPublicationsParser = {
       `{ publications(sort:"publishAt:desc", start:${start}, limit:${PAGE_SIZE}, ` +
       `where:{isEvent:false, sitesApproved_in:"${siteKey}", lang_ne:"english", ` +
       `publishAt_lte:"${now}", unPublishAt_gte:"${now}"}) ` +
-      `{ _id title publishAt content files { name url } } }`;
+      `{ _id type title publishAt content files { name url } } }`;
     return {
       target: `${source.entrypoints[0]}#page=${page}`,
       path: source.entrypoints[0]!,
       body: JSON.stringify({ query }),
     };
+  },
+
+  /**
+   * 不屬於公告的項目，回傳排除原因；這些項目不寫入正式資料，也不算驗證失敗。
+   * banner 是首頁輪播圖：標題與內文為空，文字只在圖片說明，通常連到另一篇正式公告。
+   */
+  exclusionReason(row: StrapiPublication): string | null {
+    return row.type === "banner" ? "type=banner（首頁輪播圖，不是公告）" : null;
   },
 
   parse(bytes: Uint8Array): StrapiPublication[] {

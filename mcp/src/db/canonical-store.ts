@@ -176,14 +176,58 @@ export class CanonicalStore {
     return result.meta.changes ?? 0;
   }
 
-  async setSourceResult(sourceId: string, status: string, now: string, succeeded: boolean): Promise<void> {
+  /**
+   * 記錄來源這次執行的結果。last_success_at 只在「完整成功」時更新；
+   * 部分成功只更新 last_attempt_at 與 last_run_status，避免把未完整驗證的來源標成最新。
+   */
+  async setSourceResult(sourceId: string, status: "success" | "partial" | "failed", now: string): Promise<void> {
     await this.db
       .prepare(
-        `UPDATE sources SET last_run_status = ?2, updated_at = ?3,
-           last_success_at = CASE WHEN ?4 = 1 THEN ?3 ELSE last_success_at END
+        `UPDATE sources SET last_run_status = ?2, last_attempt_at = ?3, updated_at = ?3,
+           last_success_at = CASE WHEN ?2 = 'success' THEN ?3 ELSE last_success_at END
          WHERE id = ?1`,
       )
-      .bind(sourceId, status, now, succeeded ? 1 : 0)
+      .bind(sourceId, status, now)
+      .run();
+  }
+
+  async quarantine(
+    record: { sourceId: string; stableKey: string; reason: string; rawSnapshotKey: string },
+    runId: string,
+    now: string,
+  ): Promise<void> {
+    await this.db
+      .prepare(
+        `INSERT INTO quarantined_records (source_id, stable_key, reason, raw_snapshot_key, first_seen_at,
+           last_seen_at, last_run_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6)
+         ON CONFLICT(source_id, stable_key) DO UPDATE SET reason = ?3, raw_snapshot_key = ?4,
+           last_seen_at = ?5, last_run_id = ?6`,
+      )
+      .bind(record.sourceId, record.stableKey, record.reason, record.rawSnapshotKey, now, runId)
+      .run();
+  }
+
+  async quarantinedKeys(sourceId: string): Promise<Set<string>> {
+    const { results } = await this.db
+      .prepare(`SELECT stable_key FROM quarantined_records WHERE source_id = ?1`)
+      .bind(sourceId)
+      .all<{ stable_key: string }>();
+    return new Set(results.map((r) => r.stable_key));
+  }
+
+  async releaseFromQuarantine(sourceId: string, stableKey: string): Promise<void> {
+    await this.db
+      .prepare(`DELETE FROM quarantined_records WHERE source_id = ?1 AND stable_key = ?2`)
+      .bind(sourceId, stableKey)
+      .run();
+  }
+
+  /** 完整執行後，這次沒再出現的隔離紀錄代表來源已移除該筆資料，從隔離區清掉。 */
+  async pruneQuarantine(sourceId: string, runId: string): Promise<void> {
+    await this.db
+      .prepare(`DELETE FROM quarantined_records WHERE source_id = ?1 AND last_run_id != ?2`)
+      .bind(sourceId, runId)
       .run();
   }
 
@@ -206,6 +250,8 @@ export class CanonicalStore {
       published: number;
       unchanged: number;
       failed: number;
+      quarantined: number;
+      skipped: number;
       errors: unknown[];
     },
     now: string,
@@ -213,7 +259,8 @@ export class CanonicalStore {
     await this.db
       .prepare(
         `UPDATE ingestion_runs SET finished_at = ?2, status = ?3, source_count = ?4, fetched_count = ?5,
-           published_count = ?6, unchanged_count = ?7, failed_count = ?8, error_summary_json = ?9
+           published_count = ?6, unchanged_count = ?7, failed_count = ?8, error_summary_json = ?9,
+           quarantined_count = ?10, skipped_count = ?11
          WHERE id = ?1`,
       )
       .bind(
@@ -226,6 +273,8 @@ export class CanonicalStore {
         summary.unchanged,
         summary.failed,
         summary.errors.length ? JSON.stringify(summary.errors.slice(0, 50)) : null,
+        summary.quarantined,
+        summary.skipped,
       )
       .run();
   }
@@ -241,6 +290,8 @@ export class CanonicalStore {
     parsed: number;
     published: number;
     unchanged: number;
+    quarantined: number;
+    skipped: number;
     errorCode: string | null;
     errorMessage: string | null;
     startedAt: string;
@@ -250,8 +301,8 @@ export class CanonicalStore {
       .prepare(
         `INSERT INTO ingestion_items (id, run_id, source_id, target, status, http_status, raw_snapshot_key,
            raw_hash, records_parsed, records_published, records_unchanged, error_code, error_message,
-           started_at, finished_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)`,
+           started_at, finished_at, records_quarantined, records_skipped)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)`,
       )
       .bind(
         newId("item"),
@@ -269,6 +320,8 @@ export class CanonicalStore {
         item.errorMessage,
         item.startedAt,
         item.finishedAt,
+        item.quarantined,
+        item.skipped,
       )
       .run();
   }

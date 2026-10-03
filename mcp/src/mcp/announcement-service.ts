@@ -10,8 +10,23 @@ const SNIPPET_CHARS = 200;
 export interface SourceFreshness {
   sourceId: string;
   unit: string;
+  /** 依「最近一次完整成功」判斷。 */
   state: FreshnessState;
   lastSuccessAt: string | null;
+  lastAttemptAt: string | null;
+  lastRunStatus: string | null;
+  /** 驗證不通過、未收錄的來源資料筆數。 */
+  quarantinedCount: number;
+}
+
+/** 給 MCP client 的警示：資料過期，或最近一次抓取沒有完整成功。 */
+export function warningsOf(freshness: SourceFreshness[]): string[] {
+  const warnings: string[] = [];
+  if (freshness.some((f) => f.state !== "fresh")) warnings.push("DATA_STALE");
+  if (freshness.some((f) => f.lastRunStatus === "partial" || f.lastRunStatus === "failed")) {
+    warnings.push("INGESTION_INCOMPLETE");
+  }
+  return warnings;
 }
 
 export interface AnnouncementSummary {
@@ -71,6 +86,9 @@ export class AnnouncementService {
         unit: s.sourceUnit,
         state: freshnessOf(lastSuccessAt, s.freshness.maxStalenessSeconds, now),
         lastSuccessAt,
+        lastAttemptAt: row?.last_attempt_at ?? null,
+        lastRunStatus: row?.last_run_status ?? null,
+        quarantinedCount: Number(row?.quarantined ?? 0),
       };
     });
   }

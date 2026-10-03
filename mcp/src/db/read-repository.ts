@@ -17,7 +17,9 @@ export interface SourceStatusRow {
   id: string;
   source_unit: string;
   last_success_at: string | null;
+  last_attempt_at: string | null;
   last_run_status: string | null;
+  quarantined: number;
 }
 
 export interface AnnouncementQuery {
@@ -76,7 +78,11 @@ export class ReadRepository {
 
   async sourceStatuses(): Promise<SourceStatusRow[]> {
     const { results } = await this.db
-      .prepare(`SELECT id, source_unit, last_success_at, last_run_status FROM sources ORDER BY id`)
+      .prepare(
+        `SELECT s.id, s.source_unit, s.last_success_at, s.last_attempt_at, s.last_run_status,
+                (SELECT COUNT(*) FROM quarantined_records q WHERE q.source_id = s.id) AS quarantined
+         FROM sources s ORDER BY s.id`,
+      )
       .all<SourceStatusRow>();
     return results;
   }

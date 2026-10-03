@@ -4,6 +4,7 @@ import { rawObjectKey } from "../../src/ingestion/raw-archive";
 
 export interface FakePublication {
   _id: string;
+  type: string;
   title: string;
   publishAt: string;
   content: string;
@@ -13,6 +14,7 @@ export interface FakePublication {
 export function publication(n: number, overrides: Partial<FakePublication> = {}): FakePublication {
   return {
     _id: n.toString(16).padStart(24, "0"),
+    type: "typical",
     title: `研發處公告 ${n}`,
     publishAt: new Date(Date.UTC(2026, 8, 1) + n * 86_400_000).toISOString(),
     content: `<p>第 ${n} 則公告內文。</p><p>請於期限內申請&nbsp;計畫。</p>`,

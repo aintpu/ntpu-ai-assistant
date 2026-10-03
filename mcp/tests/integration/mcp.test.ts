@@ -133,6 +133,29 @@ describe("MCP endpoint", () => {
   });
 });
 
+describe("incomplete ingestion", () => {
+  it("warns INGESTION_INCOMPLETE and reports degraded health after a partial run", async () => {
+    clock.advance(3600);
+    await runIngestion(
+      {
+        store: new CanonicalStore(db.asD1()),
+        archive: new MemoryRawArchive(),
+        fetch: async () => new Response("down", { status: 502 }),
+        clock,
+        environment: "test",
+      },
+      { trigger: "test" },
+    );
+    const { body } = await call("search_announcements", {});
+    const out = body.result.structuredContent;
+    expect(out.count).toBe(3);
+    expect(out.warnings).toEqual(["INGESTION_INCOMPLETE"]);
+    expect(out.freshness[0]).toMatchObject({ state: "fresh", lastRunStatus: "failed", quarantinedCount: 0 });
+    const health = (await (await handler.fetch(new Request("https://mcp.test/health"), env)).json()) as any;
+    expect(health.status).toBe("degraded");
+  });
+});
+
 describe("HTTP surface", () => {
   it("health, about, 404 and method/size limits", async () => {
     const health = (await (await handler.fetch(new Request("https://mcp.test/health"), env)).json()) as any;
