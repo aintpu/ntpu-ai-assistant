@@ -31,8 +31,11 @@ export interface IngestionDeps {
 
 export interface IngestionRunOptions {
   sourceIds?: string[];
-  /** 重新驗證所有已收錄的內文（例如過濾規則更新後），仍受每次上限限制、分批完成。 */
-  reverifyAll?: boolean;
+  /**
+   * 重新驗證在這個時間之前驗證過的所有內文（例如過濾規則更新後，填規則更新的時間）。
+   * 仍受每次上限限制，分批完成；同一個時間重複執行，直到 deferred 為 0。
+   */
+  reverifyBefore?: string;
   trigger?: "scheduled" | "manual" | "test";
 }
 
@@ -76,7 +79,7 @@ async function ingestSource(
   source: SourceDefinition,
   runId: string,
   deps: IngestionDeps,
-  reverifyAll = false,
+  reverifyBefore?: string,
 ): Promise<SourceResult> {
   const { store, clock } = deps;
   const sleep = deps.sleep ?? realSleep;
@@ -98,7 +101,7 @@ async function ingestSource(
   const ctx: StepContext = {
     source,
     nowIso: clock.nowIso(),
-    reverifyAll,
+    reverifyBefore,
     activeCount: () => store.countActive(source.id),
     async known(ids) {
       const map = new Map<string, KnownRecord>();
@@ -350,7 +353,7 @@ export async function runIngestion(
   // 來源之間互不影響；排程每次只跑一個來源，依序執行即為有界的並行度。
   for (const source of sources) {
     try {
-      const r = await ingestSource(source, runId, deps, options.reverifyAll ?? false);
+      const r = await ingestSource(source, runId, deps, options.reverifyBefore);
       totals.fetched += r.fetched;
       totals.published += r.published;
       totals.unchanged += r.unchanged;

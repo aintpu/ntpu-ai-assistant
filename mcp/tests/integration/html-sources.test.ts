@@ -195,7 +195,11 @@ describe("lc.ntpu.edu.tw", () => {
     // 過濾規則更新或官網補上名單後，重新驗證時被擋下：狀態改為 withheld，查不到。
     sites.lc[1] = lcNews(2, { title: "獎勵結果公告", body: "<p>王〇明 李〇華 陳〇安</p>" });
     clock.advance(3600);
-    const summary = await runIngestion(deps, { sourceIds: ["lc-announcements"], trigger: "test", reverifyAll: true });
+    const summary = await runIngestion(deps, {
+      sourceIds: ["lc-announcements"],
+      trigger: "test",
+      reverifyBefore: clock.nowIso(),
+    });
     expect(summary).toMatchObject({ fetched: 3, quarantined: 1 });
     expect(entity(`lc:${lcId(2)}`)!.status).toBe("withheld");
     expect(entity(`lc:${lcId(1)}`)!.status).toBe("active");
@@ -208,6 +212,29 @@ describe("lc.ntpu.edu.tw", () => {
     const repo = new ReadRepository(db.asD1());
     expect(await repo.getAnnouncementRows(lcId(2), ["lc"])).toEqual([]);
     expect((await repo.searchAnnouncements({ keywords: ["獎勵"], limit: 10 })).length).toBe(0);
+  });
+
+  it("a forced re-verification finishes in batches without picking the same records again", async () => {
+    sites.lc = Array.from({ length: 70 }, (_, i) => lcNews(i + 1));
+    sites.lc[3] = lcNews(4, { body: "<p>王〇明 李〇華 陳〇安</p>" });
+    await runLc();
+    await runLc();
+    clock.advance(3600);
+    const cutoff = clock.nowIso();
+    const deferred: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      clock.advance(60);
+      const r = await runIngestion(deps, { sourceIds: ["lc-announcements"], trigger: "test", reverifyBefore: cutoff });
+      deferred.push(r.deferred);
+      if (r.deferred === 0) break;
+    }
+    // 69 筆已收錄 + 1 筆在隔離區：第一次 60 筆，第二次剩下的 10 筆，之後不再重抓。
+    expect(deferred).toEqual([10, 0]);
+    sites.requests = [];
+    clock.advance(60);
+    const again = await runIngestion(deps, { sourceIds: ["lc-announcements"], trigger: "test", reverifyBefore: cutoff });
+    expect(again).toMatchObject({ status: "success", deferred: 0 });
+    expect(sites.requests.some((r) => r.includes("news_in.jsp"))).toBe(false);
   });
 
   it("dates are Taiwan calendar dates", async () => {

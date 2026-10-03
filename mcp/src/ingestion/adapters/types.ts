@@ -27,8 +27,8 @@ export interface KnownRecord {
 export interface StepContext {
   source: SourceDefinition;
   nowIso: string;
-  /** 把所有已知紀錄都當成需要重新驗證。 */
-  reverifyAll?: boolean;
+  /** 在這個時間之前驗證過的紀錄都要重新驗證（ISO 時間）。 */
+  reverifyBefore?: string;
   /** 依來源編號查已知紀錄。 */
   known(ids: string[]): Promise<Map<string, KnownRecord>>;
   activeCount(): Promise<number>;

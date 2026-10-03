@@ -32,9 +32,13 @@ export function selectDetails(
   known: Map<string, KnownRecord>,
   config: HtmlNewsConfig,
   nowIso: string,
-  reverifyAll = false,
+  reverifyBefore?: string,
 ): { chosen: ListItem[]; deferred: number } {
-  const staleBefore = reverifyAll ? Number.POSITIVE_INFINITY : Date.parse(nowIso) - config.reverifyAfterSeconds * 1000;
+  // 一般情況：超過 reverifyAfterSeconds 沒驗證的才重抓。指定 reverifyBefore 時，
+  // 在那之前驗證過的也重抓；分批執行時，已重新驗證過的不會再被挑到，留到下一次的數量會逐次減少。
+  const normal = Date.parse(nowIso) - config.reverifyAfterSeconds * 1000;
+  const forced = reverifyBefore ? Date.parse(reverifyBefore) : Number.NEGATIVE_INFINITY;
+  const staleBefore = Math.max(normal, Number.isNaN(forced) ? Number.NEGATIVE_INFINITY : forced);
   const candidates: Candidate[] = [];
   for (const item of items) {
     const k = known.get(item.id);
@@ -128,7 +132,7 @@ export const htmlNewsAdapter: Adapter = {
         // 列表走完：決定這次要抓哪些內文。
         const items = [...listed.values()];
         const known = await ctx.known(items.map((i) => i.id));
-        const { chosen, deferred } = selectDetails(items, known, config, ctx.nowIso, ctx.reverifyAll);
+        const { chosen, deferred } = selectDetails(items, known, config, ctx.nowIso, ctx.reverifyBefore);
         outcome.listComplete = true;
         outcome.deferred = deferred;
         outcome.next = chosen.map((item) => detailStep(source, site, config, { ...item, title: clean(item.title) }));

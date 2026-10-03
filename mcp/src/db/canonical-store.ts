@@ -285,7 +285,8 @@ export class CanonicalStore {
 
   /**
    * 已收錄、但這次重新驗證時被擋下的資料（例如含個人資料）：狀態改為 withheld，
-   * MCP 不再提供；不刪除，官網連結與原始檔仍可追溯。
+   * MCP 不再提供；不刪除，官網連結與原始檔仍可追溯。verified_at 記這次的檢查時間，
+   * 避免同一筆在重新驗證時一直被挑到。
    */
   async withhold(entityType: string, stableKeys: string[], runId: string, now: string): Promise<number> {
     let changed = 0;
@@ -293,8 +294,9 @@ export class CanonicalStore {
       const placeholders = keys.map((_, i) => `?${i + 4}`).join(", ");
       const result = await this.db
         .prepare(
-          `UPDATE entities SET status = 'withheld', last_seen_run_id = ?2, updated_at = ?3
-           WHERE entity_type = ?1 AND stable_key IN (${placeholders}) AND status != 'withheld'`,
+          `UPDATE entities SET status = 'withheld', last_seen_run_id = ?2, verified_at = ?3,
+             updated_at = CASE WHEN status = 'withheld' THEN updated_at ELSE ?3 END
+           WHERE entity_type = ?1 AND stable_key IN (${placeholders})`,
         )
         .bind(entityType, runId, now, ...keys)
         .run();

@@ -31,9 +31,15 @@ export default {
     };
     ctx.waitUntil(
       (async () => {
-        // 本機可用 /__scheduled?cron=source:<來源 id> 指定來源，cron=reverify:<來源 id> 重新驗證全部內文；
+        // 本機可用 /__scheduled?cron=source:<來源 id> 指定來源；
+        // cron=reverify:<來源 id>:<ISO 時間> 重新驗證在那之前驗證過的內文（重複執行到 deferred 為 0）。
         // 正式環境的 cron 字串只來自 wrangler 設定，無法帶入這兩種值。
-        const [mode, id] = controller.cron.split(":", 2) as [string, string | undefined];
+        const [mode, id, ...rest] = controller.cron.split(":") as [string, string | undefined, ...string[]];
+        const reverifyBefore = mode === "reverify" ? rest.join(":") : "";
+        if (mode === "reverify" && Number.isNaN(Date.parse(reverifyBefore))) {
+          console.error(JSON.stringify({ type: "ingestion_error", reason: "reverify needs an ISO time" }));
+          return;
+        }
         const requested = mode === "source" || mode === "reverify" ? getSource(id ?? "") : undefined;
         const source = requested ?? (await pickDueSource(deps.store, systemClock.nowIso()));
         if (!source) {
@@ -43,7 +49,7 @@ export default {
         const summary = await runIngestion(deps, {
           sourceIds: [source.id],
           trigger: "scheduled",
-          reverifyAll: mode === "reverify" && requested !== undefined,
+          reverifyBefore: mode === "reverify" && requested !== undefined ? reverifyBefore : undefined,
         });
         // 每次執行輸出一筆結構化摘要（規格 06 §25），不含回應內容或任何金鑰。
         console.log(JSON.stringify(summary));
