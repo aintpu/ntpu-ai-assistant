@@ -31,7 +31,7 @@
         {
           "binding": "DB",
           "database_name": "ntpu-aia-canonical-staging",
-          "database_id": "REPLACE_WITH_STAGING_D1_ID",
+          "database_id": "fbfbefa7-3b93-41cd-87be-aa55d6761b3c",
           "migrations_dir": "migrations"
         }
       ],
