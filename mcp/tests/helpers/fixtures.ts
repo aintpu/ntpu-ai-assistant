@@ -27,11 +27,17 @@ export function strapiBody(items: unknown[]): string {
   return JSON.stringify({ data: { publications: items } });
 }
 
-/** 模擬 strapi：依請求裡的 start 回傳對應的那一頁，並記錄所有收到的請求。 */
+/**
+ * 模擬 strapi：依請求裡的 start 回傳對應的那一頁，並記錄所有收到的請求。
+ * 有 bySite 時依 site key 回傳各處室自己的公告（沒列到的處室沒有公告）。
+ */
 export class FakeStrapi {
   requests: Request[] = [];
   bodies: string[] = [];
-  constructor(public items: unknown[]) {}
+  constructor(
+    public items: unknown[],
+    public bySite?: Record<string, unknown[]>,
+  ) {}
 
   fetch = async (request: Request): Promise<Response> => {
     this.requests.push(request);
@@ -39,7 +45,9 @@ export class FakeStrapi {
     this.bodies.push(body);
     const start = Number(/start:(\d+)/.exec(body)?.[1] ?? 0);
     const limit = Number(/limit:(\d+)/.exec(body)?.[1] ?? 100);
-    return new Response(strapiBody(this.items.slice(start, start + limit)), {
+    const site = /sitesApproved_in:\\?"([a-z_]+)/.exec(body)?.[1] ?? "";
+    const items = this.bySite ? (this.bySite[site] ?? []) : this.items;
+    return new Response(strapiBody(items.slice(start, start + limit)), {
       status: 200,
       headers: { "content-type": "application/json; charset=utf-8" },
     });

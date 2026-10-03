@@ -1,11 +1,12 @@
 import type { AnnouncementRow, ReadRepository } from "../db/read-repository";
-import { SOURCES } from "../ingestion/source-registry";
+import { SOURCES, sourceUnits } from "../ingestion/source-registry";
 import type { Clock } from "../shared/clock";
 import { freshnessOf, type FreshnessState } from "../shared/freshness";
 import { AnnouncementSchema, type Announcement, type Provenance } from "../shared/schemas";
 
 export const SEARCH_LIMIT_MAX = 20;
 const SNIPPET_CHARS = 200;
+const DEDUPE_FACTOR = 3;
 
 export interface SourceFreshness {
   sourceId: string;
@@ -32,6 +33,8 @@ export function warningsOf(freshness: SourceFreshness[]): string[] {
 export interface AnnouncementSummary {
   id: string;
   unit: string;
+  /** 同一則公告也刊登在哪些處室（search 為本次查詢結果範圍內）。 */
+  postedBy: string[];
   title: string;
   publishedAt: string | null;
   snippet: string;
@@ -112,33 +115,53 @@ export class AnnouncementService {
       keywords,
       fromDate: input.fromDate ? `${input.fromDate}T00:00:00.000Z` : undefined,
       beforeIso,
-      limit: Math.min(input.limit, SEARCH_LIMIT_MAX),
+      // 跨處室重複的公告只回一筆，所以多抓一些再合併。
+      limit: Math.min(input.limit, SEARCH_LIMIT_MAX) * DEDUPE_FACTOR,
     });
     const items: AnnouncementSummary[] = [];
+    const byId = new Map<string, AnnouncementSummary>();
     for (const row of rows) {
       const payload = payloadOf(row);
       if (!payload) continue;
-      items.push({
+      const seen = byId.get(payload.id);
+      if (seen) {
+        if (!seen.postedBy.includes(payload.unit)) seen.postedBy.push(payload.unit);
+        continue;
+      }
+      if (items.length >= Math.min(input.limit, SEARCH_LIMIT_MAX)) continue;
+      const item: AnnouncementSummary = {
         id: payload.id,
         unit: payload.unit,
+        postedBy: [payload.unit],
         title: payload.title,
         publishedAt: row.published_at,
         snippet: payload.bodyText.slice(0, SNIPPET_CHARS),
         attachmentCount: payload.attachments.length,
         provenance: provenanceOf(row),
-      });
+      };
+      byId.set(payload.id, item);
+      items.push(item);
     }
+    for (const item of items) item.postedBy.sort();
     return items;
   }
 
-  async get(id: string): Promise<AnnouncementDetail | null> {
-    const row = await this.repo.getAnnouncement(id);
-    if (!row) return null;
-    const payload = payloadOf(row);
-    if (!payload) return null;
+  /** unit 指定時回該處室那一筆；沒指定就回第一個處室的那一筆，並列出所有刊登處室。 */
+  async get(id: string, unit?: string): Promise<AnnouncementDetail | null> {
+    const rows = await this.repo.getAnnouncementRows(id, unit ? [unit] : sourceUnits());
+    const valid = rows.flatMap((row) => {
+      const payload = payloadOf(row);
+      return payload ? [{ row, payload }] : [];
+    });
+    // 某處室已下架、其他處室仍刊登時，優先回仍刊登的那一筆。
+    valid.sort((a, b) => Number(b.row.status === "active") - Number(a.row.status === "active"));
+    const first = valid[0];
+    if (!first) return null;
+    const { row, payload } = first;
     return {
       id: payload.id,
       unit: payload.unit,
+      postedBy: unit ? [payload.unit] : valid.map((v) => v.payload.unit),
       title: payload.title,
       publishedAt: row.published_at,
       bodyText: payload.bodyText,

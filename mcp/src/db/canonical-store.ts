@@ -20,16 +20,32 @@ export interface StoredEntity {
   entity_type: string;
   stable_key: string;
   payload_json: string;
-  source_url: string;
   raw_snapshot_key: string;
   version: number;
   content_hash: string;
-  verified_at: string;
-  created_at: string;
   updated_at: string;
 }
 
-export type PublishOutcome = "created" | "updated" | "unchanged";
+export interface PublishCounts {
+  created: number;
+  updated: number;
+  unchanged: number;
+}
+
+/** D1 每個查詢最多 100 個 bind 參數。 */
+const MAX_IN_PARAMS = 90;
+const INSERT_ROWS_PER_STATEMENT = 6;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/** 公告的 stable_key：同一則公告（相同 _id）在不同處室各自一筆。 */
+export function announcementKey(unit: string, id: string): string {
+  return `${unit}:${id}`;
+}
 
 export function entityId(entityType: string, stableKey: string): string {
   return `${entityType}:${stableKey}`;
@@ -55,47 +71,71 @@ export class CanonicalStore {
       .run();
   }
 
-  async getEntity(entityType: string, stableKey: string): Promise<StoredEntity | null> {
-    return this.db
-      .prepare(
-        `SELECT id, entity_type, stable_key, payload_json, source_url, raw_snapshot_key, version,
-                content_hash, verified_at, created_at, updated_at
-         FROM entities WHERE entity_type = ?1 AND stable_key = ?2`,
-      )
-      .bind(entityType, stableKey)
-      .first<StoredEntity>();
-  }
+  /**
+   * 一頁資料的比對與寫入（規格 06 §15、§21）。為了符合 Cloudflare 的限制
+   * （每次執行的 D1 查詢數、每個查詢最多 100 個 bind 參數），整頁只用：
+   *   1 次讀取目前 hash（分段 IN 查詢）＋ 1 個 D1 batch 寫入。
+   * D1 batch 是交易：整頁的「舊版存入 record_versions」與「更新目前版本」一起成功或一起回復。
+   */
+  async publishPage(inputs: CanonicalInput[], runId: string, now: string): Promise<PublishCounts> {
+    const counts: PublishCounts = { created: 0, updated: 0, unchanged: 0 };
+    if (inputs.length === 0) return counts;
+    const entityType = inputs[0]!.entityType;
+    if (inputs.some((i) => i.entityType !== entityType)) throw new Error("mixed entity types in one page");
 
-  async publish(input: CanonicalInput, runId: string, now: string): Promise<PublishOutcome> {
-    const current = await this.getEntity(input.entityType, input.stableKey);
-    const id = entityId(input.entityType, input.stableKey);
-
-    if (current && current.content_hash === input.contentHash) {
-      await this.db
+    const current = new Map<string, StoredEntity>();
+    for (const keys of chunk(inputs.map((i) => i.stableKey), MAX_IN_PARAMS)) {
+      const placeholders = keys.map((_, i) => `?${i + 2}`).join(", ");
+      const { results } = await this.db
         .prepare(
-          `UPDATE entities SET verified_at = ?2, last_seen_run_id = ?3, missing_runs = 0, status = 'active'
-           WHERE id = ?1`,
+          `SELECT id, entity_type, stable_key, payload_json, raw_snapshot_key, version, content_hash, updated_at
+           FROM entities WHERE entity_type = ?1 AND stable_key IN (${placeholders})`,
         )
-        .bind(id, now, runId)
-        .run();
-      return "unchanged";
+        .bind(entityType, ...keys)
+        .all<StoredEntity>();
+      for (const row of results) current.set(row.stable_key, row);
     }
 
-    const payloadJson = JSON.stringify(input.payload);
-    if (!current) {
-      await this.db
-        .prepare(
-          `INSERT INTO entities (id, entity_type, stable_key, source_unit, payload_json, title, search_text,
-             source_id, source_url, raw_snapshot_key, version, content_hash, verified_at, published_at,
-             status, missing_runs, last_seen_run_id, created_at, updated_at)
-           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 1, ?11, ?12, ?13, 'active', 0, ?14, ?12, ?12)`,
-        )
-        .bind(
-          id,
+    const statements: D1PreparedStatement[] = [];
+    const unchangedIds: string[] = [];
+    const created: CanonicalInput[] = [];
+    for (const input of inputs) {
+      const existing = current.get(input.stableKey);
+      if (existing && existing.content_hash === input.contentHash) {
+        unchangedIds.push(existing.id);
+        counts.unchanged++;
+      } else if (!existing) {
+        created.push(input);
+        counts.created++;
+      } else {
+        statements.push(...this.versionStatements(existing, input, runId, now));
+        counts.updated++;
+      }
+    }
+
+    for (const ids of chunk(unchangedIds, MAX_IN_PARAMS)) {
+      const placeholders = ids.map((_, i) => `?${i + 3}`).join(", ");
+      statements.push(
+        this.db
+          .prepare(
+            `UPDATE entities SET verified_at = ?1, last_seen_run_id = ?2, missing_runs = 0, status = 'active'
+             WHERE id IN (${placeholders})`,
+          )
+          .bind(now, runId, ...ids),
+      );
+    }
+
+    // 新資料用多列 INSERT；每列 14 個參數，一個查詢最多 6 列（84 個參數）。
+    for (const rows of chunk(created, INSERT_ROWS_PER_STATEMENT)) {
+      const values: unknown[] = [];
+      const tuples = rows.map((input) => {
+        const base = values.length;
+        values.push(
+          entityId(input.entityType, input.stableKey),
           input.entityType,
           input.stableKey,
           input.sourceUnit,
-          payloadJson,
+          JSON.stringify(input.payload),
           input.title,
           input.searchText,
           input.sourceId,
@@ -105,12 +145,34 @@ export class CanonicalStore {
           now,
           input.publishedAt,
           runId,
-        )
-        .run();
-      return "created";
+        );
+        const p = (n: number) => `?${base + n}`;
+        return `(${p(1)}, ${p(2)}, ${p(3)}, ${p(4)}, ${p(5)}, ${p(6)}, ${p(7)}, ${p(8)}, ${p(9)}, ${p(10)}, 1, ${p(11)}, ${p(12)}, ${p(13)}, 'active', 0, ${p(14)}, ${p(12)}, ${p(12)})`;
+      });
+      statements.push(
+        this.db
+          .prepare(
+            `INSERT INTO entities (id, entity_type, stable_key, source_unit, payload_json, title, search_text,
+               source_id, source_url, raw_snapshot_key, version, content_hash, verified_at, published_at,
+               status, missing_runs, last_seen_run_id, created_at, updated_at)
+             VALUES ${tuples.join(", ")}`,
+          )
+          .bind(...values),
+      );
     }
 
-    await this.db.batch([
+    if (statements.length > 0) await this.db.batch(statements);
+    return counts;
+  }
+
+  private versionStatements(
+    current: StoredEntity,
+    input: CanonicalInput,
+    runId: string,
+    now: string,
+  ): D1PreparedStatement[] {
+    return [
+      // 舊版本存進 record_versions；UNIQUE(entity_type, entity_id, version) 讓同時寫入的衝突整批回復。
       this.db
         .prepare(
           `INSERT INTO record_versions (id, entity_type, entity_id, version, snapshot_json, content_hash,
@@ -136,8 +198,8 @@ export class CanonicalStore {
            WHERE id = ?1 AND version = ?11`,
         )
         .bind(
-          id,
-          payloadJson,
+          current.id,
+          JSON.stringify(input.payload),
           input.title,
           input.searchText,
           input.sourceUrl,
@@ -148,8 +210,23 @@ export class CanonicalStore {
           runId,
           current.version,
         ),
-    ]);
-    return "updated";
+    ];
+  }
+
+  /** 排程挑選來源時用：每個來源的最近嘗試時間。 */
+  async sourceSchedule(): Promise<{ id: string; last_started_at: string | null }[]> {
+    const { results } = await this.db
+      .prepare(`SELECT id, last_started_at FROM sources`)
+      .all<{ id: string; last_started_at: string | null }>();
+    return results;
+  }
+
+  /** 開始抓取前先記錄，下一次排程就不會再挑同一個來源。 */
+  async markStarted(sourceId: string, now: string): Promise<void> {
+    await this.db
+      .prepare(`UPDATE sources SET last_started_at = ?2, updated_at = ?2 WHERE id = ?1`)
+      .bind(sourceId, now)
+      .run();
   }
 
   async countActive(sourceId: string): Promise<number> {
@@ -191,21 +268,25 @@ export class CanonicalStore {
       .run();
   }
 
-  async quarantine(
-    record: { sourceId: string; stableKey: string; reason: string; rawSnapshotKey: string },
+  async quarantineMany(
+    records: { sourceId: string; stableKey: string; reason: string; rawSnapshotKey: string }[],
     runId: string,
     now: string,
   ): Promise<void> {
-    await this.db
-      .prepare(
-        `INSERT INTO quarantined_records (source_id, stable_key, reason, raw_snapshot_key, first_seen_at,
-           last_seen_at, last_run_id)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6)
-         ON CONFLICT(source_id, stable_key) DO UPDATE SET reason = ?3, raw_snapshot_key = ?4,
-           last_seen_at = ?5, last_run_id = ?6`,
-      )
-      .bind(record.sourceId, record.stableKey, record.reason, record.rawSnapshotKey, now, runId)
-      .run();
+    if (records.length === 0) return;
+    await this.db.batch(
+      records.map((r) =>
+        this.db
+          .prepare(
+            `INSERT INTO quarantined_records (source_id, stable_key, reason, raw_snapshot_key, first_seen_at,
+               last_seen_at, last_run_id)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6)
+             ON CONFLICT(source_id, stable_key) DO UPDATE SET reason = ?3, raw_snapshot_key = ?4,
+               last_seen_at = ?5, last_run_id = ?6`,
+          )
+          .bind(r.sourceId, r.stableKey, r.reason, r.rawSnapshotKey, now, runId),
+      ),
+    );
   }
 
   async quarantinedKeys(sourceId: string): Promise<Set<string>> {
@@ -216,11 +297,14 @@ export class CanonicalStore {
     return new Set(results.map((r) => r.stable_key));
   }
 
-  async releaseFromQuarantine(sourceId: string, stableKey: string): Promise<void> {
-    await this.db
-      .prepare(`DELETE FROM quarantined_records WHERE source_id = ?1 AND stable_key = ?2`)
-      .bind(sourceId, stableKey)
-      .run();
+  async releaseFromQuarantine(sourceId: string, stableKeys: string[]): Promise<void> {
+    for (const keys of chunk(stableKeys, MAX_IN_PARAMS)) {
+      const placeholders = keys.map((_, i) => `?${i + 2}`).join(", ");
+      await this.db
+        .prepare(`DELETE FROM quarantined_records WHERE source_id = ?1 AND stable_key IN (${placeholders})`)
+        .bind(sourceId, ...keys)
+        .run();
+    }
   }
 
   /** 完整執行後，這次沒再出現的隔離紀錄代表來源已移除該筆資料，從隔離區清掉。 */

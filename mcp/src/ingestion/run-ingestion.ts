@@ -1,4 +1,4 @@
-import type { CanonicalStore } from "../db/canonical-store";
+import { announcementKey, type CanonicalInput, type CanonicalStore } from "../db/canonical-store";
 import type { Clock } from "../shared/clock";
 import { errorCodeOf, IngestionError, safeMessage } from "../shared/errors";
 import { contentHash } from "../shared/hash";
@@ -83,6 +83,7 @@ async function ingestSource(source: SourceDefinition, runId: string, deps: Inges
     errors: [],
   };
   await store.ensureSource(source, clock.nowIso());
+  await store.markStarted(source.id, clock.nowIso());
   const previouslyQuarantined = await store.quarantinedKeys(source.id);
 
   let complete = false;
@@ -151,56 +152,64 @@ async function ingestSource(source: SourceDefinition, runId: string, deps: Inges
         throw new IngestionError("PARSER_DRIFT", `${invalid.length}/${candidates} records failed validation`);
       }
       // 少量不合格資料：不寫入正式資料，記到隔離區，原始檔仍可追溯。
-      for (const bad of invalid) {
-        await store.quarantine(
-          { sourceId: source.id, stableKey: bad.key, reason: bad.reason, rawSnapshotKey: archived.key },
-          runId,
-          clock.nowIso(),
-        );
-      }
+      await store.quarantineMany(
+        invalid.map((bad) => ({
+          sourceId: source.id,
+          stableKey: bad.key,
+          reason: bad.reason,
+          rawSnapshotKey: archived.key,
+        })),
+        runId,
+        clock.nowIso(),
+      );
       item.quarantined = invalid.length;
       result.quarantined += invalid.length;
 
-      // 5. 算 hash、比對、有變動才寫新版本
-      let publishFailures = 0;
+      // 5. 算 hash、比對、有變動才寫新版本；整頁一個交易。
+      // stable_key 用「處室:_id」：同一則公告刊在多個處室時，各處室各自一筆、各自追蹤。
+      const inputs: CanonicalInput[] = [];
       for (const record of valid) {
-        const hash = await contentHash(record);
-        try {
-          const outcome = await store.publish(
-            {
-              entityType: source.entityType,
-              stableKey: record.id,
-              sourceUnit: source.sourceUnit,
-              payload: record,
-              title: record.title,
-              searchText: searchTextOf(record),
-              sourceId: source.id,
-              sourceUrl: record.sourceUrl,
-              rawSnapshotKey: archived.key,
-              contentHash: hash,
-              publishedAt: record.publishedAt,
-            },
-            runId,
-            clock.nowIso(),
-          );
-          if (outcome === "unchanged") item.unchanged++;
-          else item.published++;
-          if (previouslyQuarantined.has(record.id)) await store.releaseFromQuarantine(source.id, record.id);
-        } catch (err) {
-          publishFailures++;
-          result.errors.push({
-            sourceId: source.id,
-            target: request.target,
-            code: "PUBLISH_FAILED",
-            message: `${record.id}: ${safeMessage(err)}`,
-          });
-        }
+        inputs.push({
+          entityType: source.entityType,
+          stableKey: announcementKey(source.sourceUnit, record.id),
+          sourceUnit: source.sourceUnit,
+          payload: record,
+          title: record.title,
+          searchText: searchTextOf(record),
+          sourceId: source.id,
+          sourceUrl: record.sourceUrl,
+          rawSnapshotKey: archived.key,
+          contentHash: await contentHash(record),
+          publishedAt: record.publishedAt,
+        });
+      }
+      let publishFailures = 0;
+      try {
+        const counts = await store.publishPage(inputs, runId, clock.nowIso());
+        item.published = counts.created + counts.updated;
+        item.unchanged = counts.unchanged;
+        await store.releaseFromQuarantine(
+          source.id,
+          valid.map((r) => r.id).filter((id) => previouslyQuarantined.has(id)),
+        );
+      } catch (err) {
+        publishFailures = valid.length;
+        failedPages++;
+        result.errors.push({
+          sourceId: source.id,
+          target: request.target,
+          code: "PUBLISH_FAILED",
+          message: safeMessage(err),
+        });
       }
       result.failed += publishFailures;
       result.published += item.published;
       result.unchanged += item.unchanged;
-      item.status = publishFailures > 0 ? "partial" : "success";
-      if (invalid.length > 0) {
+      item.status = publishFailures > 0 ? "failed" : "success";
+      if (publishFailures > 0) {
+        item.errorCode = "PUBLISH_FAILED";
+        item.errorMessage = result.errors.at(-1)?.message ?? null;
+      } else if (invalid.length > 0) {
         item.errorCode = "VALIDATION_FAILED";
         item.errorMessage = `quarantined ${invalid.length}: ${invalid.map((b) => b.key).join(", ")}`.slice(0, 500);
       }
@@ -239,6 +248,30 @@ async function ingestSource(source: SourceDefinition, runId: string, deps: Inges
   }
   await store.setSourceResult(source.id, result.status, clock.nowIso());
   return result;
+}
+
+/** 同一來源兩次抓取之間至少間隔多久（每天一次，留緩衝）。 */
+export const MIN_SOURCE_INTERVAL_SECONDS = 20 * 60 * 60;
+
+/**
+ * Cron 每 10 分鐘觸發一次，每次只挑一個「到期」的來源，避免單次執行超過 Cloudflare 的
+ * 執行時間與 D1 查詢次數限制。從沒跑過的優先，其次是最久沒跑的；都還沒到期就回傳 null。
+ */
+export async function pickDueSource(
+  store: CanonicalStore,
+  now: string,
+  minIntervalSeconds = MIN_SOURCE_INTERVAL_SECONDS,
+): Promise<SourceDefinition | null> {
+  const started = new Map((await store.sourceSchedule()).map((r) => [r.id, r.last_started_at]));
+  const cutoff = Date.parse(now) - minIntervalSeconds * 1000;
+  let best: { source: SourceDefinition; at: number } | null = null;
+  for (const source of enabledSources()) {
+    const last = started.get(source.id);
+    const at = last ? Date.parse(last) : Number.NEGATIVE_INFINITY;
+    if (at > cutoff) continue;
+    if (!best || at < best.at) best = { source, at };
+  }
+  return best?.source ?? null;
 }
 
 export async function runIngestion(

@@ -19,7 +19,7 @@ beforeEach(() => {
   deps = { store: new CanonicalStore(db.asD1()), archive, fetch: strapi.fetch, clock, environment: "test" };
 });
 
-const run = () => runIngestion(deps, { trigger: "test" });
+const run = () => runIngestion(deps, { sourceIds: ["ord-announcements"], trigger: "test" });
 
 describe("ingestion vertical slice: ORD announcements", () => {
   it("publishes version 1 for new records with raw evidence", async () => {
@@ -58,7 +58,7 @@ describe("ingestion vertical slice: ORD announcements", () => {
     expect(JSON.parse(history!.snapshot_json).title).toBe("研發處公告 2");
     expect(history!.valid_to).toBe(clock.now);
     const current = db.rows<{ version: number; title: string }>(
-      `SELECT version, title FROM entities WHERE stable_key = '${publication(2)._id}'`,
+      `SELECT version, title FROM entities WHERE stable_key = 'ord:${publication(2)._id}'`,
     );
     expect(current[0]).toEqual({ version: 2, title: "研發處公告 2（更正）" });
   });
@@ -176,7 +176,7 @@ describe("ingestion vertical slice: ORD announcements", () => {
     expect(summary.errors.some((e) => e.code === "PUBLISH_FAILED")).toBe(true);
     expect(db.count("record_versions")).toBe(0);
     const [row] = db.rows<{ version: number; title: string }>(
-      `SELECT version, title FROM entities WHERE stable_key = '${publication(1)._id}'`,
+      `SELECT version, title FROM entities WHERE stable_key = 'ord:${publication(1)._id}'`,
     );
     expect(row).toEqual({ version: 1, title: "研發處公告 1" });
   });
@@ -218,7 +218,7 @@ describe("ingestion vertical slice: ORD announcements", () => {
       clock.advance(86_400);
       await run();
       const [row] = db.rows<{ status: string; missing_runs: number }>(
-        `SELECT status, missing_runs FROM entities WHERE stable_key = '${publication(3)._id}'`,
+        `SELECT status, missing_runs FROM entities WHERE stable_key = 'ord:${publication(3)._id}'`,
       );
       expect(row!.missing_runs).toBe(i + 1);
       expect(row!.status).toBe(i + 1 >= MISSING_RUNS_THRESHOLD ? "inactive" : "active");

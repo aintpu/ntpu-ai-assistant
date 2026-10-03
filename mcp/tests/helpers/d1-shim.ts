@@ -2,6 +2,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+const MIGRATIONS_DIR = join(import.meta.dirname, "../../migrations");
+
 /**
  * 測試用的 D1 替身：以 node:sqlite 實作 D1 的 prepare/bind/first/all/run/batch，
  * 讓 migration 與所有 SQL 在真正的 SQLite 上執行。batch 與 D1 一樣是交易。
@@ -11,12 +13,21 @@ export class TestD1 {
   readonly sqlite = new DatabaseSync(":memory:");
   failOn: ((sql: string) => boolean) | null = null;
 
-  constructor() {
+  /** upTo：只套用到這個 migration（含），用來測後面的 migration 如何轉換舊資料。 */
+  constructor(upTo?: string) {
     this.sqlite.exec("PRAGMA foreign_keys = ON");
-    const dir = join(import.meta.dirname, "../../migrations");
-    for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
-      this.sqlite.exec(readFileSync(join(dir, file), "utf8"));
+    for (const file of TestD1.migrations()) {
+      this.migrate(file);
+      if (file === upTo) break;
     }
+  }
+
+  static migrations(): string[] {
+    return readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort();
+  }
+
+  migrate(file: string): void {
+    this.sqlite.exec(readFileSync(join(MIGRATIONS_DIR, file), "utf8"));
   }
 
   prepare(sql: string) {
@@ -57,6 +68,8 @@ class TestStatement {
   ) {}
 
   bind(...params: unknown[]) {
+    // 與 Cloudflare D1 相同：一個查詢最多 100 個 bind 參數。
+    if (params.length > 100) throw new Error(`too many SQL variables: ${params.length}`);
     return new TestStatement(this.db, this.sql, params);
   }
 

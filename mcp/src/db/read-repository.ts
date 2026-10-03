@@ -66,14 +66,19 @@ export class ReadRepository {
     return results;
   }
 
-  async getAnnouncement(id: string): Promise<AnnouncementRow | null> {
-    return this.db
+  /** 同一則公告在各處室各一筆；依 stable_key（處室:_id）一次查出所有處室的那一筆。 */
+  async getAnnouncementRows(id: string, units: string[]): Promise<AnnouncementRow[]> {
+    if (units.length === 0) return [];
+    const placeholders = units.map((_, i) => `?${i + 1}`).join(", ");
+    const { results } = await this.db
       .prepare(
         `SELECT ${ROW_COLUMNS} FROM entities e JOIN sources s ON s.id = e.source_id
-         WHERE e.entity_type = 'announcement' AND e.stable_key = ?1`,
+         WHERE e.entity_type = 'announcement' AND e.stable_key IN (${placeholders})
+         ORDER BY e.source_unit`,
       )
-      .bind(id)
-      .first<AnnouncementRow>();
+      .bind(...units.map((u) => `${u}:${id}`))
+      .all<AnnouncementRow>();
+    return results;
   }
 
   async sourceStatuses(): Promise<SourceStatusRow[]> {
