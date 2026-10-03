@@ -35,7 +35,7 @@
         {
           "binding": "DB",
           "database_name": "ntpu-aia-canonical",
-          "database_id": "REPLACE_WITH_PRODUCTION_D1_ID",
+          "database_id": "60706a78-91f3-44ab-af07-f08aabaad8c2",
           "migrations_dir": "migrations"
         }
       ]
