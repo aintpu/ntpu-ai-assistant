@@ -6,7 +6,7 @@ import {
   runIngestion,
   type IngestionDeps,
 } from "../../src/ingestion/run-ingestion";
-import { ANNOUNCEMENT_UNITS, enabledSources } from "../../src/ingestion/source-registry";
+import { enabledSources } from "../../src/ingestion/source-registry";
 import { TestD1 } from "../helpers/d1-shim";
 import { FakeStrapi, FixedClock, MemoryRawArchive, publication } from "../helpers/fixtures";
 
@@ -30,9 +30,11 @@ beforeEach(() => {
 describe("all offices", () => {
   it("registers every office with announcements, each with its own site key", () => {
     const sources = enabledSources();
-    expect(sources).toHaveLength(ANNOUNCEMENT_UNITS.length);
-    expect(new Set(sources.map((s) => s.strapiSiteKey)).size).toBe(sources.length);
-    expect(sources.map((s) => s.sourceUnit)).toContain("op");
+    expect(new Set(sources.map((s) => s.sourceUnit)).size).toBe(21);
+    const strapi = sources.flatMap((s) => (s.adapter.kind === "strapi-publications" ? [s.adapter.siteKey] : []));
+    expect(strapi).toHaveLength(15);
+    expect(new Set(strapi).size).toBe(15);
+    expect(sources.map((s) => s.sourceUnit)).toEqual(expect.arrayContaining(["op", "library", "lc", "president"]));
   });
 
   it("a cross-posted announcement is stored once per office, and changes in one office do not touch the other", async () => {
@@ -70,7 +72,7 @@ describe("all offices", () => {
     await runIngestion(deps, { sourceIds: ["sustainable-announcements"], trigger: "test" });
     const [row] = db.rows<{ source_url: string }>("SELECT source_url FROM entities");
     expect(row!.source_url).toBe(`https://esdg.ntpu.edu.tw/news/${publication(5)._id}`);
-    for (const source of enabledSources()) {
+    for (const source of enabledSources().filter((s) => s.parser === "strapi-publications")) {
       expect(source.newsUrlBase).toMatch(/^https:\/\/[a-z]+\.ntpu\.edu\.tw\/[a-z/]+[^/]$/);
     }
   });

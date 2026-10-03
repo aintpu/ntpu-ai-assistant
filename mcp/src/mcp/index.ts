@@ -3,7 +3,8 @@ import { ReadRepository } from "../db/read-repository";
 import { assertRegistryValid, SOURCES } from "../ingestion/source-registry";
 import { systemClock, type Clock } from "../shared/clock";
 import { AnnouncementService } from "./announcement-service";
-import { createMcpServer, SERVICE_NAME, SERVICE_VERSION } from "./tools";
+import { PageService } from "./page-service";
+import { createMcpServer, SERVICE_NAME, SERVICE_VERSION, type McpServices } from "./tools";
 
 export interface McpEnv {
   DB: D1Database;
@@ -26,7 +27,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-async function handleMcp(request: Request, service: AnnouncementService): Promise<Response> {
+async function handleMcp(request: Request, services: McpServices): Promise<Response> {
   if (request.method !== "POST") {
     // Stateless 模式不提供 SSE 長連線。
     return json({ error: "METHOD_NOT_ALLOWED", message: "Use POST for MCP requests." }, 405);
@@ -39,7 +40,7 @@ async function handleMcp(request: Request, service: AnnouncementService): Promis
   if (body.byteLength > MAX_REQUEST_BYTES) return json({ error: "REQUEST_TOO_LARGE" }, 413);
 
   const traceId = crypto.randomUUID();
-  const server = createMcpServer(service, traceId);
+  const server = createMcpServer(services, traceId);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
@@ -58,12 +59,16 @@ export function createHandler(clock: Clock = systemClock) {
   return {
     async fetch(request: Request, env: McpEnv): Promise<Response> {
       const { pathname } = new URL(request.url);
-      const service = new AnnouncementService(new ReadRepository(env.DB), clock);
+      const repo = new ReadRepository(env.DB);
+      const service = new AnnouncementService(repo, clock);
+      const services: McpServices = { announcements: service, pages: new PageService(repo) };
 
-      if (pathname === "/mcp") return handleMcp(request, service);
+      if (pathname === "/mcp") return handleMcp(request, services);
 
       if (pathname === "/health") {
-        const sources = await service.freshness().catch(() => null);
+        const sources = await Promise.all([service.freshness(), service.freshness(undefined, "page")])
+          .then(([a, p]) => [...a, ...p])
+          .catch(() => null);
         if (!sources) return json({ status: "degraded", service: SERVICE_NAME, error: "DEPENDENCY_UNAVAILABLE" }, 503);
         return json({
           // ok：全部來源都在時限內完整成功；degraded：最近一次執行不完整；stale：超過時限沒有完整成功。
@@ -88,7 +93,7 @@ export function createHandler(clock: Clock = systemClock) {
           transport: "streamable-http (stateless, JSON response)",
           readOnly: true,
           dataClass: "L0 (public)",
-          tools: ["search_announcements", "get_announcement"],
+          tools: ["search_announcements", "get_announcement", "search_pages", "get_page"],
           sources: SOURCES.map((s) => ({ id: s.id, unit: s.sourceUnit, url: s.homepageUrl, type: s.sourceType })),
         });
       }

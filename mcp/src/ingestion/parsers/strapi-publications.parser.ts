@@ -26,7 +26,7 @@ export const strapiPublicationsParser = {
   maxPages: MAX_PAGES,
 
   buildRequest(source: SourceDefinition, page: number, nowIso: string): SourceRequest {
-    const siteKey = source.strapiSiteKey ?? "";
+    const siteKey = source.adapter.kind === "strapi-publications" ? source.adapter.siteKey : "";
     if (!SITE_KEY.test(siteKey)) {
       throw new IngestionError("URL_NOT_ALLOWED", `invalid strapi site key for ${source.id}`);
     }
@@ -44,6 +44,8 @@ export const strapiPublicationsParser = {
     return {
       target: `${source.entrypoints[0]}#page=${page}`,
       path: source.entrypoints[0]!,
+      method: "POST",
+      contentType: "application/json",
       body: JSON.stringify({ query }),
     };
   },

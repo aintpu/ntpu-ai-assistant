@@ -48,7 +48,7 @@ export interface AnnouncementDetail extends Omit<AnnouncementSummary, "snippet" 
   status: string;
 }
 
-function provenanceOf(row: AnnouncementRow): Provenance {
+export function provenanceOf(row: AnnouncementRow): Provenance {
   return {
     sourceId: row.source_id,
     sourceUnit: row.source_unit,
@@ -78,10 +78,10 @@ export class AnnouncementService {
     private readonly clock: Clock,
   ) {}
 
-  async freshness(unit?: string): Promise<SourceFreshness[]> {
+  async freshness(unit?: string, entityType: "announcement" | "page" = "announcement"): Promise<SourceFreshness[]> {
     const rows = await this.repo.sourceStatuses();
     const now = this.clock.nowIso();
-    return SOURCES.filter((s) => s.entityType === "announcement" && (!unit || s.sourceUnit === unit)).map((s) => {
+    return SOURCES.filter((s) => s.entityType === entityType && (!unit || s.sourceUnit === unit)).map((s) => {
       const row = rows.find((r) => r.id === s.id);
       const lastSuccessAt = row?.last_success_at ?? null;
       return {
@@ -148,7 +148,7 @@ export class AnnouncementService {
 
   /** unit 指定時回該處室那一筆；沒指定就回第一個處室的那一筆，並列出所有刊登處室。 */
   async get(id: string, unit?: string): Promise<AnnouncementDetail | null> {
-    const rows = await this.repo.getAnnouncementRows(id, unit ? [unit] : sourceUnits());
+    const rows = await this.repo.getAnnouncementRows(id, unit ? [unit] : sourceUnits("announcement"));
     const valid = rows.flatMap((row) => {
       const payload = payloadOf(row);
       return payload ? [{ row, payload }] : [];

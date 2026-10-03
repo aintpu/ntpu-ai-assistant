@@ -1,6 +1,7 @@
 import { IngestionError } from "../shared/errors";
-import { KNOWN_PARSERS } from "./parsers";
-import type { SourceDefinition } from "./types";
+import type { SourceDefinition, SourceRequest } from "./types";
+
+const ADAPTER_KINDS = ["strapi-publications", "strapi-sections", "html-news"];
 
 const METADATA_HOSTS = new Set([
   "metadata",
@@ -78,10 +79,30 @@ export function assertUrlAllowed(url: URL, source: SourceDefinition): void {
 
 /** 由來源設定與 entrypoint 組出網址；不接受任何外部提供的完整網址。 */
 export function resolveEntrypoint(source: SourceDefinition, path: string): URL {
+  return resolveRequestUrl(source, { path });
+}
+
+/**
+ * 組出一個請求的網址：path 必須是登記的 entrypoint，查詢參數必須逐一符合 queryRules
+ * （例如內文頁的編號格式），沒有規則的 entrypoint 不得帶任何參數。
+ */
+export function resolveRequestUrl(source: SourceDefinition, request: Pick<SourceRequest, "path" | "query">): URL {
+  const { path, query } = request;
   if (!source.entrypoints.includes(path)) {
     throw new IngestionError("URL_NOT_ALLOWED", `entrypoint not registered: ${path}`);
   }
   const url = new URL(path, source.origin);
+  if (url.pathname !== path || url.search || url.hash) {
+    throw new IngestionError("URL_NOT_ALLOWED", `entrypoint is not a plain path: ${path}`);
+  }
+  const rules = source.queryRules?.[path] ?? {};
+  for (const [name, value] of Object.entries(query ?? {})) {
+    const rule = rules[name];
+    if (!rule || !rule.test(value)) {
+      throw new IngestionError("URL_NOT_ALLOWED", `query parameter not allowed: ${name}`);
+    }
+    url.searchParams.set(name, value);
+  }
   assertUrlAllowed(url, source);
   return url;
 }
@@ -122,7 +143,17 @@ export function validateSourceDefinition(source: SourceDefinition): void {
   }
   if (f.acceptedContentTypes.length === 0) fail("acceptedContentTypes is empty");
   if (f.maxRedirects < 0 || f.maxRedirects > 5) fail("maxRedirects out of range");
-  if (!KNOWN_PARSERS.includes(source.parser)) fail(`unknown parser: ${source.parser}`);
+  if (!ADAPTER_KINDS.includes(source.parser) || source.adapter?.kind !== source.parser) {
+    fail(`unknown parser: ${source.parser}`);
+  }
+  if (f.methods.length === 0 || f.methods.some((m) => m !== "GET" && m !== "POST")) fail("methods invalid");
+  if (!(f.minIntervalMs >= 0 && f.minIntervalMs <= 10_000)) fail("minIntervalMs out of range");
+  for (const [path, params] of Object.entries(source.queryRules ?? {})) {
+    if (!source.entrypoints.includes(path)) fail(`queryRules for unknown entrypoint: ${path}`);
+    for (const [name, rule] of Object.entries(params)) {
+      if (!rule.source.startsWith("^") || !rule.source.endsWith("$")) fail(`query rule ${name} must be anchored`);
+    }
+  }
   if (!(source.freshness.maxStalenessSeconds > 0)) fail("maxStalenessSeconds missing");
   try {
     const home = new URL(source.homepageUrl);

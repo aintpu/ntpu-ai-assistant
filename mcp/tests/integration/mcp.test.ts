@@ -3,7 +3,8 @@ import { CanonicalStore } from "../../src/db/canonical-store";
 import { runIngestion } from "../../src/ingestion/run-ingestion";
 import { createHandler, type McpEnv } from "../../src/mcp/index";
 import { TestD1 } from "../helpers/d1-shim";
-import { FakeStrapi, FixedClock, MemoryRawArchive, publication } from "../helpers/fixtures";
+import { FakeStrapi, FixedClock, MemoryRawArchive, publication, routedFetch } from "../helpers/fixtures";
+import { FakeSites, lcId, libraryId } from "../helpers/html-fixtures";
 
 let db: TestD1;
 let clock: FixedClock;
@@ -25,8 +26,19 @@ beforeEach(async () => {
     ],
     osa_ntpu: [crossPosted],
   });
+  const sites = new FakeSites(
+    [{ id: libraryId(1), title: "圖書館寒假開放時間", date: "2026-09-20", body: "<p>寒假期間開放時間調整。</p>" }],
+    [{ id: lcId(1), title: "多益校園考報名", date: "2026-09-21", body: "<p>多益考試報名開始。</p>" }],
+  );
   await runIngestion(
-    { store: new CanonicalStore(db.asD1()), archive: new MemoryRawArchive(), fetch: strapi.fetch, clock, environment: "test" },
+    {
+      store: new CanonicalStore(db.asD1()),
+      archive: new MemoryRawArchive(),
+      fetch: routedFetch(strapi, sites),
+      clock,
+      environment: "test",
+      sleep: async () => {},
+    },
     { trigger: "test" },
   );
   env = { DB: db.asD1(), ENVIRONMENT: "test" };
@@ -49,7 +61,7 @@ async function rpc(method: string, params?: unknown) {
 const call = (name: string, args: unknown) => rpc("tools/call", { name, arguments: args });
 
 describe("MCP endpoint", () => {
-  it("initializes and lists only the two reviewed read-only tools", async () => {
+  it("initializes and lists only the reviewed read-only tools", async () => {
     const init = await rpc("initialize", {
       protocolVersion: "2025-06-18",
       capabilities: {},
@@ -58,7 +70,12 @@ describe("MCP endpoint", () => {
     expect(init.body.result.serverInfo.name).toBe("ntpu-aia-mcp");
     const { body } = await rpc("tools/list");
     const tools = body.result.tools;
-    expect(tools.map((t: any) => t.name).sort()).toEqual(["get_announcement", "search_announcements"]);
+    expect(tools.map((t: any) => t.name).sort()).toEqual([
+      "get_announcement",
+      "get_page",
+      "search_announcements",
+      "search_pages",
+    ]);
     for (const tool of tools) {
       expect(tool.annotations.readOnlyHint).toBe(true);
       expect(tool.outputSchema).toBeDefined();
@@ -125,6 +142,35 @@ describe("MCP endpoint", () => {
     expect(notThere.body.result.structuredContent).toMatchObject({ found: false });
   });
 
+  it("library and language-center announcements are searchable with their own site links", async () => {
+    const lib = (await call("search_announcements", { unit: "library" })).body.result.structuredContent;
+    expect(lib.items).toHaveLength(1);
+    expect(lib.items[0].provenance.sourceUrl).toBe(
+      `https://library.ntpu.edu.tw/singlehtml/3c152b26c59f4dba96939df64e2edd2f?cntId=${libraryId(1)}`,
+    );
+    expect(lib.items[0].publishedAt).toBe("2026-09-19T16:00:00.000Z");
+    const lc = (await call("get_announcement", { id: lcId(1) })).body.result.structuredContent;
+    expect(lc.announcement).toMatchObject({ unit: "lc", title: "多益校園考報名", bodyText: "多益考試報名開始。" });
+  });
+
+  it("content pages for the president and vice-presidents are searchable and readable", async () => {
+    const found = (await call("search_pages", { keyword: "致力推動" })).body.result.structuredContent;
+    expect(found.items.map((i: any) => i.title)).toEqual(["校長"]);
+    expect(found.items[0].provenance.sourceUrl).toBe("https://new.ntpu.edu.tw/president");
+    const page = (await call("get_page", { id: found.items[0].id })).body.result.structuredContent;
+    expect(page).toMatchObject({ found: true, warnings: [] });
+    expect(page.page.bodyText).toBe("校長簡介：致力推動永續發展。");
+    const all = (await call("search_pages", {})).body.result.structuredContent;
+    expect(all.count).toBe(5);
+    const vp = (await call("search_pages", { unit: "vice-president-financial" })).body.result.structuredContent;
+    expect(vp.items[0].links).toBeUndefined();
+    const full = (await call("get_page", { id: vp.items[0].id })).body.result.structuredContent;
+    expect(full.page.links).toEqual([{ name: "治校理念", url: "https://new.ntpu.edu.tw/educational-philosophy" }]);
+    expect(JSON.stringify(full)).not.toContain("gm.ntpu.edu.tw");
+    const none = (await call("get_page", { id: "f".repeat(24) })).body.result.structuredContent;
+    expect(none).toMatchObject({ found: false, page: null });
+  });
+
   it("source text that looks like instructions is returned as inert data", async () => {
     const { body } = await call("get_announcement", { id: publication(2)._id });
     expect(body.result.structuredContent.announcement.bodyText).toBe(injection);
@@ -149,7 +195,7 @@ describe("MCP endpoint", () => {
   it("unknown tools are not callable", async () => {
     const { body } = await call("execute_sql", { sql: "DROP TABLE entities" });
     expect(body.result?.isError ?? Boolean(body.error)).toBe(true);
-    expect(db.count("entities")).toBe(4);
+    expect(db.count("entities")).toBe(11);
   });
 
   it("T-010 freshness: data becomes stale after the declared max staleness", async () => {
@@ -177,7 +223,7 @@ describe("incomplete ingestion", () => {
     );
     const { body } = await call("search_announcements", {});
     const out = body.result.structuredContent;
-    expect(out.count).toBe(3);
+    expect(out.count).toBe(5);
     expect(out.warnings).toEqual(["INGESTION_INCOMPLETE"]);
     expect(out.freshness[0]).toMatchObject({ state: "fresh", lastRunStatus: "failed", quarantinedCount: 0 });
     const health = (await (await handler.fetch(new Request("https://mcp.test/health"), env)).json()) as any;

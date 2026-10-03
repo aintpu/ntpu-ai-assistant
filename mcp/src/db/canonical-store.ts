@@ -42,9 +42,9 @@ function chunk<T>(items: T[], size: number): T[][] {
   return out;
 }
 
-/** 公告的 stable_key：同一則公告（相同 _id）在不同處室各自一筆。 */
-export function announcementKey(unit: string, id: string): string {
-  return `${unit}:${id}`;
+/** 正式資料的 stable_key：「處室:來源編號」。同一則公告（相同 _id）在不同處室各自一筆。 */
+export function recordKey(source: Pick<SourceDefinition, "sourceUnit">, id: string): string {
+  return `${source.sourceUnit}:${id}`;
 }
 
 export function entityId(entityType: string, stableKey: string): string {
@@ -213,12 +213,65 @@ export class CanonicalStore {
     ];
   }
 
-  /** 排程挑選來源時用：每個來源的最近嘗試時間。 */
-  async sourceSchedule(): Promise<{ id: string; last_started_at: string | null }[]> {
+  /** 排程挑選來源時用：每個來源的最近嘗試時間，與上次留到下一次的內文數。 */
+  async sourceSchedule(): Promise<{ id: string; last_started_at: string | null; pending_count: number }[]> {
     const { results } = await this.db
-      .prepare(`SELECT id, last_started_at FROM sources`)
-      .all<{ id: string; last_started_at: string | null }>();
+      .prepare(`SELECT id, last_started_at, pending_count FROM sources`)
+      .all<{ id: string; last_started_at: string | null; pending_count: number }>();
     return results;
+  }
+
+  /** 已收錄資料的標題、日期與最後驗證時間（HTML 來源用來決定要不要重抓內文）。 */
+  async knownRecords(
+    entityType: string,
+    stableKeys: string[],
+  ): Promise<Map<string, { title: string; publishedAt: string | null; verifiedAt: string }>> {
+    const out = new Map<string, { title: string; publishedAt: string | null; verifiedAt: string }>();
+    for (const keys of chunk(stableKeys, MAX_IN_PARAMS)) {
+      const placeholders = keys.map((_, i) => `?${i + 2}`).join(", ");
+      const { results } = await this.db
+        .prepare(
+          `SELECT stable_key, title, published_at, verified_at FROM entities
+           WHERE entity_type = ?1 AND stable_key IN (${placeholders})`,
+        )
+        .bind(entityType, ...keys)
+        .all<{ stable_key: string; title: string; published_at: string | null; verified_at: string }>();
+      for (const r of results) {
+        out.set(r.stable_key, { title: r.title, publishedAt: r.published_at, verifiedAt: r.verified_at });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * 來源列表上看到、這次沒重抓內文的資料：記為這次有看到（不算消失），但不更新 verified_at，
+   * 因為內容這次沒有重新驗證。隔離區裡的同一筆也記為有看到，避免被清掉。
+   */
+  async markSeen(
+    sourceId: string,
+    entityType: string,
+    ids: { stableKey: string; sourceKey: string }[],
+    runId: string,
+  ): Promise<void> {
+    const statements: D1PreparedStatement[] = [];
+    for (const part of chunk(ids, MAX_IN_PARAMS)) {
+      const entityPlaceholders = part.map((_, i) => `?${i + 3}`).join(", ");
+      statements.push(
+        this.db
+          .prepare(
+            `UPDATE entities SET last_seen_run_id = ?1, missing_runs = 0, status = 'active'
+             WHERE entity_type = ?2 AND stable_key IN (${entityPlaceholders})`,
+          )
+          .bind(runId, entityType, ...part.map((i) => i.stableKey)),
+        this.db
+          .prepare(
+            `UPDATE quarantined_records SET last_run_id = ?1
+             WHERE source_id = ?2 AND stable_key IN (${entityPlaceholders})`,
+          )
+          .bind(runId, sourceId, ...part.map((i) => i.sourceKey)),
+      );
+    }
+    if (statements.length > 0) await this.db.batch(statements);
   }
 
   /** 開始抓取前先記錄，下一次排程就不會再挑同一個來源。 */
@@ -257,14 +310,19 @@ export class CanonicalStore {
    * 記錄來源這次執行的結果。last_success_at 只在「完整成功」時更新；
    * 部分成功只更新 last_attempt_at 與 last_run_status，避免把未完整驗證的來源標成最新。
    */
-  async setSourceResult(sourceId: string, status: "success" | "partial" | "failed", now: string): Promise<void> {
+  async setSourceResult(
+    sourceId: string,
+    status: "success" | "partial" | "failed",
+    now: string,
+    pendingCount = 0,
+  ): Promise<void> {
     await this.db
       .prepare(
-        `UPDATE sources SET last_run_status = ?2, last_attempt_at = ?3, updated_at = ?3,
+        `UPDATE sources SET last_run_status = ?2, last_attempt_at = ?3, updated_at = ?3, pending_count = ?4,
            last_success_at = CASE WHEN ?2 = 'success' THEN ?3 ELSE last_success_at END
          WHERE id = ?1`,
       )
-      .bind(sourceId, status, now)
+      .bind(sourceId, status, now, pendingCount)
       .run();
   }
 
@@ -289,12 +347,13 @@ export class CanonicalStore {
     );
   }
 
-  async quarantinedKeys(sourceId: string): Promise<Set<string>> {
+  /** 隔離區裡這個來源的紀錄：來源編號 → 最後一次看到的時間。 */
+  async quarantinedRecords(sourceId: string): Promise<Map<string, string>> {
     const { results } = await this.db
-      .prepare(`SELECT stable_key FROM quarantined_records WHERE source_id = ?1`)
+      .prepare(`SELECT stable_key, last_seen_at FROM quarantined_records WHERE source_id = ?1`)
       .bind(sourceId)
-      .all<{ stable_key: string }>();
-    return new Set(results.map((r) => r.stable_key));
+      .all<{ stable_key: string; last_seen_at: string }>();
+    return new Map(results.map((r) => [r.stable_key, r.last_seen_at]));
   }
 
   async releaseFromQuarantine(sourceId: string, stableKeys: string[]): Promise<void> {
@@ -336,6 +395,7 @@ export class CanonicalStore {
       failed: number;
       quarantined: number;
       skipped: number;
+      deferred: number;
       errors: unknown[];
     },
     now: string,
@@ -344,7 +404,7 @@ export class CanonicalStore {
       .prepare(
         `UPDATE ingestion_runs SET finished_at = ?2, status = ?3, source_count = ?4, fetched_count = ?5,
            published_count = ?6, unchanged_count = ?7, failed_count = ?8, error_summary_json = ?9,
-           quarantined_count = ?10, skipped_count = ?11
+           quarantined_count = ?10, skipped_count = ?11, deferred_count = ?12
          WHERE id = ?1`,
       )
       .bind(
@@ -359,6 +419,7 @@ export class CanonicalStore {
         summary.errors.length ? JSON.stringify(summary.errors.slice(0, 50)) : null,
         summary.quarantined,
         summary.skipped,
+        summary.deferred,
       )
       .run();
   }

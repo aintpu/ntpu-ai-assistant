@@ -1,7 +1,7 @@
 import type { Clock } from "../shared/clock";
 import { IngestionError } from "../shared/errors";
 import { sha256Hex } from "../shared/hash";
-import { assertUrlAllowed, resolveEntrypoint } from "./url-policy";
+import { assertUrlAllowed, resolveRequestUrl } from "./url-policy";
 import type { FetchLike, RawSnapshot, SourceDefinition, SourceRequest } from "./types";
 
 /** 只保留這些回應標頭到原始檔的 metadata，避免存入 cookie 等資料。 */
@@ -46,7 +46,11 @@ export async function fetchSource(
   deps: { fetch: FetchLike; clock: Clock },
 ): Promise<RawSnapshot> {
   const policy = source.fetch;
-  let url = resolveEntrypoint(source, request.path);
+  let url = resolveRequestUrl(source, request);
+  const method = request.method ?? policy.methods[0]!;
+  if (!policy.methods.includes(method)) {
+    throw new IngestionError("URL_NOT_ALLOWED", `method not allowed: ${method}`);
+  }
   const requestedUrl = url.toString();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), policy.timeoutMs);
@@ -55,15 +59,15 @@ export async function fetchSource(
     let response: Response;
     for (let redirects = 0; ; redirects++) {
       const init: RequestInit = {
-        method: policy.method,
+        method,
         redirect: "manual",
         signal: controller.signal,
         headers: {
           "User-Agent": policy.userAgent,
           Accept: policy.acceptedContentTypes.join(", "),
-          ...(request.body ? { "Content-Type": "application/json" } : {}),
+          ...(request.body ? { "Content-Type": request.contentType ?? "application/json" } : {}),
         },
-        ...(policy.method === "POST" && request.body ? { body: request.body } : {}),
+        ...(method === "POST" && request.body ? { body: request.body } : {}),
       };
       try {
         response = await deps.fetch(new Request(url, init));

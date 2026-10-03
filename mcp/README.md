@@ -4,7 +4,7 @@
 從「人工 commit 的 Markdown」逐步改成「排程自動抓官網 → 有版本紀錄的資料庫 → MCP 查詢工具」。
 
 這個資料夾從規格建議的**第一條 vertical slice**（研發處公告）開始，驗證通過後擴充到
-new.ntpu.edu.tw 上所有有公告的處室（15 個，清單在 `src/ingestion/source-registry.ts`）：
+全部 21 個單位（清單在 `src/ingestion/source-registry.ts`）：
 
 ```text
 15 個官方來源（各處室公告 API）
@@ -46,12 +46,12 @@ ntpu-aia-mcp（HTTP Worker，只讀 D1）
 
 | 路徑 | 內容 | 規格章節 |
 |---|---|---|
-| `migrations/` | D1 資料表（0001 建表、0002 隔離區與執行狀態、0003 每處室一筆） | 06 §16–20 |
+| `migrations/` | D1 資料表（0001 建表、0002 隔離區與執行狀態、0003 每處室一筆、0004 待抓內文數） | 06 §16–20 |
 | `src/ingestion/source-registry.ts` | 允許抓取的來源清單 | 06 §6 |
 | `src/ingestion/url-policy.ts` | 網址 allowlist、SSRF 阻擋 | 06 §7–8.1 |
 | `src/ingestion/fetch-source.ts` | 逾時、大小上限、content-type、轉址檢查 | 06 §8 |
 | `src/ingestion/raw-archive.ts` | R2 原始檔（不可覆寫） | 06 §9 |
-| `src/ingestion/parsers/` | strapi 公告解析 | 06 §10 |
+| `src/ingestion/adapters/` | 各類來源：strapi 公告、strapi 介紹頁、HTML 公告網站 | 06 §10 |
 | `src/ingestion/normalizers/` | 公告正規化（只用原文，不推論） | 06 §11 |
 | `src/shared/schemas.ts` | Zod schema、Provenance | 06 §12、07 §5 |
 | `src/db/canonical-store.ts` | 比對、版本、交易式寫入 | 06 §13–15、§21 |
@@ -91,19 +91,31 @@ npx wrangler r2 bucket create ntpu-aia-raw-staging
    代表學校擋了 Cloudflare 的連線，抓取改在校內或本機執行，再寫入同一個 D1／R2。
 3. 用 MCP client（例如 Claude）連 `/mcp`，測 `search_announcements`。
 
-## 收錄範圍
+## 收錄範圍（21 個單位）
 
-| 有公告、已收錄（15） | 沒有收錄（原因） |
-|---|---|
-| ord 研發處、oga 總務處、osa 學務處、oaa 教務處、oa 主計室、cic 資訊中心、oia 國際處、eec 進修推廣部、alumni 校友中心、edusp 高教深耕、os 秘書室、sustainable 永續辦公室、ope 體育室、cge 通識中心、op 人事室 | 校長室與三位副校長室：只有內容頁、沒有公告；圖書館（library.ntpu.edu.tw）、語言中心（lc.ntpu.edu.tw）：用自己的網站。這些要另寫內容頁或外部網站的 parser |
+| 類型 | 單位 | 來源 | MCP 工具 |
+|---|---|---|---|
+| 公告（15） | ord 研發處、oga 總務處、osa 學務處、oaa 教務處、oa 主計室、cic 資訊中心、oia 國際處、eec 進修推廣部、alumni 校友中心、edusp 高教深耕、os 秘書室、sustainable 永續辦公室、ope 體育室、cge 通識中心、op 人事室 | 學校 Strapi API（`strapi-publications`） | `search_announcements`、`get_announcement` |
+| 公告（2） | library 圖書館、lc 語言中心 | 各自網站的 HTML（`html-news`） | 同上 |
+| 介紹頁（4） | president 校長室、vice-president-academic／-administration／-financial 三位副校長室 | 學校 Strapi sections（`strapi-sections`） | `search_pages`、`get_page` |
 
 - **同一則公告刊在多個處室**（2026-10-03 實查 203 則）：每個處室各存一筆，`stable_key` 是
-  `處室:_id`，各自追蹤版本、來源網址與下架。`search_announcements` 合併成一筆並以 `postedBy`
+  `處室:編號`，各自追蹤版本、來源網址與下架。`search_announcements` 合併成一筆並以 `postedBy`
   列出刊登處室；`get_announcement` 可加 `unit` 指定處室。`0003` migration 把既有研發處資料改成新 key，不改內容與版本。
-- **一次只跑一個處室**：Cloudflare 對每次執行有 D1 查詢數與子請求數上限。每頁只用 1–2 次讀取
-  加 1 個 batch 寫入；最大的高教深耕（約 20 頁）一次約 90 個 D1 查詢、80 個子請求，
-  **超過 Workers 免費方案的 50 個上限，staging/production 需要 Workers Paid**。
-- 本機指定處室：`/__scheduled?cron=source:osa-announcements`；不指定就挑下一個到期的處室。
+- **永續辦公室**的公告連結是 `esdg.ntpu.edu.tw/news/<id>`（new.ntpu.edu.tw/sustainable/news 會顯示找不到）。
+- **介紹頁**只抓設定裡的頁面路徑（不含標 deprecated 的舊頁），不查 `editors` 欄位（含承辦人信箱）。
+- **圖書館、語言中心（HTML 網站）**：
+  - 每次翻完整個列表（判斷哪些公告還在），再依「新公告 → 列表上標題或日期有變 → 超過 7 天沒驗證」
+    的順序抓最多 60 則內文；其餘記在 `sources.pending_count`，排程 15 分鐘後優先接著抓。
+    語言中心約 434 則，第一次要分 8 次左右才抓完，這段期間 `/health` 會顯示 degraded。
+  - 每個請求間隔 1 秒；只允許登記的列表／內文路徑，內文編號必須符合固定格式（`queryRules`）。
+  - 日期是官網上的台灣日期，存成當天 00:00（UTC+8）。
+  - **個人資料**：含遮罩姓名名單（例如「高O琁」）的公告不收錄，記在 `quarantined_records`
+    （原因 `PERSONAL_DATA`），保留原始檔可追溯；不算驗證失敗，也不會每天重抓。
+- **一次只跑一個來源**：Cloudflare 對每次執行有 D1 查詢數與子請求數上限。每頁只用 1–2 次讀取
+  加 1 個 batch 寫入；最大的高教深耕（約 20 頁）一次約 90 個 D1 查詢、80 個子請求，語言中心
+  一次約 130 個請求、500 個子請求，**超過 Workers 免費方案的上限，staging/production 需要 Workers Paid**。
+- 本機指定來源：`/__scheduled?cron=source:lc-announcements`；不指定就挑下一個到期的來源。
 
 ## 與規格的差異（刻意的決定）
 
@@ -123,6 +135,6 @@ npx wrangler r2 bucket create ntpu-aia-raw-staging
 - [ ] 加入檔案清單、內容頁（cms-carrier）兩種來源
 - [ ] 登記非網站來源（各處室 FAQ Excel、人事室整理檔、`corrections.md`）為 `manual_verified`
 - [x] 其他處室加入 source registry（15 個有公告的處室）
-- [ ] 校長室、副校長室的內容頁，圖書館、語言中心的外部網站
+- [x] 校長室、副校長室的介紹頁，圖書館、語言中心的網站
 - [ ] Golden set 評估、contract snapshot 測試（規格 10）
 - [ ] 正式環境網域與上線驗收（規格 11）

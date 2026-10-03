@@ -23,6 +23,8 @@ export interface SourceStatusRow {
 }
 
 export interface AnnouncementQuery {
+  /** announcement（公告）或 page（內容頁）。 */
+  entityType?: "announcement" | "page";
   unit?: string;
   keywords: string[];
   fromDate?: string;
@@ -43,12 +45,12 @@ export class ReadRepository {
   constructor(private readonly db: D1Database) {}
 
   async searchAnnouncements(q: AnnouncementQuery): Promise<AnnouncementRow[]> {
-    const where = [`e.entity_type = 'announcement'`, `e.status = 'active'`];
     const params: unknown[] = [];
     const bind = (value: unknown) => {
       params.push(value);
       return `?${params.length}`;
     };
+    const where = [`e.entity_type = ${bind(q.entityType ?? "announcement")}`, `e.status = 'active'`];
     if (q.unit) where.push(`e.source_unit = ${bind(q.unit)}`);
     if (q.fromDate) where.push(`e.published_at >= ${bind(q.fromDate)}`);
     if (q.beforeIso) where.push(`e.published_at < ${bind(q.beforeIso)}`);
@@ -67,16 +69,20 @@ export class ReadRepository {
   }
 
   /** 同一則公告在各處室各一筆；依 stable_key（處室:_id）一次查出所有處室的那一筆。 */
-  async getAnnouncementRows(id: string, units: string[]): Promise<AnnouncementRow[]> {
+  async getAnnouncementRows(
+    id: string,
+    units: string[],
+    entityType: "announcement" | "page" = "announcement",
+  ): Promise<AnnouncementRow[]> {
     if (units.length === 0) return [];
-    const placeholders = units.map((_, i) => `?${i + 1}`).join(", ");
+    const placeholders = units.map((_, i) => `?${i + 2}`).join(", ");
     const { results } = await this.db
       .prepare(
         `SELECT ${ROW_COLUMNS} FROM entities e JOIN sources s ON s.id = e.source_id
-         WHERE e.entity_type = 'announcement' AND e.stable_key IN (${placeholders})
+         WHERE e.entity_type = ?1 AND e.stable_key IN (${placeholders})
          ORDER BY e.source_unit`,
       )
-      .bind(...units.map((u) => `${u}:${id}`))
+      .bind(entityType, ...units.map((u) => `${u}:${id}`))
       .all<AnnouncementRow>();
     return results;
   }
