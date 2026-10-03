@@ -1,5 +1,6 @@
 import { IngestionError, safeMessage } from "../../shared/errors";
 import { normalizeAnnouncement } from "../normalizers/announcement.normalizer";
+import { personalDataReason } from "../personal-data";
 import { strapiPublicationsParser as parser, type StrapiPublication } from "../parsers/strapi-publications.parser";
 import type { SourceDefinition } from "../types";
 import type { Adapter, AdapterRecord, RejectedRecord, Step } from "./types";
@@ -27,19 +28,27 @@ function pageStep(source: SourceDefinition, page: number, nowIso: string): Step 
           skipped++;
           return;
         }
+        let a;
         try {
-          const a = normalizeAnnouncement(row, source);
-          records.push({
-            id: a.id,
-            payload: a,
-            title: a.title,
-            searchText: [a.title, a.bodyText, ...a.attachments.map((f) => f.name)].join("\n"),
-            sourceUrl: a.sourceUrl,
-            publishedAt: a.publishedAt,
-          });
+          a = normalizeAnnouncement(row, source);
         } catch (err) {
           rejected.push({ id: rejectKey(row, page, index), reason: safeMessage(err), countsTowardDrift: true });
+          return;
         }
+        const guard = source.adapter.kind === "strapi-publications" && source.adapter.personalDataGuard;
+        const privacy = guard ? personalDataReason(a.title, a.bodyText) : null;
+        if (privacy) {
+          rejected.push({ id: a.id, reason: privacy, countsTowardDrift: false });
+          return;
+        }
+        records.push({
+          id: a.id,
+          payload: a,
+          title: a.title,
+          searchText: [a.title, a.bodyText, ...a.attachments.map((f) => f.name)].join("\n"),
+          sourceUrl: a.sourceUrl,
+          publishedAt: a.publishedAt,
+        });
       });
       const full = rows.length >= parser.pageSize;
       return {

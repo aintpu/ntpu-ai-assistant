@@ -23,6 +23,8 @@ export interface StrapiPublicationsConfig {
   kind: "strapi-publications";
   /** sitesApproved 的值，例如研發處為 ord_ntpu。 */
   siteKey: string;
+  /** 疑似含個人資料（學生名單、學號）的公告不收錄，記入隔離區。 */
+  personalDataGuard: boolean;
 }
 
 /** 學校 Strapi 的固定內容頁（sections），以頁面路徑指定。 */

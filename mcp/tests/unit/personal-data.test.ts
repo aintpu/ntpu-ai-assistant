@@ -6,7 +6,6 @@ describe("personal data guard", () => {
     ["masked with O", "合格名單", "高O琁"],
     ["masked with 〇", "英語能力檢定獎勵結果公告", "王〇明\t李〇華\t陳〇安"],
     ["masked with ○ and no list title", "國際志工培訓招募", "錄取：林○宇、張○婷、黃○誠"],
-    ["masked with x", "抽獎結果", "吳x豪 周x妤 蔡x勳"],
     ["full student ids", "問卷抽獎結果", "411234567 412345678 410987654"],
     ["partly masked student ids", "獲獎名單", "4xx***123\n41234****\n4101***88"],
     [
@@ -23,6 +22,8 @@ describe("personal data guard", () => {
     ["ordinary announcements", "英文健診預約名單", "請至英文健診系統查詢預約時段，名單請見附件圖片。"],
     ["name-like words without a list title", "課程介紹", "陳列 林園 黃金 張貼 李子 王牌 吳郭魚 劉海 蔡倫 楊柳 許多 高等"],
     ["phone numbers and dates", "多益校園考報名", "電話 02-86741111 分機 66701，日期 2026/10/03。"],
+    ["numbers inside image file names", "培力講座", "S__412345678.jpg 412345679_n.jpg img-412345670.png"],
+    ["x used as a connector or in X光", "活動轉知", "育X臺交流、講x國際論壇、用X光檢查、陳x林合作"],
   ])("does not block %s", (_name, title, text) => {
     expect(personalDataReason(title, text)).toBeNull();
   });

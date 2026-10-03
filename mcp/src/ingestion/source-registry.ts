@@ -26,6 +26,9 @@ const HTML_FETCH: FetchPolicy = {
   minIntervalMs: 1_000,
 };
 
+/** new.ntpu.edu.tw 各處室公告是否套用個資過濾。 */
+const STRAPI_PERSONAL_DATA_GUARD = false;
+
 const DAILY = { schedule: "daily", maxStalenessSeconds: 48 * 60 * 60 };
 
 /** 處室代碼 → 中文名稱（MCP 工具說明與回應使用）。 */
@@ -109,7 +112,8 @@ export const SOURCES: readonly SourceDefinition[] = [
       newsUrlBase: base,
       ...strapiOrigin,
       parser: "strapi-publications",
-      adapter: { kind: "strapi-publications", siteKey },
+      // 其他 15 個處室的個資過濾待使用者決定（2026-10-03 掃描：73 則會被擋，含教職員名單）。
+      adapter: { kind: "strapi-publications", siteKey, personalDataGuard: STRAPI_PERSONAL_DATA_GUARD },
       entityType: "announcement",
       enabled: true,
       fetch: STRAPI_FETCH,
