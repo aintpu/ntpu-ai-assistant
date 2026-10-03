@@ -187,6 +187,29 @@ describe("lc.ntpu.edu.tw", () => {
     expect(db.count("quarantined_records")).toBe(1);
   });
 
+  it("an announcement that later turns out to list students is withheld, not served", async () => {
+    sites.lc = [lcNews(1), lcNews(2, { title: "獎勵結果公告" })];
+    await runLc();
+    expect(entity(`lc:${lcId(2)}`)!.status).toBe("active");
+
+    // 過濾規則更新或官網補上名單後，重新驗證時被擋下：狀態改為 withheld，查不到。
+    sites.lc[1] = lcNews(2, { title: "獎勵結果公告", body: "<p>王〇明 李〇華 陳〇安</p>" });
+    clock.advance(3600);
+    const summary = await runIngestion(deps, { sourceIds: ["lc-announcements"], trigger: "test", reverifyAll: true });
+    expect(summary).toMatchObject({ fetched: 3, quarantined: 1 });
+    expect(entity(`lc:${lcId(2)}`)!.status).toBe("withheld");
+    expect(entity(`lc:${lcId(1)}`)!.status).toBe("active");
+
+    // 之後每天走列表時不會又被標回 active。
+    clock.advance(86_400);
+    await runLc();
+    expect(entity(`lc:${lcId(2)}`)!.status).toBe("withheld");
+    const { ReadRepository } = await import("../../src/db/read-repository");
+    const repo = new ReadRepository(db.asD1());
+    expect(await repo.getAnnouncementRows(lcId(2), ["lc"])).toEqual([]);
+    expect((await repo.searchAnnouncements({ keywords: ["獎勵"], limit: 10 })).length).toBe(0);
+  });
+
   it("dates are Taiwan calendar dates", async () => {
     sites.lc = [lcNews(1, { date: "2026-10-03" })];
     await runLc();

@@ -31,14 +31,20 @@ export default {
     };
     ctx.waitUntil(
       (async () => {
-        // 本機測試可用 /__scheduled?cron=source:<來源 id> 指定來源；正式 cron 字串只來自 wrangler 設定。
-        const requested = controller.cron.startsWith("source:") ? getSource(controller.cron.slice(7)) : undefined;
+        // 本機可用 /__scheduled?cron=source:<來源 id> 指定來源，cron=reverify:<來源 id> 重新驗證全部內文；
+        // 正式環境的 cron 字串只來自 wrangler 設定，無法帶入這兩種值。
+        const [mode, id] = controller.cron.split(":", 2) as [string, string | undefined];
+        const requested = mode === "source" || mode === "reverify" ? getSource(id ?? "") : undefined;
         const source = requested ?? (await pickDueSource(deps.store, systemClock.nowIso()));
         if (!source) {
           console.log(JSON.stringify({ type: "ingestion_idle", reason: "no source due" }));
           return;
         }
-        const summary = await runIngestion(deps, { sourceIds: [source.id], trigger: "scheduled" });
+        const summary = await runIngestion(deps, {
+          sourceIds: [source.id],
+          trigger: "scheduled",
+          reverifyAll: mode === "reverify" && requested !== undefined,
+        });
         // 每次執行輸出一筆結構化摘要（規格 06 §25），不含回應內容或任何金鑰。
         console.log(JSON.stringify(summary));
       })(),

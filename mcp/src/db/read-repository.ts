@@ -79,7 +79,7 @@ export class ReadRepository {
     const { results } = await this.db
       .prepare(
         `SELECT ${ROW_COLUMNS} FROM entities e JOIN sources s ON s.id = e.source_id
-         WHERE e.entity_type = ?1 AND e.stable_key IN (${placeholders})
+         WHERE e.entity_type = ?1 AND e.stable_key IN (${placeholders}) AND e.status != 'withheld'
          ORDER BY e.source_unit`,
       )
       .bind(entityType, ...units.map((u) => `${u}:${id}`))

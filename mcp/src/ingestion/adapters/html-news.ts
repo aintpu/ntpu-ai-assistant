@@ -1,5 +1,6 @@
 import { IngestionError } from "../../shared/errors";
 import { AnnouncementSchema } from "../../shared/schemas";
+import { personalDataReason } from "../personal-data";
 import type { HtmlNewsConfig, SourceDefinition } from "../types";
 import { bodyText, clean, HTML_SITES, taiwanDateToIso, type HtmlSite, type ListItem } from "./html-sites";
 import type { Adapter, AdapterRecord, KnownRecord, Step, StepOutcome } from "./types";
@@ -7,20 +8,6 @@ import { decodeUtf8 } from "./types";
 
 /** 列表最多翻幾頁（語言中心目前約 73 頁）。 */
 const MAX_LIST_PAGES = 200;
-
-/**
- * 遮罩過的姓名（例如「高O琁」「王○明」）。語言中心等單位會公告學生名單，
- * 即使遮罩仍屬個人資料，MCP 不轉載，改記隔離區、保留官網連結可追溯。
- */
-const MASKED_NAME = /[一-鿿][OＯ○◯＊*][一-鿿]/g;
-
-export function personalDataReason(title: string, text: string): string | null {
-  const masked = new Set(`${title}\n${text}`.match(MASKED_NAME) ?? []);
-  if (masked.size >= 3 || (masked.size >= 1 && /名單/.test(title))) {
-    return `PERSONAL_DATA: ${masked.size} masked name(s); not republished`;
-  }
-  return null;
-}
 
 function stripEllipsis(title: string): string {
   return title.replace(/(\.{3}|…)$/, "").trim();
@@ -45,8 +32,9 @@ export function selectDetails(
   known: Map<string, KnownRecord>,
   config: HtmlNewsConfig,
   nowIso: string,
+  reverifyAll = false,
 ): { chosen: ListItem[]; deferred: number } {
-  const staleBefore = Date.parse(nowIso) - config.reverifyAfterSeconds * 1000;
+  const staleBefore = reverifyAll ? Number.POSITIVE_INFINITY : Date.parse(nowIso) - config.reverifyAfterSeconds * 1000;
   const candidates: Candidate[] = [];
   for (const item of items) {
     const k = known.get(item.id);
@@ -140,7 +128,7 @@ export const htmlNewsAdapter: Adapter = {
         // 列表走完：決定這次要抓哪些內文。
         const items = [...listed.values()];
         const known = await ctx.known(items.map((i) => i.id));
-        const { chosen, deferred } = selectDetails(items, known, config, ctx.nowIso);
+        const { chosen, deferred } = selectDetails(items, known, config, ctx.nowIso, ctx.reverifyAll);
         outcome.listComplete = true;
         outcome.deferred = deferred;
         outcome.next = chosen.map((item) => detailStep(source, site, config, { ...item, title: clean(item.title) }));

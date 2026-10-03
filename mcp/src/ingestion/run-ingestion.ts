@@ -31,6 +31,8 @@ export interface IngestionDeps {
 
 export interface IngestionRunOptions {
   sourceIds?: string[];
+  /** 重新驗證所有已收錄的內文（例如過濾規則更新後），仍受每次上限限制、分批完成。 */
+  reverifyAll?: boolean;
   trigger?: "scheduled" | "manual" | "test";
 }
 
@@ -70,7 +72,12 @@ interface SourceResult {
 
 const realSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-async function ingestSource(source: SourceDefinition, runId: string, deps: IngestionDeps): Promise<SourceResult> {
+async function ingestSource(
+  source: SourceDefinition,
+  runId: string,
+  deps: IngestionDeps,
+  reverifyAll = false,
+): Promise<SourceResult> {
   const { store, clock } = deps;
   const sleep = deps.sleep ?? realSleep;
   const result: SourceResult = {
@@ -91,6 +98,7 @@ async function ingestSource(source: SourceDefinition, runId: string, deps: Inges
   const ctx: StepContext = {
     source,
     nowIso: clock.nowIso(),
+    reverifyAll,
     activeCount: () => store.countActive(source.id),
     async known(ids) {
       const map = new Map<string, KnownRecord>();
@@ -173,6 +181,13 @@ async function ingestSource(source: SourceDefinition, runId: string, deps: Inges
           reason: r.reason,
           rawSnapshotKey: archived.key,
         })),
+        runId,
+        clock.nowIso(),
+      );
+      // 之前已收錄、這次被擋下的資料：不再提供（例如規則更新後才發現含個人資料）。
+      await store.withhold(
+        source.entityType,
+        outcome.rejected.map((r) => recordKey(source, r.id)),
         runId,
         clock.nowIso(),
       );
@@ -335,7 +350,7 @@ export async function runIngestion(
   // 來源之間互不影響；排程每次只跑一個來源，依序執行即為有界的並行度。
   for (const source of sources) {
     try {
-      const r = await ingestSource(source, runId, deps);
+      const r = await ingestSource(source, runId, deps, options.reverifyAll ?? false);
       totals.fetched += r.fetched;
       totals.published += r.published;
       totals.unchanged += r.unchanged;

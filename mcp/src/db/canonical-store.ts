@@ -259,7 +259,8 @@ export class CanonicalStore {
       statements.push(
         this.db
           .prepare(
-            `UPDATE entities SET last_seen_run_id = ?1, missing_runs = 0, status = 'active'
+            `UPDATE entities SET last_seen_run_id = ?1, missing_runs = 0,
+               status = CASE WHEN status = 'withheld' THEN status ELSE 'active' END
              WHERE entity_type = ?2 AND stable_key IN (${entityPlaceholders})`,
           )
           .bind(runId, entityType, ...part.map((i) => i.stableKey)),
@@ -280,6 +281,26 @@ export class CanonicalStore {
       .prepare(`UPDATE sources SET last_started_at = ?2, updated_at = ?2 WHERE id = ?1`)
       .bind(sourceId, now)
       .run();
+  }
+
+  /**
+   * 已收錄、但這次重新驗證時被擋下的資料（例如含個人資料）：狀態改為 withheld，
+   * MCP 不再提供；不刪除，官網連結與原始檔仍可追溯。
+   */
+  async withhold(entityType: string, stableKeys: string[], runId: string, now: string): Promise<number> {
+    let changed = 0;
+    for (const keys of chunk(stableKeys, MAX_IN_PARAMS)) {
+      const placeholders = keys.map((_, i) => `?${i + 4}`).join(", ");
+      const result = await this.db
+        .prepare(
+          `UPDATE entities SET status = 'withheld', last_seen_run_id = ?2, updated_at = ?3
+           WHERE entity_type = ?1 AND stable_key IN (${placeholders}) AND status != 'withheld'`,
+        )
+        .bind(entityType, runId, now, ...keys)
+        .run();
+      changed += result.meta.changes ?? 0;
+    }
+    return changed;
   }
 
   async countActive(sourceId: string): Promise<number> {

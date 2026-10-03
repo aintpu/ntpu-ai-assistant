@@ -110,8 +110,13 @@ npx wrangler r2 bucket create ntpu-aia-raw-staging
     語言中心約 434 則，第一次要分 8 次左右才抓完，這段期間 `/health` 會顯示 degraded。
   - 每個請求間隔 1 秒；只允許登記的列表／內文路徑，內文編號必須符合固定格式（`queryRules`）。
   - 日期是官網上的台灣日期，存成當天 00:00（UTC+8）。
-  - **個人資料**：含遮罩姓名名單（例如「高O琁」）的公告不收錄，記在 `quarantined_records`
-    （原因 `PERSONAL_DATA`），保留原始檔可追溯；不算驗證失敗，也不會每天重抓。
+  - **個人資料**（`src/ingestion/personal-data.ts`）：學生名單類公告不收錄，記在 `quarantined_records`
+    （原因 `PERSONAL_DATA`），保留原始檔可追溯；不算驗證失敗，也不會每天重抓。判斷規則：
+    遮罩姓名（O、○、〇、＊、x 等，排除「二〇二六」這類中文數字）、完整或部分遮罩的學號、
+    標題像名單／結果公告且內文有 10 個以上像姓名的項目。已收錄的公告若重新驗證時被擋下，
+    狀態改為 `withheld`，MCP 不再提供（不刪除）。
+  - 規則更新後要重新檢查已收錄的公告：本機打 `/__scheduled?cron=reverify:lc-announcements`
+    （每次 60 則，重複到 deferred 為 0）。
 - **一次只跑一個來源**：Cloudflare 對每次執行有 D1 查詢數與子請求數上限。每頁只用 1–2 次讀取
   加 1 個 batch 寫入；最大的高教深耕（約 20 頁）一次約 90 個 D1 查詢、80 個子請求，語言中心
   一次約 130 個請求、500 個子請求，**超過 Workers 免費方案的上限，staging/production 需要 Workers Paid**。
