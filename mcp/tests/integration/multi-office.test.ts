@@ -77,29 +77,30 @@ describe("all offices", () => {
     }
   });
 
-  it("the personal-data guard can be switched on per office and withholds already-published lists", async () => {
+  it("the personal-data guard is on for every office and withholds already-published lists", async () => {
     const { getSource } = await import("../../src/ingestion/source-registry");
     const osa = getSource("osa-announcements")!;
+    if (osa.adapter.kind !== "strapi-publications") throw new Error("unexpected adapter");
+    expect(osa.adapter.personalDataGuard).toBe(true);
     const list = publication(2, { title: "宿舍續住資格結果", content: "<p>411234567 412345678 410987654</p>" });
     deps.fetch = new FakeStrapi([], { osa_ntpu: [publication(1), list] }).fetch;
-    await runIngestion(deps, { sourceIds: ["osa-announcements"], trigger: "test" });
-    expect(db.rows("SELECT status FROM entities WHERE stable_key LIKE 'osa:%' ORDER BY stable_key")).toEqual([
-      { status: "active" },
+    // 模擬過濾開啟前已經收錄的情況。
+    osa.adapter.personalDataGuard = false;
+    try {
+      await runIngestion(deps, { sourceIds: ["osa-announcements"], trigger: "test" });
+    } finally {
+      osa.adapter.personalDataGuard = true;
+    }
+    expect(db.rows(`SELECT status FROM entities WHERE stable_key = 'osa:${list._id}'`)).toEqual([{ status: "active" }]);
+    clock.advance(86_400);
+    const summary = await runIngestion(deps, { sourceIds: ["osa-announcements"], trigger: "test" });
+    expect(summary).toMatchObject({ status: "success", quarantined: 1, failed: 0 });
+    expect(db.rows(`SELECT status FROM entities WHERE stable_key = 'osa:${list._id}'`)).toEqual([
+      { status: "withheld" },
+    ]);
+    expect(db.rows(`SELECT status FROM entities WHERE stable_key = 'osa:${publication(1)._id}'`)).toEqual([
       { status: "active" },
     ]);
-    if (osa.adapter.kind !== "strapi-publications") throw new Error("unexpected adapter");
-    const before = osa.adapter.personalDataGuard;
-    osa.adapter.personalDataGuard = true;
-    try {
-      clock.advance(86_400);
-      const summary = await runIngestion(deps, { sourceIds: ["osa-announcements"], trigger: "test" });
-      expect(summary).toMatchObject({ status: "success", quarantined: 1, failed: 0 });
-      expect(db.rows(`SELECT status FROM entities WHERE stable_key = 'osa:${list._id}'`)).toEqual([
-        { status: "withheld" },
-      ]);
-    } finally {
-      osa.adapter.personalDataGuard = before;
-    }
   });
 
   it("an office with no announcements completes successfully with zero records", async () => {

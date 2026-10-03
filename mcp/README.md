@@ -110,7 +110,7 @@ npx wrangler r2 bucket create ntpu-aia-raw-staging
     語言中心約 434 則，第一次要分 8 次左右才抓完，這段期間 `/health` 會顯示 degraded。
   - 每個請求間隔 1 秒；只允許登記的列表／內文路徑，內文編號必須符合固定格式（`queryRules`）。
   - 日期是官網上的台灣日期，存成當天 00:00（UTC+8）。
-  - **個人資料**（`src/ingestion/personal-data.ts`）：學生名單類公告不收錄，記在 `quarantined_records`
+  - **個人資料**（`src/ingestion/personal-data.ts`，全部 17 個公告來源都開啟）：名單類公告不收錄，記在 `quarantined_records`
     （原因 `PERSONAL_DATA`），保留原始檔可追溯；不算驗證失敗，也不會每天重抓。判斷規則：
     遮罩姓名（O、○、〇、＊、x 等，排除「二〇二六」這類中文數字）、完整或部分遮罩的學號、
     標題像名單／結果公告且內文有 10 個以上像姓名的項目。已收錄的公告若重新驗證時被擋下，
