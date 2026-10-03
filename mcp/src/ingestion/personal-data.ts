@@ -46,16 +46,28 @@ function plainNames(text: string): number {
   return names.size;
 }
 
-/** 名單另一種排法：「系所 姓名 同學」「姓名 老師」，姓名後面直接接稱謂。 */
-const TITLED_NAME = new RegExp(`([${CJK}]{2,4})[ \\t\\u3000]*(?:同學|老師|教授)`, "g");
+/**
+ * 名單另一種排法：一行一人，例如「得獎同學：法律學系 王小明」「通識教育中心 王小明 副教授」
+ * 「第一名 經濟學系 王小明 同學」。只算整行就是一筆名單的情況；內文句子裡提到的老師、
+ * 評審不算（2026-10-03 實際資料掃描確認這類句子很常見，不是名單）。
+ */
+const RANK = "(?:第[一二三四五六七八九十0-9]+名|特優|優等|優選|甲等|乙等|佳作|金獎|銀獎|銅獎|首獎|入選|入圍)";
+const LABEL = "(?:得獎|獲獎|獲選|錄取|當選)?(?:同學|學生|教師|老師|人員|者)[：:]";
+const UNIT = `[${CJK}A-Za-z]{1,16}(?:學系|系|所|學程|學院|中心|處|室|組|部|館|班)`;
+const TITLE = "(?:同學|(?:副|助理|客座|兼任|專任|講座|特聘)?(?:教授|老師|講師))";
+const ROSTER_LINE = new RegExp(
+  `^(?:${RANK}[ ：:]?)?(?:${LABEL} ?)?(?:${UNIT} )?([${CJK}]{2,3})(?: ?${TITLE})?[。；;，,]?$`,
+);
 
-function titledNames(text: string): number {
+function rosterLines(text: string): number {
   const names = new Set<string>();
-  for (const m of text.matchAll(TITLED_NAME)) {
-    const before = m[1]!;
-    // 姓名 2–3 個字、以常見姓氏開頭；前面可能黏著系所名稱。
-    const name = [before.slice(-3), before.slice(-2)].find((n) => n.length >= 2 && SURNAMES.has(n[0]!));
-    if (name) names.add(name);
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    const m = ROSTER_LINE.exec(line);
+    if (!m || !SURNAMES.has(m[1]![0]!)) continue;
+    // 只有姓名一行的不算（交給 plainNames）；必須帶標籤、系所或稱謂，才確定是名單的一筆。
+    if (line === m[1]) continue;
+    names.add(m[1]!);
   }
   return names.size;
 }
@@ -66,11 +78,11 @@ export function personalDataReason(title: string, text: string): string | null {
   const ids = new Set([...(all.match(FULL_STUDENT_ID) ?? []), ...(all.match(MASKED_STUDENT_ID) ?? [])]).size;
   const listTitle = LIST_TITLE.test(title);
   const plain = listTitle ? plainNames(text) : 0;
-  const titled = listTitle ? titledNames(text) : 0;
+  const roster = listTitle ? rosterLines(text) : 0;
   const hits: string[] = [];
   if (masked >= 3 || (masked >= 1 && listTitle)) hits.push(`${masked} masked name(s)`);
   if (ids >= 3) hits.push(`${ids} student id(s)`);
   if (plain >= 10) hits.push(`${plain} name-like entries under a list title`);
-  if (titled >= 3) hits.push(`${titled} names followed by 同學/老師/教授 under a list title`);
+  if (roster >= 3) hits.push(`${roster} one-name-per-line entries under a list title`);
   return hits.length ? `PERSONAL_DATA: ${hits.join(", ")}; not republished` : null;
 }

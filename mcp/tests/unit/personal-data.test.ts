@@ -16,9 +16,13 @@ describe("personal data guard", () => {
     [
       "student names followed by 同學",
       "【得獎名單】通識月徵件競賽評審結果",
-      "第一名 法律學系 陳怡君 同學\n第二名 經濟學系林家豪同學\n佳作 社工系 黃志明 同學",
+      "恭喜以下同學獲獎\n得獎同學：法律學系 陳怡君\n得獎同學：經濟學系 林家豪\n第一名 社會工作學系 黃志明 同學",
     ],
-    ["teacher names followed by 老師", "獲選優良通識教育教師名單", "張雅婷 老師、李宗翰老師、王淑芬 教授"],
+    [
+      "one teacher per line with rank",
+      "113年度獲選優良通識教育教師名單",
+      "名單如下\n通識教育中心 張雅婷 副教授\n法律學系 李宗翰 助理教授\n經濟學系 王淑芬 教授",
+    ],
   ])("blocks %s", (_name, title, text) => {
     expect(personalDataReason(title, text)).toMatch(/^PERSONAL_DATA/);
   });
@@ -32,6 +36,16 @@ describe("personal data guard", () => {
     ["x used as a connector or in X光", "活動轉知", "育X臺交流、講x國際論壇、用X光檢查、陳x林合作"],
     ["同學/老師 without names", "得獎名單公告", "恭喜全體同學，感謝各位老師與指導教授協助。"],
     ["titled names without a list title", "講座資訊", "主講：陳怡君老師、林家豪教授、黃志明老師"],
+    [
+      "judges and guests named in running text",
+      "AI智慧應用創新競賽得獎隊伍出爐",
+      "本次邀請資訊工程學系陳怡君教授、統計學系林家豪教授擔任評審，並由黃志明老師頒獎。\n感謝張雅婷老師指導。",
+    ],
+    [
+      "instructors quoted in an article",
+      "EMI/ESAP 教學助理培訓合格名單出爐啦",
+      "培訓由陳怡君老師與林家豪老師主講，參與的黃志明同學表示收穫良多。\n合格名單請見下圖。",
+    ],
   ])("does not block %s", (_name, title, text) => {
     expect(personalDataReason(title, text)).toBeNull();
   });
