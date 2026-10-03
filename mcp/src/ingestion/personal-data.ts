@@ -17,7 +17,7 @@ const FULL_STUDENT_ID = /(?<![\w.-])[34]\d{8}(?![\w.-])/g;
 /** 部分遮罩學號，例如 4xx***xxx、41234****。 */
 const MASKED_STUDENT_ID = /(?<![\dA-Za-z])[34][\dxX]{1,5}[*＊]{2,}[\dxX]*(?![\dA-Za-z])/g;
 /** 標題像名單或結果公告。 */
-const LIST_TITLE = /名單|獲獎|得獎|得主|合格|錄取|錄取|抽獎|中獎|結果|榜單|獎勵/;
+const LIST_TITLE = /名單|獲獎|得獎|得主|合格|錄取|抽獎|中獎|結果|榜單|獎勵|獲選/;
 
 /** 常見姓氏（約涵蓋台灣九成以上人口）。 */
 const SURNAMES = new Set(
@@ -46,15 +46,31 @@ function plainNames(text: string): number {
   return names.size;
 }
 
+/** 名單另一種排法：「系所 姓名 同學」「姓名 老師」，姓名後面直接接稱謂。 */
+const TITLED_NAME = new RegExp(`([${CJK}]{2,4})[ \\t\\u3000]*(?:同學|老師|教授)`, "g");
+
+function titledNames(text: string): number {
+  const names = new Set<string>();
+  for (const m of text.matchAll(TITLED_NAME)) {
+    const before = m[1]!;
+    // 姓名 2–3 個字、以常見姓氏開頭；前面可能黏著系所名稱。
+    const name = [before.slice(-3), before.slice(-2)].find((n) => n.length >= 2 && SURNAMES.has(n[0]!));
+    if (name) names.add(name);
+  }
+  return names.size;
+}
+
 export function personalDataReason(title: string, text: string): string | null {
   const all = `${title}\n${text}`;
   const masked = maskedNames(all);
   const ids = new Set([...(all.match(FULL_STUDENT_ID) ?? []), ...(all.match(MASKED_STUDENT_ID) ?? [])]).size;
   const listTitle = LIST_TITLE.test(title);
   const plain = listTitle ? plainNames(text) : 0;
+  const titled = listTitle ? titledNames(text) : 0;
   const hits: string[] = [];
   if (masked >= 3 || (masked >= 1 && listTitle)) hits.push(`${masked} masked name(s)`);
   if (ids >= 3) hits.push(`${ids} student id(s)`);
   if (plain >= 10) hits.push(`${plain} name-like entries under a list title`);
+  if (titled >= 3) hits.push(`${titled} names followed by 同學/老師/教授 under a list title`);
   return hits.length ? `PERSONAL_DATA: ${hits.join(", ")}; not republished` : null;
 }

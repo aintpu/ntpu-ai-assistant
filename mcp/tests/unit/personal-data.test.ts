@@ -13,6 +13,12 @@ describe("personal data guard", () => {
       "EMI/ESAP教學助理合格名單",
       "陳怡君 林家豪 黃志明 張雅婷 李宗翰 王淑芬 吳承恩 劉建宏 蔡佳穎 楊子儀 許文彬",
     ],
+    [
+      "student names followed by 同學",
+      "【得獎名單】通識月徵件競賽評審結果",
+      "第一名 法律學系 陳怡君 同學\n第二名 經濟學系林家豪同學\n佳作 社工系 黃志明 同學",
+    ],
+    ["teacher names followed by 老師", "獲選優良通識教育教師名單", "張雅婷 老師、李宗翰老師、王淑芬 教授"],
   ])("blocks %s", (_name, title, text) => {
     expect(personalDataReason(title, text)).toMatch(/^PERSONAL_DATA/);
   });
@@ -24,6 +30,8 @@ describe("personal data guard", () => {
     ["phone numbers and dates", "多益校園考報名", "電話 02-86741111 分機 66701，日期 2026/10/03。"],
     ["numbers inside image file names", "培力講座", "S__412345678.jpg 412345679_n.jpg img-412345670.png"],
     ["x used as a connector or in X光", "活動轉知", "育X臺交流、講x國際論壇、用X光檢查、陳x林合作"],
+    ["同學/老師 without names", "得獎名單公告", "恭喜全體同學，感謝各位老師與指導教授協助。"],
+    ["titled names without a list title", "講座資訊", "主講：陳怡君老師、林家豪教授、黃志明老師"],
   ])("does not block %s", (_name, title, text) => {
     expect(personalDataReason(title, text)).toBeNull();
   });
