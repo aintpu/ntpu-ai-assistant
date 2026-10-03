@@ -77,29 +77,43 @@ describe("all offices", () => {
     }
   });
 
-  it("the personal-data guard is on for every office and withholds already-published lists", async () => {
+  it("the personal-data guard is off by default; turning it off again releases withheld lists", async () => {
     const { getSource } = await import("../../src/ingestion/source-registry");
     const osa = getSource("osa-announcements")!;
-    if (osa.adapter.kind !== "strapi-publications") throw new Error("unexpected adapter");
-    expect(osa.adapter.personalDataGuard).toBe(true);
-    const list = publication(2, { title: "宿舍續住資格結果", content: "<p>411234567 412345678 410987654</p>" });
-    deps.fetch = new FakeStrapi([], { osa_ntpu: [publication(1), list] }).fetch;
-    // 模擬過濾開啟前已經收錄的情況。
-    osa.adapter.personalDataGuard = false;
-    try {
-      await runIngestion(deps, { sourceIds: ["osa-announcements"], trigger: "test" });
-    } finally {
-      osa.adapter.personalDataGuard = true;
-    }
-    expect(db.rows(`SELECT status FROM entities WHERE stable_key = 'osa:${list._id}'`)).toEqual([{ status: "active" }]);
-    clock.advance(86_400);
-    const summary = await runIngestion(deps, { sourceIds: ["osa-announcements"], trigger: "test" });
-    expect(summary).toMatchObject({ status: "success", quarantined: 1, failed: 0 });
-    expect(db.rows(`SELECT status FROM entities WHERE stable_key = 'osa:${list._id}'`)).toEqual([
-      { status: "withheld" },
-    ]);
-    expect(db.rows(`SELECT status FROM entities WHERE stable_key = 'osa:${publication(1)._id}'`)).toEqual([
-      { status: "active" },
+    const adapter = osa.adapter;
+    if (adapter.kind !== "strapi-publications") throw new Error("unexpected adapter");
+    expect(adapter.personalDataGuard).toBe("off");
+    const ids = publication(2, { title: "宿舍續住資格結果", content: "<p>411234567 412345678 410987654</p>" });
+    const masked = publication(3, { title: "徵文比賽得獎名單", content: "<p>王〇明 李〇華 陳〇安</p>" });
+    deps.fetch = new FakeStrapi([], { osa_ntpu: [publication(1), ids, masked] }).fetch;
+    const status = (p: { _id: string }) =>
+      db.rows<{ status: string }>(`SELECT status FROM entities WHERE stable_key = 'osa:${p._id}'`).map((r) => r.status);
+
+    const runWith = async (mode: "off" | "student-ids" | "all") => {
+      adapter.personalDataGuard = mode;
+      try {
+        clock.advance(86_400);
+        return await runIngestion(deps, { sourceIds: ["osa-announcements"], trigger: "test" });
+      } finally {
+        adapter.personalDataGuard = "off";
+      }
+    };
+
+    await runWith("off");
+    expect([status(ids), status(masked)]).toEqual([["active"], ["active"]]);
+
+    expect(await runWith("all")).toMatchObject({ status: "success", quarantined: 2, failed: 0 });
+    expect([status(ids), status(masked)]).toEqual([["withheld"], ["withheld"]]);
+
+    // 只擋學號：遮罩姓名的名單恢復，含學號的仍擋。
+    expect(await runWith("student-ids")).toMatchObject({ status: "success", quarantined: 1, failed: 0 });
+    expect([status(ids), status(masked)]).toEqual([["withheld"], ["active"]]);
+
+    // 關閉過濾：全部恢復，MCP 可以查到。
+    expect(await runWith("off")).toMatchObject({ status: "success", quarantined: 0, failed: 0 });
+    expect([status(ids), status(masked), status(publication(1))]).toEqual([["active"], ["active"], ["active"]]);
+    expect(db.rows(`SELECT COUNT(*) AS n FROM quarantined_records WHERE source_id = 'osa-announcements'`)).toEqual([
+      { n: 0 },
     ]);
   });
 

@@ -1,3 +1,5 @@
+import type { PersonalDataGuard } from "./types";
+
 /**
  * 個人資料偵測：公告內文若是學生名單（遮罩或未遮罩的姓名、學號），MCP 不轉載，
  * 改記隔離區（原因 PERSONAL_DATA），保留官網連結與原始檔可追溯。
@@ -72,7 +74,11 @@ function rosterLines(text: string): number {
   return names.size;
 }
 
-export function personalDataReason(title: string, text: string): string | null {
+export function personalDataReason(
+  title: string,
+  text: string,
+  mode: Exclude<PersonalDataGuard, "off"> = "all",
+): string | null {
   const all = `${title}\n${text}`;
   const masked = maskedNames(all);
   const ids = new Set([...(all.match(FULL_STUDENT_ID) ?? []), ...(all.match(MASKED_STUDENT_ID) ?? [])]).size;
@@ -80,8 +86,9 @@ export function personalDataReason(title: string, text: string): string | null {
   const plain = listTitle ? plainNames(text) : 0;
   const roster = listTitle ? rosterLines(text) : 0;
   const hits: string[] = [];
-  if (masked >= 3 || (masked >= 1 && listTitle)) hits.push(`${masked} masked name(s)`);
   if (ids >= 3) hits.push(`${ids} student id(s)`);
+  if (mode === "student-ids") return hits.length ? `PERSONAL_DATA: ${hits.join(", ")}; not republished` : null;
+  if (masked >= 3 || (masked >= 1 && listTitle)) hits.push(`${masked} masked name(s)`);
   if (plain >= 10) hits.push(`${plain} name-like entries under a list title`);
   if (roster >= 3) hits.push(`${roster} one-name-per-line entries under a list title`);
   return hits.length ? `PERSONAL_DATA: ${hits.join(", ")}; not republished` : null;

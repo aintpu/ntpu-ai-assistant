@@ -16,6 +16,11 @@ export interface FetchPolicy {
 }
 
 /** 某個 entrypoint 允許的查詢參數，每個參數都必須完全符合對應的格式。 */
+/**
+ * 個資過濾模式：off 全部收錄；student-ids 只擋含學號的名單；all 連姓名名單也擋。
+ */
+export type PersonalDataGuard = "off" | "student-ids" | "all";
+
 export type QueryRules = Record<string, Record<string, RegExp>>;
 
 /** 學校 Strapi 公告（new.ntpu.edu.tw 的處室公告）。 */
@@ -23,8 +28,8 @@ export interface StrapiPublicationsConfig {
   kind: "strapi-publications";
   /** sitesApproved 的值，例如研發處為 ord_ntpu。 */
   siteKey: string;
-  /** 疑似含個人資料（學生名單、學號）的公告不收錄，記入隔離區。 */
-  personalDataGuard: boolean;
+  /** 疑似含個人資料的公告不收錄，記入隔離區（見 PersonalDataGuard）。 */
+  personalDataGuard: PersonalDataGuard;
 }
 
 /** 學校 Strapi 的固定內容頁（sections），以頁面路徑指定。 */
@@ -42,8 +47,8 @@ export interface HtmlNewsConfig {
   maxDetailsPerRun: number;
   /** 內文多久沒重新驗證就要重抓。 */
   reverifyAfterSeconds: number;
-  /** 疑似含個人資料（遮罩姓名名單）的公告不收錄，記入隔離區。 */
-  personalDataGuard: boolean;
+  /** 疑似含個人資料的公告不收錄，記入隔離區（見 PersonalDataGuard）。 */
+  personalDataGuard: PersonalDataGuard;
 }
 
 export type AdapterConfig = StrapiPublicationsConfig | StrapiSectionsConfig | HtmlNewsConfig;

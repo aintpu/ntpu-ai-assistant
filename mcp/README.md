@@ -110,11 +110,13 @@ npx wrangler r2 bucket create ntpu-aia-raw-staging
     語言中心約 434 則，第一次要分 8 次左右才抓完，這段期間 `/health` 會顯示 degraded。
   - 每個請求間隔 1 秒；只允許登記的列表／內文路徑，內文編號必須符合固定格式（`queryRules`）。
   - 日期是官網上的台灣日期，存成當天 00:00（UTC+8）。
-  - **個人資料**（`src/ingestion/personal-data.ts`，全部 17 個公告來源都開啟）：名單類公告不收錄，記在 `quarantined_records`
+  - **個人資料**（`src/ingestion/personal-data.ts`）：**目前關閉**（使用者 2026-10-03 決定全部放行，官網本來就公開）。
+    `source-registry.ts` 的 `PERSONAL_DATA_GUARD` 可改成 `"student-ids"`（只擋含 3 個以上學號的名單）或 `"all"`。
+    開啟時名單類公告不收錄，記在 `quarantined_records`
     （原因 `PERSONAL_DATA`），保留原始檔可追溯；不算驗證失敗，也不會每天重抓。判斷規則：
-    遮罩姓名（O、○、〇、＊、x 等，排除「二〇二六」這類中文數字）、完整或部分遮罩的學號、
-    標題像名單／結果公告且內文有 10 個以上像姓名的項目。已收錄的公告若重新驗證時被擋下，
-    狀態改為 `withheld`，MCP 不再提供（不刪除）。
+    遮罩姓名（O、○、〇、＊ 等，排除「二〇二六」這類中文數字）、完整或部分遮罩的學號、
+    標題像名單／結果公告且內文有 10 個以上像姓名的項目，或 3 行以上「一行一人」的名單。已收錄的公告若重新驗證時被擋下，
+    狀態改為 `withheld`，MCP 不再提供（不刪除）；關閉過濾後重跑（語言中心、圖書館用 reverify）就會恢復。
   - 規則更新後要重新檢查已收錄的公告：本機打
     `/__scheduled?cron=reverify:lc-announcements:<規則更新的 UTC 時間，例如 2026-10-03T10:25:00Z>`，
     每次 60 則，用同一個時間重複執行到 deferred 為 0。

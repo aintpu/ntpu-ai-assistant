@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CanonicalStore } from "../../src/db/canonical-store";
 import { fetchSource } from "../../src/ingestion/fetch-source";
 import { pickDueSource, runIngestion, type IngestionDeps } from "../../src/ingestion/run-ingestion";
@@ -138,6 +138,15 @@ describe("library.ntpu.edu.tw", () => {
 });
 
 describe("lc.ntpu.edu.tw", () => {
+  // 個資過濾預設關閉；這裡開啟來驗證過濾開啟時的行為。
+  const lcAdapter = getSource("lc-announcements")!.adapter;
+  beforeEach(() => {
+    if (lcAdapter.kind === "html-news") lcAdapter.personalDataGuard = "all";
+  });
+  afterEach(() => {
+    if (lcAdapter.kind === "html-news") lcAdapter.personalDataGuard = "off";
+  });
+
   it("backfills a long archive over several runs and is picked again before other offices", async () => {
     sites.lc = Array.from({ length: 130 }, (_, i) => lcNews(i + 1));
     const first = await runLc();

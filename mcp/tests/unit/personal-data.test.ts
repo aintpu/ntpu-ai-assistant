@@ -49,4 +49,9 @@ describe("personal data guard", () => {
   ])("does not block %s", (_name, title, text) => {
     expect(personalDataReason(title, text)).toBeNull();
   });
+
+  it("student-ids mode blocks only student id lists", () => {
+    expect(personalDataReason("問卷抽獎結果", "411234567 412345678 410987654", "student-ids")).toMatch(/student id/);
+    expect(personalDataReason("合格名單", "王〇明 李〇華 陳〇安", "student-ids")).toBeNull();
+  });
 });

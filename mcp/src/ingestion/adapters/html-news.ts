@@ -59,7 +59,8 @@ function detailStep(source: SourceDefinition, site: HtmlSite, config: HtmlNewsCo
       const detail = site.parseDetail(decodeUtf8(bytes), item.id);
       const text = bodyText(detail.bodyHtml);
       const outcome: StepOutcome = { parsed: 1, records: [], rejected: [], skipped: 0 };
-      const privacy = config.personalDataGuard ? personalDataReason(detail.title, text) : null;
+      const guard = config.personalDataGuard;
+      const privacy = guard === "off" ? null : personalDataReason(detail.title, text, guard);
       if (privacy) {
         outcome.rejected.push({ id: item.id, reason: privacy, countsTowardDrift: false });
         return outcome;

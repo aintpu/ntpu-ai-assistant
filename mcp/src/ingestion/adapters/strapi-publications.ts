@@ -35,8 +35,8 @@ function pageStep(source: SourceDefinition, page: number, nowIso: string): Step 
           rejected.push({ id: rejectKey(row, page, index), reason: safeMessage(err), countsTowardDrift: true });
           return;
         }
-        const guard = source.adapter.kind === "strapi-publications" && source.adapter.personalDataGuard;
-        const privacy = guard ? personalDataReason(a.title, a.bodyText) : null;
+        const guard = source.adapter.kind === "strapi-publications" ? source.adapter.personalDataGuard : "off";
+        const privacy = guard === "off" ? null : personalDataReason(a.title, a.bodyText, guard);
         if (privacy) {
           rejected.push({ id: a.id, reason: privacy, countsTowardDrift: false });
           return;

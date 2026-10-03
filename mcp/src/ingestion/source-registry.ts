@@ -1,5 +1,5 @@
 import { validateSourceDefinition } from "./url-policy";
-import type { FetchPolicy, SourceDefinition } from "./types";
+import type { FetchPolicy, PersonalDataGuard, SourceDefinition } from "./types";
 
 const USER_AGENT = "NTPU-AIA-Ingestion/0.1 (+https://aia.ntpu.ai/about)";
 
@@ -27,10 +27,10 @@ const HTML_FETCH: FetchPolicy = {
 };
 
 /**
- * new.ntpu.edu.tw 各處室公告也套用個資過濾（使用者 2026-10-03 決定：學生與教職員名單都不轉載，
- * 只留官網連結）。開啟時掃描約 73 則會被擋。
+ * 全部公告來源的個資過濾模式。使用者 2026-10-03 決定全部放行（官網本來就公開）。
+ * 改成 "student-ids" 只擋含學號的名單（掃描約 13 則），"all" 連姓名名單也擋（約 77 則）。
  */
-const STRAPI_PERSONAL_DATA_GUARD = true;
+const PERSONAL_DATA_GUARD: PersonalDataGuard = "off";
 
 const DAILY = { schedule: "daily", maxStalenessSeconds: 48 * 60 * 60 };
 
@@ -115,7 +115,7 @@ export const SOURCES: readonly SourceDefinition[] = [
       newsUrlBase: base,
       ...strapiOrigin,
       parser: "strapi-publications",
-      adapter: { kind: "strapi-publications", siteKey, personalDataGuard: STRAPI_PERSONAL_DATA_GUARD },
+      adapter: { kind: "strapi-publications", siteKey, personalDataGuard: PERSONAL_DATA_GUARD },
       entityType: "announcement",
       enabled: true,
       fetch: STRAPI_FETCH,
@@ -163,7 +163,7 @@ export const SOURCES: readonly SourceDefinition[] = [
       site: "library-ewpt",
       maxDetailsPerRun: 60,
       reverifyAfterSeconds: 7 * 86_400,
-      personalDataGuard: true,
+      personalDataGuard: PERSONAL_DATA_GUARD,
     },
     entityType: "announcement",
     enabled: true,
@@ -172,7 +172,6 @@ export const SOURCES: readonly SourceDefinition[] = [
   },
   {
     // 語言中心自己的網站。最新消息約 434 則（6 則一頁），內文分批抓。
-    // 部分公告是學生名單（遮罩姓名），依 personalDataGuard 不收錄。
     id: "lc-announcements",
     sourceUnit: "lc",
     sourceType: "official_web",
@@ -192,7 +191,7 @@ export const SOURCES: readonly SourceDefinition[] = [
       site: "lc-jsp",
       maxDetailsPerRun: 60,
       reverifyAfterSeconds: 7 * 86_400,
-      personalDataGuard: true,
+      personalDataGuard: PERSONAL_DATA_GUARD,
     },
     entityType: "announcement",
     enabled: true,
