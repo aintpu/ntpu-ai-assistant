@@ -1,0 +1,55 @@
+{
+  // 抓取 Worker：排程抓官網 → 原始檔存 R2 → 驗證、hash、版本 → 寫入 D1。
+  // 沒有公開的 HTTP 觸發點。與 MCP 查詢 Worker 分開部署（規格 06 §4）。
+  // 正式網站 aia.ntpu.ai（cf/wrangler.jsonc）完全不受影響。
+  //
+  // 第一次設定（只需一次，見 README）：
+  //   npx wrangler d1 create ntpu-aia-canonical-staging
+  //   npx wrangler r2 bucket create ntpu-aia-raw-staging
+  // 把 d1 create 印出的 database_id 填進下方 env.staging（MCP Worker 的設定檔也要填同一個）。
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ntpu-aia-ingest",
+  "main": "src/ingestion/index.ts",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": false,
+  "observability": { "enabled": true },
+
+  // 本機開發（npm run dev:ingest）使用本機模擬的 D1／R2。
+  "vars": { "ENVIRONMENT": "dev" },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "ntpu-aia-canonical-dev", "database_id": "local-dev", "migrations_dir": "migrations" }
+  ],
+  "r2_buckets": [{ "binding": "RAW", "bucket_name": "ntpu-aia-raw-dev" }],
+
+  "env": {
+    "staging": {
+      "name": "ntpu-aia-ingest-staging",
+      // Cron 以 UTC 解讀：每天 18:00 UTC＝台灣時間 02:00。
+      "triggers": { "crons": ["*/10 * * * *"] },
+      "vars": { "ENVIRONMENT": "staging" },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "ntpu-aia-canonical-staging",
+          "database_id": "fbfbefa7-3b93-41cd-87be-aa55d6761b3c",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [{ "binding": "RAW", "bucket_name": "ntpu-aia-raw-staging" }]
+    },
+    "production": {
+      "name": "ntpu-aia-ingest",
+      "triggers": { "crons": ["*/10 * * * *"] },
+      "vars": { "ENVIRONMENT": "production" },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "ntpu-aia-canonical",
+          "database_id": "REPLACE_WITH_PRODUCTION_D1_ID",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [{ "binding": "RAW", "bucket_name": "ntpu-aia-raw" }]
+    }
+  }
+}

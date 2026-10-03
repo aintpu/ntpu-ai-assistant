@@ -1,0 +1,95 @@
+import type { PersonalDataGuard } from "./types";
+
+/**
+ * 個人資料偵測：公告內文若是學生名單（遮罩或未遮罩的姓名、學號），MCP 不轉載，
+ * 改記隔離區（原因 PERSONAL_DATA），保留官網連結與原始檔可追溯。
+ * 只用固定規則判斷，不使用模型；寧可多擋，被擋的公告仍可從官網連結查看。
+ */
+
+const CJK = "\\u4e00-\\u9fff";
+/**
+ * 遮罩字元：O、全形 Ｏ、○、◯、〇、＊、*。不含 x/X：實際資料裡 x 多半是連接詞或「X光」，
+ * 2026-10-03 掃描全部公告沒有用 x 遮罩姓名的例子。
+ */
+const MASKED_NAME = new RegExp(`[${CJK}][OＯ○◯〇＊*][${CJK}]`, "g");
+/** 「二〇二六」這類中文數字裡的〇不是遮罩。 */
+const CHINESE_NUMERAL = /^[〇零一二三四五六七八九十百千]$/;
+/** 完整學號（本校為 9 碼、以 3 或 4 開頭）。前後接英數、底線、點或連字號的不算（例如圖片檔名 S__412345678.jpg）。 */
+const FULL_STUDENT_ID = /(?<![\w.-])[34]\d{8}(?![\w.-])/g;
+/** 部分遮罩學號，例如 4xx***xxx、41234****。 */
+const MASKED_STUDENT_ID = /(?<![\dA-Za-z])[34][\dxX]{1,5}[*＊]{2,}[\dxX]*(?![\dA-Za-z])/g;
+/** 標題像名單或結果公告。 */
+const LIST_TITLE = /名單|獲獎|得獎|得主|合格|錄取|抽獎|中獎|結果|榜單|獎勵|獲選/;
+
+/** 常見姓氏（約涵蓋台灣九成以上人口）。 */
+const SURNAMES = new Set(
+  (
+    "陳林黃張李王吳劉蔡楊許鄭謝洪郭邱曾廖賴徐周葉蘇莊呂江何蕭羅高潘簡朱鍾游彭詹胡施沈余盧梁趙顏柯翁魏孫戴范方宋鄧杜傅侯曹薛丁卓阮馬董温溫唐藍蔣石古紀姚連馮歐程湯黃田康姜白汪鄒尤巫鐘黎涂龔嚴韓袁金童陸夏柳凃邵錢伍倪溫于譚駱熊任甘秦顧毛章史官萬俞雷粘饒張"
+  ).split(""),
+);
+
+function maskedNames(text: string): number {
+  const found = new Set<string>();
+  for (const m of text.matchAll(MASKED_NAME)) {
+    const [a, mask, b] = [...m[0]];
+    if (mask === "〇" && (CHINESE_NUMERAL.test(a!) || CHINESE_NUMERAL.test(b!))) continue;
+    found.add(m[0]);
+  }
+  return found.size;
+}
+
+/** 名單常見的排法：姓名之間以空白、Tab、換行或頓號分隔，每個姓名 2–3 個字、以常見姓氏開頭。 */
+function plainNames(text: string): number {
+  const tokens = text.split(/[\s、，,；;／/（）()]+/);
+  const names = new Set<string>();
+  for (const t of tokens) {
+    if (new RegExp(`^[${CJK}]{2,3}$`).test(t) && SURNAMES.has(t[0]!)) names.add(t);
+  }
+  return names.size;
+}
+
+/**
+ * 名單另一種排法：一行一人，例如「得獎同學：法律學系 王小明」「通識教育中心 王小明 副教授」
+ * 「第一名 經濟學系 王小明 同學」。只算整行就是一筆名單的情況；內文句子裡提到的老師、
+ * 評審不算（2026-10-03 實際資料掃描確認這類句子很常見，不是名單）。
+ */
+const RANK = "(?:第[一二三四五六七八九十0-9]+名|特優|優等|優選|甲等|乙等|佳作|金獎|銀獎|銅獎|首獎|入選|入圍)";
+const LABEL = "(?:得獎|獲獎|獲選|錄取|當選)?(?:同學|學生|教師|老師|人員|者)[：:]";
+const UNIT = `[${CJK}A-Za-z]{1,16}(?:學系|系|所|學程|學院|中心|處|室|組|部|館|班)`;
+const TITLE = "(?:同學|(?:副|助理|客座|兼任|專任|講座|特聘)?(?:教授|老師|講師))";
+const ROSTER_LINE = new RegExp(
+  `^(?:${RANK}[ ：:]?)?(?:${LABEL} ?)?(?:${UNIT} )?([${CJK}]{2,3})(?: ?${TITLE})?[。；;，,]?$`,
+);
+
+function rosterLines(text: string): number {
+  const names = new Set<string>();
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    const m = ROSTER_LINE.exec(line);
+    if (!m || !SURNAMES.has(m[1]![0]!)) continue;
+    // 只有姓名一行的不算（交給 plainNames）；必須帶標籤、系所或稱謂，才確定是名單的一筆。
+    if (line === m[1]) continue;
+    names.add(m[1]!);
+  }
+  return names.size;
+}
+
+export function personalDataReason(
+  title: string,
+  text: string,
+  mode: Exclude<PersonalDataGuard, "off"> = "all",
+): string | null {
+  const all = `${title}\n${text}`;
+  const masked = maskedNames(all);
+  const ids = new Set([...(all.match(FULL_STUDENT_ID) ?? []), ...(all.match(MASKED_STUDENT_ID) ?? [])]).size;
+  const listTitle = LIST_TITLE.test(title);
+  const plain = listTitle ? plainNames(text) : 0;
+  const roster = listTitle ? rosterLines(text) : 0;
+  const hits: string[] = [];
+  if (ids >= 3) hits.push(`${ids} student id(s)`);
+  if (mode === "student-ids") return hits.length ? `PERSONAL_DATA: ${hits.join(", ")}; not republished` : null;
+  if (masked >= 3 || (masked >= 1 && listTitle)) hits.push(`${masked} masked name(s)`);
+  if (plain >= 10) hits.push(`${plain} name-like entries under a list title`);
+  if (roster >= 3) hits.push(`${roster} one-name-per-line entries under a list title`);
+  return hits.length ? `PERSONAL_DATA: ${hits.join(", ")}; not republished` : null;
+}

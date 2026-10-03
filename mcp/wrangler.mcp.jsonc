@@ -1,0 +1,44 @@
+{
+  // MCP 查詢 Worker：只讀 D1，提供 /mcp、/health、/about。不會連到學校網站，也沒有 R2 權限。
+  // staging 先用 workers.dev 網址測試；正式網域等驗收通過後再決定（例如 aia.ntpu.ai/mcp 或 mcp.ntpu.ai）。
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ntpu-aia-mcp",
+  "main": "src/mcp/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  "vars": { "ENVIRONMENT": "dev" },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "ntpu-aia-canonical-dev", "database_id": "local-dev", "migrations_dir": "migrations" }
+  ],
+
+  "env": {
+    "staging": {
+      "name": "ntpu-aia-mcp-staging",
+      "workers_dev": true,
+      "vars": { "ENVIRONMENT": "staging" },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "ntpu-aia-canonical-staging",
+          "database_id": "fbfbefa7-3b93-41cd-87be-aa55d6761b3c",
+          "migrations_dir": "migrations"
+        }
+      ]
+    },
+    "production": {
+      "name": "ntpu-aia-mcp",
+      "workers_dev": false,
+      "vars": { "ENVIRONMENT": "production" },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "ntpu-aia-canonical",
+          "database_id": "REPLACE_WITH_PRODUCTION_D1_ID",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
+}

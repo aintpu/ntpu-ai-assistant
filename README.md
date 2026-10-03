@@ -11,6 +11,9 @@
 - 總務處（營繕、事務、經管、出納、環境與文書常見問答）
 - 研究發展處、主計室、圖書館、資訊中心、國際事務處、進修暨推廣部、校友中心、永續辦公室、高等教育深耕計畫辦公室、秘書室、學術副校長室、行政副校長室、財務暨永續發展副校長室、校長室（2026-10-02 匯入 938 題 FAQ）
 
+> **架構轉換中**：依 AI4X MCP 規格，`mcp/` 正在建立「排程抓官網 → D1（含版本）→ 唯讀 MCP 工具」的新資料線，
+> 目前只有研究發展處公告，與正式站分開部署。說明見 [mcp/README.md](mcp/README.md)。
+
 新增 FAQ 沿用 `crawler_data/*_faq.md` → `CRAWLER_SOURCES` → FAISS/BM25 的既有流程。
 單位代碼與別名位於 `office_catalog.py`。原始 Excel 不修改，可用
 `python scripts/import_office_faqs.py /path/to/ntpu-faq` 重現本批匯入；
