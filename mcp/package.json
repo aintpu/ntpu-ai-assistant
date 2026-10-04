@@ -10,6 +10,7 @@
     "test:integration": "vitest run tests/integration",
     "test:security": "vitest run tests/security",
     "test:contract": "vitest run tests/contract",
+    "eval:smoke": "vitest run tests/eval",
     "check": "npm run typecheck && npm test",
     "dev:ingest": "wrangler dev --config wrangler.ingest.jsonc --test-scheduled",
     "dev:mcp": "wrangler dev --config wrangler.mcp.jsonc",
