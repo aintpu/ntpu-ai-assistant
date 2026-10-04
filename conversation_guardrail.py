@@ -33,7 +33,7 @@ VALID_OFFICES.update(FAQ_OFFICES)
 OFFICE_KEYWORDS = {
     "ope": (
         "體育", "運動", "場地", "體育館", "崇越館", "課表", "賽事", "競賽",
-        "全大運", "系際盃", "器材", "運動獎學金", "健身", "體能", "肌力", "熱身", "伸展",
+        "全大運", "系際盃", "校慶", "器材", "運動獎學金", "健身", "體能", "肌力", "熱身", "伸展",
     ),
     "ge": (
         "通識", "向度", "通識學分", "通識月", "夏季學院", "跨校通識",
@@ -441,11 +441,29 @@ def _configured_aliases(
         return tuple(str(alias).strip() for alias in default if str(alias).strip())
 
 
+# 機構名稱裡不會出現的字（代名詞、助詞、介系詞、請求語）。候選字串只保留最後一個這類字之後的部分，
+# 例如「人在國外想捐款給學校」→「學校」、「請幫我整理大學」→「整理大學」→「大學」，
+# 而「我想轉學到淡江大學」仍保留「淡江大學」。
+_ENTITY_BREAK_RE = re.compile(r"[我你您他她它們想要請幫給在的了嗎呢和與跟或去到從對把被讓問查找看說是有]")
+ENTITY_LEADING_VERBS = (
+    "整理", "比較", "申請", "查詢", "列出", "說明", "介紹", "報考", "就讀", "轉學", "考上", "考",
+    "讀", "念", "上",
+)
+
+
 def _clean_entity_candidate(value: str) -> str:
     candidate = (value or "").strip()
     for filler in sorted(ENTITY_FILLERS, key=len, reverse=True):
         if candidate.startswith(filler):
             candidate = candidate[len(filler):].strip()
+    suffix = next((s for s in ENTITY_SUFFIXES if candidate.endswith(s)), "")
+    if suffix:
+        name = _ENTITY_BREAK_RE.split(candidate[: -len(suffix)])[-1]
+        for verb in sorted(ENTITY_LEADING_VERBS, key=len, reverse=True):
+            if name.startswith(verb):
+                name = name[len(verb):]
+                break
+        candidate = name + suffix
     return candidate.strip("，、：:；;！？!?「」『』 ")
 
 
@@ -891,6 +909,10 @@ def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[s
         f"以 FAQ 匯入的單位涵蓋範圍舉例：{_faq_office_topics()}。"
         "校長室與各副校長室 FAQ 收錄現任首長姓名、學經歷、研究領域、榮譽與聯絡方式，"
         "詢問本校校長或副校長的這些資訊（含『他們的研究領域呢』這類追問）都屬 IN_SCOPE。"
+        "凡是本校（國立臺北大學）的校務、行事曆與典禮活動、課業與考試、學籍、繳費、獎助學金、"
+        "宿舍、諮商與健康、校園網路與帳號、空間借用、失物招領、聯絡電話、公告與活動講座、"
+        "教職員差勤與經費等問題，都屬 IN_SCOPE；判斷不出處室時 office_hint 填 null，不得因此回 OUT_OF_SCOPE。"
+        "OUT_OF_SCOPE 只用於明確指向外校／外部機構，或與校務無關（天氣、餐廳、投資、創作、閒聊外的一般知識等）。"
         "資訊不足但仍與支援校務主題有關時回 AMBIGUOUS，不得把資訊不足當 OUT_OF_SCOPE。"
         "若 context 的 scope_verified=true 且 resolved_is_followup=true，代表本輪是對已確認校務主題的追問"
         "（例如接受上一輪提議『我要』、補充身分或年資），請依 standalone_query 判斷；"
@@ -1135,7 +1157,8 @@ def run_scope_guardrail(
             # allowlist. Accept a high-confidence semantic mapping to a real
             # office so natural paraphrases can reach retrieval. Explicit
             # external entities and known unrelated intents were denied above.
-            if result.office_hint and result.confidence >= SEMANTIC_SCOPE_CONFIDENCE:
+            # 本校業務但判斷不出處室（例如「學校電話幾號」）：office_hint 為 None，改跨單位檢索。
+            if result.confidence >= SEMANTIC_SCOPE_CONFIDENCE:
                 return result
             return ScopeDecision(
                 "OUT_OF_SCOPE",

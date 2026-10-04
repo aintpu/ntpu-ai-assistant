@@ -68,6 +68,15 @@ class AddedOfficeTests(unittest.TestCase):
                 self.assertEqual((decision.status, decision.office_hint), ('IN_SCOPE', code))
                 self.assertFalse(should_route_system(query, retriever.best(query), threshold=0.56))
 
+    def test_school_anniversary_routes_to_sports_office(self):
+        # 校慶日期與系列活動公告由體育室發布；以前「校慶是什麼時候」沒有任何關鍵詞而被擋下。
+        for query in ('我想問校慶在何時', '校慶是什麼時候', '校慶趣味競賽'):
+            with self.subTest(query=query):
+                decision = run_scope_guardrail(query, {}, unavailable, retries=0)
+                self.assertEqual((decision.status, decision.office_hint), ('IN_SCOPE', 'ope'))
+        decision = run_scope_guardrail('秘書室的校慶業務由誰負責？', {}, unavailable, retries=0)
+        self.assertEqual(decision.office_hint, 'os')
+
     def test_representative_business_queries(self):
         examples = {
             'ord': '研發處的研究倫理審查怎麼申請？',

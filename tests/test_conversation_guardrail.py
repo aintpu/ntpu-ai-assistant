@@ -262,10 +262,29 @@ class ConversationGuardrailTests(unittest.TestCase):
         self.assertEqual(scope.status, "IN_SCOPE")
         self.assertEqual(scope.office_hint, "hr")
 
-    def test_semantic_scope_without_office_or_confidence_remains_blocked(self):
+    def test_confident_school_question_without_office_searches_all_offices(self):
+        # 「學校電話幾號」「期中考是哪一週」這類本校問題判斷不出處室：以前一律擋下，現在跨單位檢索。
+        scope = run_scope_guardrail(
+            "這是一個沒有關鍵詞的問題",
+            {},
+            FakeCompleter([{"status": "IN_SCOPE", "office_hint": None, "confidence": 0.99, "reason": "本校業務"}]),
+            retries=0,
+        )
+        self.assertEqual((scope.status, scope.office_hint), ("IN_SCOPE", None))
+
+    def test_entity_names_ignore_request_words_before_the_suffix(self):
+        # 「請幫我整理大學…」「人在國外想捐款給學校」不是外校名稱；真正的外校仍要擋。
+        self.assertIsNone(detect_service_entity_conflict("請幫我整理大學抵免與免修差異表"))
+        self.assertIsNone(detect_service_entity_conflict("人在國外想捐款給學校怎麼匯"))
+        self.assertIsNone(detect_service_entity_conflict("我是大學部學生可以借書嗎"))
+        self.assertEqual(detect_service_entity_conflict("我想轉學到淡江大學"), "淡江大學")
+        self.assertEqual(detect_service_entity_conflict("請問輔仁大學的學費"), "輔仁大學")
+        self.assertEqual(detect_service_entity_conflict("國立臺灣大學的宿舍"), "國立臺灣大學")
+
+    def test_low_confidence_semantic_scope_remains_blocked(self):
         cases = (
-            {"status": "IN_SCOPE", "office_hint": None, "confidence": 0.99, "reason": "沒有處室"},
             {"status": "IN_SCOPE", "office_hint": "hr", "confidence": 0.60, "reason": "低信心"},
+            {"status": "IN_SCOPE", "office_hint": None, "confidence": 0.60, "reason": "低信心"},
         )
         for output in cases:
             with self.subTest(output=output):
