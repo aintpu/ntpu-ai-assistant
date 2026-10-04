@@ -43,8 +43,8 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 /** 正式資料的 stable_key：「處室:來源編號」。同一則公告（相同 _id）在不同處室各自一筆。 */
-export function recordKey(source: Pick<SourceDefinition, "sourceUnit">, id: string): string {
-  return `${source.sourceUnit}:${id}`;
+export function recordKey(source: Pick<SourceDefinition, "sourceUnit">, id: string, unit?: string): string {
+  return `${unit ?? source.sourceUnit}:${id}`;
 }
 
 export function entityId(entityType: string, stableKey: string): string {

@@ -14,6 +14,7 @@
     "db:migrate:dev": "wrangler d1 migrations apply DB --local --config wrangler.ingest.jsonc",
     "db:migrate:staging": "wrangler d1 migrations apply DB --remote --env staging --config wrangler.ingest.jsonc",
     "db:migrate:prod": "wrangler d1 migrations apply DB --remote --env production --config wrangler.ingest.jsonc",
+    "manual:upload": "node scripts/upload-manual.mjs",
     "deploy:staging": "wrangler deploy --env staging --config wrangler.ingest.jsonc && wrangler deploy --env staging --config wrangler.mcp.jsonc"
   },
   "dependencies": {

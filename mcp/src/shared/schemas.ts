@@ -42,6 +42,53 @@ export const PageSchema = z
 
 export type Page = z.infer<typeof PageSchema>;
 
+/** 人工整理檔在 repo 裡的路徑，例如 crawler_data/oaa_regulations.md。 */
+const SourceFileSchema = z.string().regex(/^crawler_data\/[^\s/]{1,200}$/);
+
+/**
+ * 法規。來自人工整理的全文檔（同學自官方 PDF 轉出的文字）與法規彙整表（只有目錄、沒有全文）。
+ * 文字照原檔保留，不改寫、不推論；updatedDate 保留原表格寫法（有 MM/DD/YYYY、民國年等多種格式）。
+ */
+export const RegulationSchema = z
+  .object({
+    id: z.string().regex(/^[0-9a-f]{24}$/),
+    unit: UnitSchema,
+    /** 所屬單位的原文名稱，例如「學生事務處」「法律學院」。 */
+    owner: z.string().min(1).max(100),
+    title: z.string().min(1).max(500),
+    /** 沒有全文（只在彙整表出現）時為空字串。 */
+    bodyText: z.string().max(300_000),
+    hasFullText: z.boolean(),
+    /** 官方檔案連結；全文檔沒寫、彙整表也配對不到時為 null。 */
+    fileUrl: z.string().url().max(2000).nullable(),
+    tags: z.array(z.string().min(1).max(100)).max(30),
+    updatedDate: z.string().max(40).nullable(),
+    sourceUrl: z.string().url().max(2000),
+    sourceFile: SourceFileSchema,
+  })
+  .strict();
+
+export type Regulation = z.infer<typeof RegulationSchema>;
+
+/** 各處室提供的常見問答（人工整理檔）。回答照原檔保留；details 是原檔的其餘欄位（承辦組別、聯絡窗口等）。 */
+export const FaqSchema = z
+  .object({
+    id: z.string().regex(/^[A-Za-z0-9-]{3,64}$/),
+    unit: UnitSchema,
+    question: z.string().min(1).max(1000),
+    answer: z.string().min(1).max(50_000),
+    topic: z.string().max(200).nullable(),
+    division: z.string().max(200).nullable(),
+    sourceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+    keywords: z.array(z.string().min(1).max(100)).max(50),
+    details: z.string().max(10_000),
+    sourceUrl: z.string().url().max(2000),
+    sourceFile: SourceFileSchema,
+  })
+  .strict();
+
+export type Faq = z.infer<typeof FaqSchema>;
+
 export const ProvenanceSchema = z
   .object({
     sourceId: z.string(),

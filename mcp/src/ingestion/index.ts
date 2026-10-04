@@ -1,5 +1,6 @@
 import { CanonicalStore } from "../db/canonical-store";
 import { systemClock } from "../shared/clock";
+import { R2ManualInbox } from "./manual-inbox";
 import { R2RawArchive } from "./raw-archive";
 import { pickDueSource, runIngestion } from "./run-ingestion";
 import { assertRegistryValid, getSource } from "./source-registry";
@@ -25,6 +26,7 @@ export default {
     const deps = {
       store: new CanonicalStore(env.DB),
       archive: new R2RawArchive(env.RAW),
+      manual: new R2ManualInbox(env.RAW),
       fetch: (request: Request) => fetch(request),
       clock: systemClock,
       environment: env.ENVIRONMENT,

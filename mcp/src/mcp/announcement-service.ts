@@ -1,5 +1,5 @@
-import type { AnnouncementRow, ReadRepository } from "../db/read-repository";
-import { SOURCES, sourceUnits } from "../ingestion/source-registry";
+import type { AnnouncementRow, ReadEntityType, ReadRepository } from "../db/read-repository";
+import { SOURCES, sourceCovers, sourceUnits } from "../ingestion/source-registry";
 import type { Clock } from "../shared/clock";
 import { freshnessOf, type FreshnessState } from "../shared/freshness";
 import { AnnouncementSchema, type Announcement, type Provenance } from "../shared/schemas";
@@ -78,10 +78,10 @@ export class AnnouncementService {
     private readonly clock: Clock,
   ) {}
 
-  async freshness(unit?: string, entityType: "announcement" | "page" = "announcement"): Promise<SourceFreshness[]> {
+  async freshness(unit?: string, entityType: ReadEntityType = "announcement"): Promise<SourceFreshness[]> {
     const rows = await this.repo.sourceStatuses();
     const now = this.clock.nowIso();
-    return SOURCES.filter((s) => s.entityType === entityType && (!unit || s.sourceUnit === unit)).map((s) => {
+    return SOURCES.filter((s) => s.entityType === entityType && (!unit || sourceCovers(s, unit))).map((s) => {
       const row = rows.find((r) => r.id === s.id);
       const lastSuccessAt = row?.last_success_at ?? null;
       return {

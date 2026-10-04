@@ -34,6 +34,103 @@ const PERSONAL_DATA_GUARD: PersonalDataGuard = "off";
 
 const DAILY = { schedule: "daily", maxStalenessSeconds: 48 * 60 * 60 };
 
+/** 人工整理檔：從 R2 manual/ 讀取，不連網站（見 manual-inbox.ts）。 */
+const MANUAL_FETCH: FetchPolicy = {
+  methods: ["GET"],
+  timeoutMs: 15_000,
+  maxResponseBytes: 5 * 1024 * 1024,
+  acceptedContentTypes: ["text/markdown", "text/plain", "application/json"],
+  userAgent: USER_AGENT,
+  followRedirects: false,
+  maxRedirects: 0,
+  minIntervalMs: 0,
+};
+
+const REPO_TREE = "https://github.com/aintpu/ntpu-ai-assistant/tree/main/crawler_data";
+const REPO_BLOB = "https://github.com/aintpu/ntpu-ai-assistant/blob/main/crawler_data";
+/** upload-manual 由兩份法規彙整 xlsx 轉出的 JSON。 */
+const REGULATION_CATALOG = "derived/regulation-catalog.json";
+
+/** 有法規全文檔的處室：處室代碼、全文檔、彙整表上的處室名稱。 */
+const REGULATION_FULL_TEXT: { unit: string; file: string; owners: string[] }[] = [
+  { unit: "oaa", file: "crawler_data/oaa_regulations.md", owners: ["教務處"] },
+  { unit: "osa", file: "crawler_data/osa_regulations.md", owners: ["學生事務處"] },
+  { unit: "op", file: "crawler_data/hr_regulations.md", owners: ["人事室"] },
+  { unit: "oga", file: "crawler_data/oga_regulations.md", owners: ["總務處"] },
+  { unit: "cge", file: "crawler_data/ge_regulations_extra.md", owners: ["通識教育中心"] },
+];
+
+/** 各處室常見問答檔 → 處室代碼。 */
+const FAQ_FILES: { file: string; unit: string }[] = [
+  { file: "crawler_data/ord_faq.md", unit: "ord" },
+  { file: "crawler_data/oa_faq.md", unit: "oa" },
+  { file: "crawler_data/lib_faq.md", unit: "library" },
+  { file: "crawler_data/cic_faq.md", unit: "cic" },
+  { file: "crawler_data/oia_faq.md", unit: "oia" },
+  { file: "crawler_data/eec_faq.md", unit: "eec" },
+  { file: "crawler_data/alu_faq.md", unit: "alumni" },
+  { file: "crawler_data/sus_faq.md", unit: "sustainable" },
+  { file: "crawler_data/edusp_faq.md", unit: "edusp" },
+  { file: "crawler_data/os_faq.md", unit: "os" },
+  { file: "crawler_data/pres_faq.md", unit: "president" },
+  { file: "crawler_data/vpa_faq.md", unit: "vice-president-academic" },
+  { file: "crawler_data/vpad_faq.md", unit: "vice-president-administration" },
+  { file: "crawler_data/vpf_faq.md", unit: "vice-president-financial" },
+  { file: "crawler_data/hr_content.md", unit: "op" },
+  { file: "crawler_data/oga_content.md", unit: "oga" },
+];
+
+/** 法規彙整表上沒有全文檔的單位對應的處室代碼（見 adapters/manual.ts 的 OWNER_UNITS）。 */
+const CATALOG_UNITS = ["os", "ord", "oia", "library", "ope", "oa", "cic", "eec", "alumni", "edusp", "lc", "academic"];
+
+function manualBase(id: string, unit: string, homepage: string) {
+  return {
+    id,
+    sourceUnit: unit,
+    sourceType: "manual_verified" as const,
+    trustLevel: "verified" as const,
+    homepageUrl: homepage,
+    newsUrlBase: REPO_BLOB,
+    origin: "https://github.com",
+    allowedPathPrefixes: [] as string[],
+    enabled: true,
+    fetch: MANUAL_FETCH,
+    freshness: DAILY,
+  };
+}
+
+const MANUAL_SOURCES: SourceDefinition[] = [
+  ...REGULATION_FULL_TEXT.map(
+    ({ unit, file, owners }): SourceDefinition => ({
+      ...manualBase(`${unit}-regulations`, unit, `${REPO_BLOB}/${file.split("/")[1]}`),
+      entrypoints: [REGULATION_CATALOG, file],
+      parser: "manual-regulations",
+      adapter: { kind: "manual-regulations", fullTextFile: file, catalogFile: REGULATION_CATALOG, catalogOwners: owners },
+      entityType: "regulation",
+    }),
+  ),
+  {
+    ...manualBase("regulation-catalog", "regulations", REPO_TREE),
+    entrypoints: [REGULATION_CATALOG],
+    parser: "manual-regulation-catalog",
+    adapter: {
+      kind: "manual-regulation-catalog",
+      catalogFile: REGULATION_CATALOG,
+      excludeOwners: REGULATION_FULL_TEXT.flatMap((r) => r.owners),
+    },
+    entityType: "regulation",
+    recordUnits: CATALOG_UNITS,
+  },
+  {
+    ...manualBase("office-faqs", "faq", REPO_TREE),
+    entrypoints: FAQ_FILES.map((f) => f.file),
+    parser: "manual-faq",
+    adapter: { kind: "manual-faq", files: FAQ_FILES },
+    entityType: "faq",
+    recordUnits: [...new Set(FAQ_FILES.map((f) => f.unit))],
+  },
+];
+
 /** 處室代碼 → 中文名稱（MCP 工具說明與回應使用）。 */
 export const UNIT_NAMES: Record<string, string> = {
   ord: "研究發展處",
@@ -57,6 +154,9 @@ export const UNIT_NAMES: Record<string, string> = {
   "vice-president-academic": "學術副校長室",
   "vice-president-administration": "行政副校長室",
   "vice-president-financial": "財務暨永續發展副校長室",
+  academic: "學術單位（學院、研究中心等）",
+  regulations: "全校法規彙編",
+  faq: "各處室常見問答",
 };
 
 /**
@@ -103,7 +203,7 @@ const strapiOrigin = {
  * 所有允許抓取的來源都在這裡宣告（規格 06 §6）。新增來源前需確認資料擁有者、
  * 是否公開、是否需要登入；需要 gm 登入的頁面不得加入。
  */
-export const SOURCES: readonly SourceDefinition[] = [
+const WEB_SOURCES: SourceDefinition[] = [
   ...STRAPI_ANNOUNCEMENT_UNITS.map(({ unit, siteKey, newsUrlBase }): SourceDefinition => {
     const base = newsUrlBase ?? `https://new.ntpu.edu.tw/${unit}/news`;
     return {
@@ -200,6 +300,8 @@ export const SOURCES: readonly SourceDefinition[] = [
   },
 ];
 
+export const SOURCES: readonly SourceDefinition[] = [...WEB_SOURCES, ...MANUAL_SOURCES];
+
 export function getSource(id: string): SourceDefinition | undefined {
   return SOURCES.find((s) => s.id === id);
 }
@@ -208,9 +310,18 @@ export function enabledSources(): SourceDefinition[] {
   return SOURCES.filter((s) => s.enabled);
 }
 
-/** 某類資料（公告或內容頁）有哪些處室。 */
+/** 某類資料有哪些處室；一個來源涵蓋多個處室時（recordUnits）列出那些處室。 */
 export function sourceUnits(entityType?: SourceDefinition["entityType"]): string[] {
-  return [...new Set(SOURCES.filter((s) => !entityType || s.entityType === entityType).map((s) => s.sourceUnit))].sort();
+  return [
+    ...new Set(
+      SOURCES.filter((s) => !entityType || s.entityType === entityType).flatMap((s) => s.recordUnits ?? [s.sourceUnit]),
+    ),
+  ].sort();
+}
+
+/** 這個來源有沒有某處室的資料。 */
+export function sourceCovers(source: SourceDefinition, unit: string): boolean {
+  return (source.recordUnits ?? [source.sourceUnit]).includes(unit);
 }
 
 export function unitName(unit: string): string | undefined {
@@ -223,7 +334,9 @@ export function assertRegistryValid(sources: readonly SourceDefinition[] = SOURC
   for (const source of sources) {
     if (ids.has(source.id)) throw new Error(`duplicate source id: ${source.id}`);
     ids.add(source.id);
-    if (!UNIT_NAMES[source.sourceUnit]) throw new Error(`unit has no name: ${source.sourceUnit}`);
+    for (const unit of [source.sourceUnit, ...(source.recordUnits ?? [])]) {
+      if (!UNIT_NAMES[unit]) throw new Error(`unit has no name: ${unit}`);
+    }
     validateSourceDefinition(source);
   }
 }

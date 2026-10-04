@@ -3,6 +3,8 @@ import type { SourceDefinition, SourceRequest } from "../types";
 /** adapter 正規化並通過 schema 驗證後的一筆資料。id 是來源給的編號（同一來源內唯一）。 */
 export interface AdapterRecord {
   id: string;
+  /** 資料所屬處室；沒給就是來源的 sourceUnit（一個來源涵蓋多個處室時才需要）。 */
+  unit?: string;
   payload: unknown;
   title: string;
   searchText: string;
@@ -12,6 +14,7 @@ export interface AdapterRecord {
 
 export interface RejectedRecord {
   id: string;
+  unit?: string;
   reason: string;
   /** 驗證失敗才算進 drift 比例；依規則排除的（例如個人資料）不算。 */
   countsTowardDrift: boolean;

@@ -1,5 +1,6 @@
 import { IngestionError } from "../shared/errors";
-import type { SourceDefinition, SourceRequest } from "./types";
+import { MANUAL_PATH } from "./manual-inbox";
+import { isManualSource, type SourceDefinition, type SourceRequest } from "./types";
 
 const ADAPTER_KINDS = ["strapi-publications", "strapi-sections", "html-news"];
 
@@ -107,10 +108,50 @@ export function resolveRequestUrl(source: SourceDefinition, request: Pick<Source
   return url;
 }
 
+/**
+ * 人工整理檔來源：不連網站，只讀 R2 manual/ 裡登記過的檔案。
+ * 檢查來源類型、可信度、檔案路徑，以及 adapter 讀的檔案都在 entrypoints 裡。
+ */
+function validateManualSource(source: SourceDefinition, fail: (why: string) => never): void {
+  if (source.sourceType !== "manual_verified") fail("manual source must be manual_verified");
+  if (source.trustLevel !== "verified") fail("manual source must have trustLevel verified");
+  if (source.entrypoints.length === 0) fail("entrypoints is empty");
+  for (const path of source.entrypoints) {
+    if (!MANUAL_PATH.test(path) || path.includes("..")) fail(`manual file path not allowed: ${path}`);
+  }
+  if (source.queryRules && Object.keys(source.queryRules).length > 0) fail("manual source must not have queryRules");
+  const cfg = source.adapter;
+  const files =
+    cfg.kind === "manual-regulations"
+      ? [cfg.fullTextFile, cfg.catalogFile]
+      : cfg.kind === "manual-regulation-catalog"
+        ? [cfg.catalogFile]
+        : cfg.kind === "manual-faq"
+          ? cfg.files.map((f) => f.file)
+          : [];
+  if (files.length === 0) fail("manual adapter reads no files");
+  for (const file of files) {
+    if (!source.entrypoints.includes(file)) fail(`adapter file not in entrypoints: ${file}`);
+  }
+  if (source.parser !== cfg.kind) fail(`unknown parser: ${source.parser}`);
+  const f = source.fetch;
+  if (f.methods.length !== 1 || f.methods[0] !== "GET") fail("manual source methods must be GET only");
+  if (!(f.maxResponseBytes > 0 && f.maxResponseBytes <= 10 * 1024 * 1024)) fail("maxResponseBytes missing or too large");
+  if (f.acceptedContentTypes.length === 0) fail("acceptedContentTypes is empty");
+  if (f.followRedirects || f.maxRedirects !== 0) fail("manual source must not follow redirects");
+  if (!(source.freshness.maxStalenessSeconds > 0)) fail("maxStalenessSeconds missing");
+  try {
+    if (new URL(source.homepageUrl).protocol !== "https:") fail("homepageUrl must be https");
+  } catch {
+    fail("homepageUrl is not a URL");
+  }
+}
+
 export function validateSourceDefinition(source: SourceDefinition): void {
-  const fail = (why: string) => {
+  const fail = (why: string): never => {
     throw new Error(`invalid source ${source.id}: ${why}`);
   };
+  if (isManualSource(source)) return validateManualSource(source, fail);
   let origin: URL;
   try {
     origin = new URL(source.origin);
