@@ -103,6 +103,24 @@ SYSTEM FAQ 的路由門檻預設由 Worker 傳入 Container：
 
 ---
 
+## 3.1 公告改從 MCP 查詢
+
+`get_latest_news`（最新公告）先查新 MCP（`https://aia.mcp.ntpu.ai/mcp`，`mcp/` 每天自動同步官網），
+查不到、逾時（8 秒）或錯誤時自動退回本機 `crawler_data`。回答用到 MCP 時，API 回傳 `data_updated_at`，
+前端在答案下方顯示「公告資料更新時間」（該處室公告最後一次完整同步官網的時間，台灣時間）。
+
+| 變數 | 預設 | 用途 |
+|---|---|---|
+| `MCP_ANNOUNCEMENTS` | `1` | 設 `0` 立即改回只用本機公告 |
+| `MCP_URL` | `https://aia.mcp.ntpu.ai/mcp` | MCP 端點 |
+
+緊急停用：Workers & Pages → `ntpu-aia-api` → Settings → Variables，新增 `MCP_ANNOUNCEMENTS = 0`，
+再重新部署（Actions 頁面 **Run workflow**）。理由同上：Durable Object 會沿用舊的環境變數直到被汰換。
+
+法規、常見問答仍用本機 FAISS（語意搜尋）；之後比較答案品質再決定是否也改用 MCP。
+
+---
+
 ## 4. 綁定正式網域 `aia.ntpu.ai`
 
 > **先在 `workers.dev` 測試通過再做這步。** `aia.ntpu.ai` 目前指向 GCP 且正在服務學生，

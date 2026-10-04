@@ -169,6 +169,7 @@ CORRECTIONS_PATH = os.path.join(BASE_DIR, "corrections.md")
 
 # 多處室資料來源（dept 代碼, 爬蟲檔路徑）
 from office_catalog import FAQ_OFFICES, FAQ_OFFICE_NAMES, OFFICE_SEARCH_GROUPS
+import mcp_client
 
 DEPT_NAMES = {"ope": "體育室", "ge": "通識教育中心", "lc": "語言中心",
               "oaa": "教務處", "osa": "學務處", "hr": "人事室",
@@ -1176,6 +1177,20 @@ def _reset_source_collector():
     _source_ctx.candidates = []
     _source_ctx.last_sources = []
     _source_ctx.last_source_ids = []
+    _source_ctx.data_updated_at = None
+
+
+def _note_data_updated_at(iso_time):
+    """本輪用到 MCP 資料時，記下資料最後同步時間；多次查詢取最早的，避免把舊資料說成新的。"""
+    if not iso_time:
+        return
+    current = getattr(_source_ctx, "data_updated_at", None)
+    _source_ctx.data_updated_at = iso_time if current is None else min(current, iso_time)
+
+
+def get_last_data_updated_at():
+    """本輪回答用到的 MCP 資料最後同步時間（ISO）；沒用到 MCP 時為 None。"""
+    return getattr(_source_ctx, "data_updated_at", None)
 
 
 def _source_id_for_doc(d: Document) -> str:
@@ -1558,12 +1573,83 @@ def tool_get_schedule(year: int = None) -> str:
     _record_direct_evidence(cand[:1], "課表工具找到最新資料")
     return build_answer_from_docs(cand[:1], "zh-TW", "最新體育課程/課表", "")
 
+MCP_NEWS_LIMIT = 6
+MCP_NEWS_FULL_TEXT = 3  # 前幾則另外取全文（search 只回 200 字摘要）
+
+
+def _format_news_block(date: str, title: str, preview: str, url: str = "") -> str:
+    lines = [f"【日期】：{date or '未註明日期'}", f"【標題】：{title}"]
+    if url:
+        lines.append(f"【連結】：{url}")
+    lines.append(f"【公告內容摘要】：\n{preview}\n")
+    return "\n".join(lines)
+
+
+def _latest_news_from_mcp(keyword: str, dept: str = None):
+    """從 MCP（每天自動同步官網）查公告；查不到或這個處室 MCP 沒有公告時回 None，改用本機資料。"""
+    unit = mcp_client.DEPT_TO_MCP_UNIT.get(dept) if dept else None
+    if dept and not unit:
+        return None
+    terms = (keyword or "").split()[:5]
+    attempts = [terms] + ([terms[:1]] if len(terms) > 1 else [])
+    search = None
+    for attempt in attempts:
+        args = {"limit": MCP_NEWS_LIMIT}
+        if unit:
+            args["unit"] = unit
+        if attempt:
+            args["keyword"] = " ".join(attempt)[:100]
+        search = mcp_client.call_tool("search_announcements", args)
+        if search.get("items"):
+            break
+    items = (search or {}).get("items") or []
+    if not items:
+        return None
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    def full_text(item):
+        try:
+            detail = mcp_client.call_tool("get_announcement", {"id": item["id"], "unit": item["unit"]})
+            return (detail.get("announcement") or {}).get("bodyText") or item.get("snippet", "")
+        except mcp_client.McpUnavailable:
+            return item.get("snippet", "")
+
+    head = items[:MCP_NEWS_FULL_TEXT]
+    with ThreadPoolExecutor(max_workers=len(head)) as pool:
+        bodies = list(pool.map(full_text, head)) + [i.get("snippet", "") for i in items[MCP_NEWS_FULL_TEXT:]]
+
+    docs, blocks = [], []
+    for item, body in zip(items, bodies):
+        url = (item.get("provenance") or {}).get("sourceUrl") or ""
+        date = (item.get("publishedAt") or "")[:10]
+        preview = unquote(body[:800])
+        docs.append(Document(page_content=preview, metadata={
+            "title": item.get("title", ""), "url": url, "type": "news", "date": date,
+            "dept": dept or "", "source_id": f"mcp:announcement:{item.get('unit')}:{item.get('id')}",
+        }))
+        blocks.append(_format_news_block(date, item.get("title", ""), preview, url))
+    _collect_source_docs(docs)
+    _record_direct_evidence(docs, "公告工具（MCP，每天同步官網）找到可引用的公告內容")
+    _note_data_updated_at(mcp_client.sync_time(search.get("freshness")))
+    return "\n---\n".join(blocks)
+
+
 def tool_get_latest_news(keyword: str = "", dept: str = None) -> str:
     """工具2：查詢最新消息（回傳日期＋標題＋內文摘要，讓 Agent 能讀到公告內的規則細節）
+
+    先查 MCP（每天自動同步官網）；MCP 關閉、連不上或查無資料時，退回本機 crawler_data。
 
     注意：本函式原本有兩個定義，後者（僅回標題連結清單）覆蓋了前者（含內文摘要），
     導致 Agent 查公告類問題時只看得到標題。2026-07-12 合併為含內文版本。
     """
+    if mcp_client.announcements_enabled():
+        try:
+            from_mcp = _latest_news_from_mcp(keyword, dept)
+            if from_mcp:
+                return from_mcp
+        except mcp_client.McpUnavailable as exc:
+            print(f"[MCP] 公告查詢失敗，改用本機資料：{exc}")
     docs = rank_news_for_query(keyword, n=6, dept=dept) if keyword else latest_news_snippets(n=6, dept=dept)
     _collect_source_docs(docs)
     _record_direct_evidence(docs, "公告工具找到可引用的公告內容")
@@ -3482,6 +3568,7 @@ async def chat_endpoint(req: ChatRequest, request: Request):
     sources = get_last_sources()
     return {
         "status": "ok", "answer": answer, "sources": sources,
+        "data_updated_at": get_last_data_updated_at(),
         "message_id": message_id, "conversation_id": conversation_id,
         "conversation_state": get_last_conversation_state(),
         "scope_status": _scope_status(decision.get("scope")),
@@ -3588,6 +3675,7 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
         yield _sse_payload({
             "type": "done",
             "answer": full_answer,
+            "data_updated_at": get_last_data_updated_at(),
             "message_id": message_id,
             "conversation_id": conversation_id,
             "conversation_state": get_last_conversation_state(),
