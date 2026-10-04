@@ -102,8 +102,7 @@ export const strapiSectionsAdapter: Adapter = {
     if (paths.length === 0 || paths.length > 50 || !paths.every((p) => PAGE_PATH.test(p))) {
       throw new IngestionError("URL_NOT_ALLOWED", `invalid page paths for ${source.id}`);
     }
-    const query =
-      `{ sections(where:{name_in:${JSON.stringify(paths)}}) ` + `{ _id name title content updatedAt } }`;
+    const query = `{ sections(where:{name_in:${JSON.stringify(paths)}}) { _id name title content updatedAt } }`;
     return [
       {
         request: {

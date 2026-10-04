@@ -28,7 +28,7 @@ function pageStep(source: SourceDefinition, page: number, nowIso: string): Step 
           skipped++;
           return;
         }
-        let a;
+        let a: ReturnType<typeof normalizeAnnouncement>;
         try {
           a = normalizeAnnouncement(row, source);
         } catch (err) {

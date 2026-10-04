@@ -192,11 +192,11 @@ export function splitKeywords(value: string | undefined): string[] {
 export function gregorianDateIso(value: string | null | undefined): string | null {
   const v = (value ?? "").trim();
   let y: number, m: number, d: number;
-  let match = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (match) [m, d, y] = [Number(match[1]), Number(match[2]), Number(match[3])];
-  else if ((match = v.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/))) {
-    [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])];
-  } else return null;
+  const mdy = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const ymd = v.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+  if (mdy) [m, d, y] = [Number(mdy[1]), Number(mdy[2]), Number(mdy[3])];
+  else if (ymd) [y, m, d] = [Number(ymd[1]), Number(ymd[2]), Number(ymd[3])];
+  else return null;
   if (y < 1900 || m < 1 || m > 12 || d < 1 || d > 31) return null;
   const date = new Date(Date.UTC(y, m - 1, d));
   if (date.getUTCMonth() !== m - 1) return null;
