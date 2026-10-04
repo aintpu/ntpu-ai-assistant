@@ -13,7 +13,7 @@
 | 08 §2 | 唯讀、R0、L0、無 scope | ✅ | 登記表；eval smoke 檢查查詢不改資料 |
 | 10 §4 | golden set（8 類） | ✅ | `evals/golden.json`、`tests/eval/smoke.test.ts` |
 | 10 §7 | contract snapshot | ✅ | `tests/contract/` |
-| 10 §10 | model-in-loop eval | ⬜ | 尚未實作；smoke 不代表模型選工具準確率 |
+| 10 §10 | model-in-loop eval | ✅ | `evaluate/mcp_records_model_eval.py`（repo 根目錄）：MCP 25/36、本機 19/36；見 `releases/2026-10-04-aia-uses-mcp.md` |
 | 10 | lint / typecheck / 測試 | ✅ | `npm test`（Biome + 183 tests）、`npm run typecheck` |
 | 11 §10 | production smoke | ✅ | `releases/2026-10-04-manual-sources.md` |
 | 11 | 上線紀錄 | ✅ | `releases/` |
@@ -21,4 +21,4 @@
 | 12 | ADR | ✅ | `adr/` |
 | 12 | 負責人 | ✅ | `ownership.md` |
 | 12 | 維運手冊、工具說明 | ✅ | `runbook.md`、`tools.md` |
-| — | production idempotent 重跑觀察 | 🟡 | 測試涵蓋；雲端完整一輪待觀察 |
+| 06 §22 | production idempotent 重跑 | ✅ | 19 個公告／介紹頁來源第二輪全部 published 0；人工整理檔第二輪 2026-10-05 確認 |
