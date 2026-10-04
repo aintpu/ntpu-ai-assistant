@@ -63,7 +63,8 @@ export const RegulationSchema = z
     fileUrl: z.string().url().max(2000).nullable(),
     tags: z.array(z.string().min(1).max(100)).max(30),
     updatedDate: z.string().max(40).nullable(),
-    sourceUrl: z.string().url().max(2000),
+    /** 官方連結；沒有就是 null（不另外指向 repo 等非官方網址）。 */
+    sourceUrl: z.string().url().max(2000).nullable(),
     sourceFile: SourceFileSchema,
   })
   .strict();
@@ -82,7 +83,8 @@ export const FaqSchema = z
     sourceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
     keywords: z.array(z.string().min(1).max(100)).max(50),
     details: z.string().max(10_000),
-    sourceUrl: z.string().url().max(2000),
+    /** 原檔的來源網址；沒有就是 null。 */
+    sourceUrl: z.string().url().max(2000).nullable(),
     sourceFile: SourceFileSchema,
   })
   .strict();
@@ -93,7 +95,8 @@ export const ProvenanceSchema = z
   .object({
     sourceId: z.string(),
     sourceUnit: z.string(),
-    sourceUrl: z.string().url(),
+    /** 官方來源網址。人工整理檔沒有官方連結時為 null，請改用文字標示來源，不要自行補連結。 */
+    sourceUrl: z.string().url().nullable(),
     sourceType: z.string(),
     trustLevel: z.string(),
     version: z.number().int().positive(),

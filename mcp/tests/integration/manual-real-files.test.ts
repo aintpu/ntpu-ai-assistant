@@ -105,9 +105,15 @@ describe("real crawler_data files", () => {
     expect(db.count("record_versions")).toBe(0);
   });
 
-  it("every record has a source URL, and provenance falls back to the repo file only when no official link exists", () => {
-    expect(count(`SELECT COUNT(*) n FROM entities WHERE entity_type IN ('regulation','faq') AND source_url NOT LIKE 'http%'`)).toBe(0);
-    // FAQ 每一題原檔都有來源網址，不應退回 repo 連結。
-    expect(count(`SELECT COUNT(*) n FROM entities WHERE entity_type='faq' AND source_url LIKE 'https://github.com/%'`)).toBe(0);
+  it("only official links are given; records without one have no URL at all (never a repo link)", () => {
+    expect(count(`SELECT COUNT(*) n FROM entities WHERE source_url LIKE '%github.com%'`)).toBe(0);
+    expect(count(`SELECT COUNT(*) n FROM entities WHERE source_url != '' AND source_url NOT LIKE 'http%'`)).toBe(0);
+    // 沒有官方連結的只有教務處、學務處配對不到彙整表的法規全文（136 + 146）。
+    expect(count(`SELECT COUNT(*) n FROM entities WHERE source_url = ''`)).toBe(282);
+    expect(
+      count(`SELECT COUNT(*) n FROM entities WHERE source_url = '' AND json_extract(payload_json,'$.sourceUrl') IS NOT NULL`),
+    ).toBe(0);
+    // FAQ 每一題原檔都有來源網址。
+    expect(count(`SELECT COUNT(*) n FROM entities WHERE entity_type='faq' AND source_url = ''`)).toBe(0);
   });
 });

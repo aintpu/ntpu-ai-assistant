@@ -8,7 +8,8 @@ export interface AdapterRecord {
   payload: unknown;
   title: string;
   searchText: string;
-  sourceUrl: string;
+  /** 官方來源網址；人工整理檔沒有官方連結時為 null。 */
+  sourceUrl: string | null;
   publishedAt: string | null;
 }
 

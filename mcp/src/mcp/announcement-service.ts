@@ -52,7 +52,7 @@ export function provenanceOf(row: AnnouncementRow): Provenance {
   return {
     sourceId: row.source_id,
     sourceUnit: row.source_unit,
-    sourceUrl: row.source_url,
+    sourceUrl: row.source_url || null,
     sourceType: row.source_type,
     trustLevel: row.trust_level,
     version: row.version,

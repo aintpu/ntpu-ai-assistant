@@ -1,4 +1,5 @@
 import type { AnnouncementRow, ReadRepository } from "../db/read-repository";
+import { unitName } from "../ingestion/source-registry";
 import { FaqSchema, RegulationSchema, type Faq, type Provenance, type Regulation } from "../shared/schemas";
 import { provenanceOf, SEARCH_LIMIT_MAX } from "./announcement-service";
 
@@ -27,6 +28,8 @@ export interface RegulationSummary {
   fileUrl: string | null;
   tags: string[];
   updatedDate: string | null;
+  /** 給人看的來源名稱（純文字）。provenance.sourceUrl 為 null 時，用這個標示來源。 */
+  sourceName: string;
   snippet: string;
   provenance: Provenance;
 }
@@ -46,6 +49,7 @@ function regulationSummary(r: Regulation, row: AnnouncementRow): RegulationSumma
     fileUrl: r.fileUrl,
     tags: r.tags,
     updatedDate: r.updatedDate,
+    sourceName: r.hasFullText ? `${r.owner}法規（人工整理資料）` : `${r.owner}法規彙整表（人工整理資料）`,
     snippet: r.bodyText.slice(0, SNIPPET_CHARS),
     provenance: provenanceOf(row),
   };
@@ -86,6 +90,8 @@ export interface FaqSummary {
   topic: string | null;
   division: string | null;
   sourceDate: string | null;
+  /** 給人看的來源名稱（純文字）。provenance.sourceUrl 為 null 時，用這個標示來源。 */
+  sourceName: string;
   snippet: string;
   provenance: Provenance;
 }
@@ -105,6 +111,7 @@ function faqSummary(f: Faq, row: AnnouncementRow): FaqSummary {
     topic: f.topic,
     division: f.division,
     sourceDate: f.sourceDate,
+    sourceName: `${unitName(f.unit) ?? f.unit}常見問答（人工整理資料）`,
     snippet: f.answer.slice(0, SNIPPET_CHARS),
     provenance: provenanceOf(row),
   };
