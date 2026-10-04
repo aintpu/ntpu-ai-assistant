@@ -61,9 +61,14 @@ export class ReadRepository {
       // lower() 保留 LIKE 原本「英文不分大小寫」的行為；instr 不認萬用字元，% 與 _ 照字面比對。
       where.push(`instr(lower(e.search_text), lower(${bind(term)})) > 0`);
     }
+    // 有關鍵字時，標題（FAQ 為問題）含越多關鍵字的排越前面，同分再依日期新到舊。
+    // 否則內文順帶提到關鍵字的新公告（例如獎學金要附成績單）會把真正相關的舊說明擠出結果。
+    const titleScore = q.keywords.length
+      ? `${q.keywords.map((term) => `(instr(lower(e.title), lower(${bind(term)})) > 0)`).join(" + ")} DESC, `
+      : "";
     const sql = `SELECT ${ROW_COLUMNS} FROM entities e JOIN sources s ON s.id = e.source_id
       WHERE ${where.join(" AND ")}
-      ORDER BY e.published_at DESC, e.stable_key ASC
+      ORDER BY ${titleScore}e.published_at DESC, e.stable_key ASC
       LIMIT ${bind(q.limit)}`;
     const { results } = await this.db
       .prepare(sql)

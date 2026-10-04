@@ -109,6 +109,14 @@ describe("MCP endpoint", () => {
     expect(byDate.body.result.structuredContent.items.map((i: any) => i.title)).toEqual(["產學合作說明會"]);
   });
 
+  it("keyword results put title matches before newer body-only matches", async () => {
+    // 「研究倫理講座」較新但只有內文提到「計畫」；「國科會專題研究計畫徵件」標題就有「計畫」。
+    const { body } = await call("search_announcements", { keyword: "計畫" });
+    expect(body.result.structuredContent.items.map((i: any) => i.title)).toEqual(["國科會專題研究計畫徵件", "研究倫理講座"]);
+    const noKeyword = await call("search_announcements", { unit: "ord" });
+    expect(noKeyword.body.result.structuredContent.items[0].title).toBe("研究倫理講座"); // 沒關鍵字仍依日期
+  });
+
   it("returns an explicit no-result instead of guessing", async () => {
     const { body } = await call("search_announcements", { keyword: "不存在的主題" });
     expect(body.result.structuredContent).toMatchObject({ count: 0, noResult: true, items: [] });
