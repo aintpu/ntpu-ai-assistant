@@ -79,6 +79,12 @@ class TestStatement {
 
   private check() {
     if (this.db.failOn?.(this.sql)) throw new Error("injected failure");
+    // 模擬 D1：LIKE／GLOB 樣式上限約 50 bytes（node:sqlite 預設 50000，不會擋）。
+    if (/\b(LIKE|GLOB)\b/i.test(this.sql)) {
+      for (const p of this.params) {
+        if (typeof p === "string" && Buffer.byteLength(p) > 50) throw new Error("LIKE or GLOB pattern too complex: SQLITE_ERROR");
+      }
+    }
   }
 
   runSync() {

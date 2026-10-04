@@ -191,6 +191,15 @@ describe("MCP endpoint", () => {
     expect(body.result?.isError ?? Boolean(body.error)).toBe(true);
   });
 
+  it("long keywords do not break the search", async () => {
+    // D1 的 LIKE 樣式上限約 50 bytes：17 個中文字的關鍵字以前會 INTERNAL_ERROR。
+    const long = await call("search_announcements", { keyword: "國科會專題研究計畫徵件國科會專題研究計畫徵件" });
+    expect(long.body.result.isError).toBeFalsy();
+    expect(long.body.result.structuredContent).toMatchObject({ count: 0, noResult: true });
+    const exact = await call("search_announcements", { keyword: "國科會專題研究計畫徵件" });
+    expect(exact.body.result.structuredContent.count).toBe(1);
+  });
+
   it("SQL-like keywords are bound parameters, not SQL", async () => {
     const { body } = await call("search_announcements", { keyword: "%' OR '1'='1" });
     expect(body.result.structuredContent).toMatchObject({ count: 0, noResult: true });
