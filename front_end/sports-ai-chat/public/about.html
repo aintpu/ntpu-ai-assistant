@@ -210,8 +210,8 @@
 
   /* ---------- scope detail ---------- */
   /* flex + wrap（而非固定三欄）：處室數量非 3 的倍數時，末排會置中而不留空格 */
-  .scope-grid{display:flex;flex-wrap:wrap;gap:22px;justify-content:center}
-  .dept{flex:1 1 296px;max-width:336px;background:var(--white);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;transition:transform .2s,box-shadow .2s}
+  .scope-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+  .dept{background:var(--white);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;transition:transform .2s,box-shadow .2s}
   .dept:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
   .dept-top{padding:22px 24px 18px;background:linear-gradient(135deg,var(--navy),var(--navy-deep));color:#fff;position:relative}
   .dept:nth-child(even) .dept-top{background:linear-gradient(135deg,var(--plum),#6e1f37)}
@@ -293,6 +293,7 @@
     .arch-flow{grid-template-columns:1fr 1fr}
     .node:nth-child(2)::after{display:none}
     .layers{grid-template-columns:1fr}
+    .scope-grid{grid-template-columns:1fr 1fr}
   }
   @media(max-width:640px){
     .brand span span.zh, .brand span span.en{font-size:14.5px}
@@ -306,7 +307,7 @@
     .langbtn{margin-left:0}
     .feat-grid,.arch-flow,.step-list{grid-template-columns:1fr}
     .faq-grid{grid-template-columns:1fr}
-    .dept{flex-basis:100%;max-width:none}
+    .scope-grid{grid-template-columns:1fr}
     .node::after{display:none!important}
     .notice{grid-template-columns:1fr;padding:26px}
     .center-card{padding:16px;gap:13px}
@@ -558,8 +559,6 @@
           <li><span class="zh">最新公告（每天同步官網）</span><span class="en">Latest announcements (synced daily)</span></li>
         </ul></div>
       </div>
-    </div>
-    <div class="scope-grid">
       <div class="dept reveal">
         <div class="dept-top"><div class="code">ORD</div><h3><span class="zh">研究發展處</span><span class="en">Office of Research and Development</span></h3></div>
         <div class="dept-body"><ul>
