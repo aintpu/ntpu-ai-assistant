@@ -115,10 +115,22 @@ SYSTEM FAQ 的路由門檻預設由 Worker 傳入 Container：
 | `MCP_REGULATIONS` | `0` | 設 `1` 讓法規、常見問答改查 MCP（教務、學務、人事、總務與 13 個 FAQ 處室；體育室、通識、語言中心、校長室維持本機） |
 | `MCP_URL` | `https://aia.mcp.ntpu.ai/mcp` | MCP 端點 |
 
-緊急停用：Workers & Pages → `ntpu-aia-api` → Settings → Variables，新增 `MCP_ANNOUNCEMENTS = 0`，
-再重新部署（Actions 頁面 **Run workflow**）。理由同上：Durable Object 會沿用舊的環境變數直到被汰換。
+**開關用 secret 設定**：`cf/wrangler.jsonc` 沒有 `keep_vars`，在後台加的一般變數會在下次 `wrangler deploy` 時被清掉；
+secret 會保留。設定後要重新部署一次（Actions 頁面 **Run workflow**，或 `gh workflow run deploy.yml`），
+因為 Durable Object 會沿用舊的環境變數直到被汰換；新容器接手可能要等幾分鐘。
 
-法規、常見問答預設仍用本機 FAISS（語意搜尋）；`MCP_REGULATIONS=1` 時改查 MCP（模型另給關鍵詞做關鍵字比對），查不到或證據不足時同樣退回本機。開啟前先跑 `evaluate/mcp_records_eval.py` 比對兩條路線。
+```bash
+cd mcp   # 用這裡的 wrangler
+printf '0' | npx wrangler secret put MCP_REGULATIONS --name ntpu-aia-api    # 緊急停用法規／FAQ 改查 MCP
+printf '0' | npx wrangler secret put MCP_ANNOUNCEMENTS --name ntpu-aia-api  # 緊急停用公告改查 MCP
+gh workflow run deploy.yml --ref main
+```
+
+目前狀態（2026-10-04 起）：`MCP_REGULATIONS=1`（secret），`MCP_ANNOUNCEMENTS` 未設定（預設 1）。
+
+法規、常見問答在 `MCP_REGULATIONS=1` 時改查 MCP（模型另給關鍵詞做關鍵字比對），查不到或證據不足時退回本機 FAISS。
+體育室、通識、語言中心、校長室維持本機。開啟依據：`evaluate/mcp_records_model_eval.py`（正式模型、36 題）
+MCP 25/36、本機 19/36，回應時間中位數 9.1 秒 vs 32.0 秒（2026-10-04）。
 
 ---
 
