@@ -199,6 +199,7 @@
   .bubble.typing-bubble{max-width:auto;width:fit-content}
 
   .layers{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:44px}
+  .layer-wide{grid-column:1/-1}
   .layer{background:var(--white);border:1px solid var(--line);border-radius:var(--r);padding:26px;display:flex;gap:18px}
   .layer .lic{flex:none;width:44px;height:44px;border-radius:11px;display:grid;place-items:center;background:var(--navy);color:#fff}
   .layer:nth-child(even) .lic{background:var(--plum)}
@@ -356,8 +357,8 @@
         <span class="en">Campus answers,<br><span class="accent">just ask</span></span>
       </h1>
       <p class="hero-lead">
-        <span class="zh">把分散在各處室網站與 PDF 的規定、公告與常見問答，整合成一個用自然語言就能查詢的智慧入口，回答並附上官方資料來源。</span>
-        <span class="en">A single smart entry point that turns rules, announcements, and FAQs scattered across office websites and PDFs into natural-language answers — each with an official source link.</span>
+        <span class="zh">把分散在各處室網站與 PDF 的規定、公告與常見問答，整合成一個用自然語言就能查詢的智慧入口；各處室官網公告每天自動同步，回答附上官方資料來源與資料更新時間。</span>
+        <span class="en">A single smart entry point that turns rules, announcements, and FAQs scattered across office websites and PDFs into natural-language answers. Office announcements sync daily, and each answer cites its official source and data update time.</span>
       </p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="https://aia.ntpu.ai" target="_blank" rel="noopener">
@@ -436,8 +437,8 @@
       </div>
       <div class="feat reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8h14M5 8a2 2 0 1 1 0-4h14a2 2 0 1 1 0 4M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg></div>
-        <h3><span class="zh">雙搜尋更準</span><span class="en">Hybrid retrieval</span></h3>
-        <p><span class="zh">同時用「語意搜尋」與「關鍵字搜尋」找資料，兼顧理解語意與精準比對。</span><span class="en">Combines semantic and keyword search to match both meaning and exact terms.</span></p>
+        <h3><span class="zh">有版本的資料庫</span><span class="en">Versioned data</span></h3>
+        <p><span class="zh">公告、法規與常見問答存放在有版本紀錄的資料庫，透過 MCP 查詢；每筆都記錄來源、驗證時間與內容雜湊，可追溯不竄改。</span><span class="en">Announcements, regulations, and FAQs live in a versioned database queried through MCP; every record keeps its source, verification time, and content hash.</span></p>
       </div>
       <div class="feat reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8l4-4h6l4 4"/><circle cx="12" cy="14" r="4"/><path d="M2 8h20v12H2z"/></svg></div>
@@ -446,8 +447,8 @@
       </div>
       <div class="feat reveal">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></div>
-        <h3><span class="zh">可持續擴充</span><span class="en">Built to grow</span></h3>
-        <p><span class="zh">模組化設計，未來可逐步納入更多處室，服務範圍持續擴大。</span><span class="en">A modular design lets more offices join over time, expanding coverage step by step.</span></p>
+        <h3><span class="zh">每天同步官網</span><span class="en">Synced daily</span></h3>
+        <p><span class="zh">17 個單位的官網公告每天自動抓取更新，回答下方標示資料更新時間，不必等人工整理。</span><span class="en">Announcements from 17 units are fetched automatically every day, and answers show when the data was last synced.</span></p>
       </div>
     </div>
   </div>
@@ -612,10 +613,10 @@
         <div class="dept-body"><ul><li><span class="zh">已匯入的常見問答與官方來源</span><span class="en">Imported FAQs and official sources</span></li></ul></div>
       </div>
     </div>
-    <p class="arch-note"><span class="zh">本次新增 14 個單位共 938 題 FAQ（2026-10-02 匯入），未宣稱涵蓋完整法規全文或即時公告；請核對每題來源日期與官方連結。</span><span class="en">The 14 new units add 938 FAQs imported on October 2, 2026, not complete regulations or live announcements. Check each source date and official link.</span></p>
+    <p class="arch-note"><span class="zh"><strong>最新公告</strong>：17 個單位的官網公告每天自動同步（校長室與副校長室官網沒有公告）。<strong>法規與常見問答</strong>：教務處、學務處、人事室、總務處、通識教育中心的法規全文、各單位法規彙整表，以及 14 個單位提供的 938 題常見問答，均由人工整理後收錄，請核對每題來源日期與官方連結。</span><span class="en"><strong>Announcements</strong>: official announcements from 17 units sync daily (the President and Vice President offices publish none). <strong>Regulations and FAQs</strong>: full-text regulations from Academic Affairs, Student Affairs, Personnel, General Affairs, and General Education, the regulation catalog, plus 938 FAQs supplied by 14 units, are curated manually — check each source date and official link.</span></p>
     <p class="arch-note arch-note-spaced">
-      <span class="zh">教務處與學務處目前以<strong>法規條文</strong>為主要資料來源，尚未納入最新消息與常見問答；<br>詢問報名期限、承辦窗口等時效性資訊時，請以該處室官網公告為準。</span>
-      <span class="en">Academic Affairs and Student Affairs currently draw on <strong>regulations</strong> only — news and FAQs are not yet included.<br>For deadlines or contact details, please refer to each office's official announcements.</span>
+      <span class="zh">法規彙整表多數單位只列出部分法規；詢問報名期限、承辦窗口等時效性資訊時，仍請以該處室官網公告為準。</span>
+      <span class="en">The regulation catalog lists only part of each unit's regulations. For deadlines or contact details, please still refer to each office's official announcements.</span>
     </p>
   </div>
 </section>
@@ -626,16 +627,16 @@
     <div class="sec-head reveal">
       <div class="sec-kicker"><span class="zh">系統架構</span><span class="en">Architecture</span></div>
       <h2 class="sec-title"><span class="zh">一個問題，如何變成答案</span><span class="en">From question to answer</span></h2>
-      <p class="sec-sub"><span class="zh">系統採「先檢索、再生成」（RAG）的作法：先從知識庫找出最相關的官方資料，再交由 AI 整理成通順回答。</span><span class="en">The system uses retrieval-augmented generation (RAG): it first finds the most relevant official material, then has AI compose a readable answer.</span></p>
+      <p class="sec-sub"><span class="zh">系統採「先檢索、再生成」（RAG）的作法：先透過 MCP 與知識庫找出最相關的官方資料，再交由 AI 整理成通順回答。</span><span class="en">The system uses retrieval-augmented generation (RAG): it first finds the most relevant official material through MCP and the knowledge base, then has AI compose a readable answer.</span></p>
     </div>
     <div class="arch">
       <div class="arch-flow">
         <div class="node reveal"><div class="tag">Step 1</div><h4><span class="zh">判斷處室</span><span class="en">Route</span></h4><p><span class="zh">辨識問題屬於哪一個處室的範圍。</span><span class="en">Identify which office the question belongs to.</span></p></div>
-        <div class="node reveal"><div class="tag">Step 2</div><h4><span class="zh">檢索資料</span><span class="en">Retrieve</span></h4><p><span class="zh">語意 + 關鍵字雙搜尋，找出最相關內容。</span><span class="en">Semantic + keyword search find the best matches.</span></p></div>
+        <div class="node reveal"><div class="tag">Step 2</div><h4><span class="zh">檢索資料</span><span class="en">Retrieve</span></h4><p><span class="zh">透過 MCP 查公告、法規與常見問答；查不到時改用語意＋關鍵字搜尋。</span><span class="en">Query announcements, regulations, and FAQs via MCP; fall back to semantic + keyword search.</span></p></div>
         <div class="node reveal"><div class="tag">Step 3</div><h4><span class="zh">AI 整理</span><span class="en">Generate</span></h4><p><span class="zh">語言模型將資料整理成通順回答。</span><span class="en">The language model composes a clear answer.</span></p></div>
         <div class="node reveal"><div class="tag">Step 4</div><h4><span class="zh">附上來源</span><span class="en">Cite</span></h4><p><span class="zh">回傳答案並附官方資料連結。</span><span class="en">Return the answer with official source links.</span></p></div>
       </div>
-      <p class="arch-note"><span class="zh">知識庫由各處室公開資料經爬蟲蒐集、整理與人工校正而成。</span><span class="en">The knowledge base is built from public office data via crawling, curation, and manual correction.</span></p>
+      <p class="arch-note"><span class="zh">官網公告由排程每天自動抓取；法規與常見問答由人工整理後上傳。兩者都經 schema 驗證、保存原始檔與版本紀錄後，才提供給 MCP 查詢。</span><span class="en">Announcements are fetched daily on a schedule; regulations and FAQs are curated and uploaded. Both are schema-validated, archived, and versioned before MCP serves them.</span></p>
     </div>
 
     <div class="layers">
@@ -660,8 +661,14 @@
       <div class="layer reveal">
         <div class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 10a6 6 0 0 0-11.3-2A4.5 4.5 0 0 0 7 17h11a4 4 0 0 0 0-8z"/></svg></div>
         <div><h4><span class="zh">部署 · 雲端平台</span><span class="en">Deployment · Cloud</span></h4>
-        <div class="stack" id="deployment-stack">Cloudflare Workers · Containers · Durable Objects</div>
-        <p><span class="zh" id="deployment-zh">前端靜態資源與 API 由同一個 Cloudflare Worker 提供；FastAPI、FAISS 與 BM25 執行於 Cloudflare Container，對話狀態保存於 Durable Object storage，API 金鑰以 Worker Secret 管理。</span><span class="en" id="deployment-en">One Cloudflare Worker serves the static frontend and API gateway; FastAPI, FAISS, and BM25 run in a Cloudflare Container, conversation state is stored in Durable Object storage, and API keys are managed as Worker Secrets.</span></p></div>
+        <div class="stack" id="deployment-stack">Cloudflare Workers · Containers · Durable Objects · D1 · R2</div>
+        <p><span class="zh" id="deployment-zh">前端靜態資源與 API 由同一個 Cloudflare Worker 提供；FastAPI、FAISS 與 BM25 執行於 Cloudflare Container，對話狀態保存於 Durable Object storage，API 金鑰以 Worker Secret 管理。公告、法規與常見問答由另一組 Worker 每天同步到 D1（原始檔存 R2），透過唯讀 MCP 服務 aia.mcp.ntpu.ai 查詢。</span><span class="en" id="deployment-en">One Cloudflare Worker serves the static frontend and API gateway; FastAPI, FAISS, and BM25 run in a Cloudflare Container, conversation state is stored in Durable Object storage, and API keys are managed as Worker Secrets. Announcements, regulations, and FAQs are synced daily by separate Workers into D1 (raw files in R2) and queried through the read-only MCP service at aia.mcp.ntpu.ai.</span></p></div>
+      </div>
+      <div class="layer layer-wide reveal">
+        <div class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></div>
+        <div><h4><span class="zh">資料層 · MCP</span><span class="en">Data layer · MCP</span></h4>
+        <div class="stack">Cloudflare Workers · D1 · R2 · Model Context Protocol</div>
+        <p><span class="zh">依 AI4X MCP Core 規格建置：排程 Worker 每天抓取 28 個來源，原始回應存 R2、驗證後寫入 D1 並保存版本；唯讀的 MCP 服務（aia.mcp.ntpu.ai）提供 8 個查詢工具，聊天機器人與其他支援 MCP 的 AI 都能使用。</span><span class="en">Built to the AI4X MCP Core specification: a scheduled Worker fetches 28 sources daily, archives raw responses in R2, and writes validated, versioned records to D1. A read-only MCP service (aia.mcp.ntpu.ai) offers 8 query tools for this assistant and any MCP-capable AI.</span></p></div>
       </div>
     </div>
   </div>
@@ -695,7 +702,7 @@
           <li><span class="n">2</span><span class="zh">涉及個人權益的事項（<b>學分認定、免修資格、報名期限等</b>），請以各處室官方公告或正式函文為準，並向承辦單位確認。</span><span class="en">For matters affecting your rights (<b>credit recognition, exemption eligibility, deadlines</b>), rely on official announcements and confirm with the responsible office.</span></li>
           <li><span class="n">3</span><span class="zh">建議點擊回答附上的<b>資料來源連結</b>，查看官方原文。</span><span class="en">Please click the <b>source links</b> in each answer to read the official text.</span></li>
           <li><span class="n">4</span><span class="zh">請勿在對話中輸入<b>個人敏感資料</b>（身分證字號、密碼、金融資訊等）。</span><span class="en">Do not enter <b>sensitive personal data</b> (ID numbers, passwords, financial info) in the chat.</span></li>
-          <li><span class="n">5</span><span class="zh">知識庫為<b>定期整理</b>，非即時同步；最新或緊急公告仍以處室官網為準。</span><span class="en">The knowledge base is <b>updated periodically</b>, not in real time; for the latest or urgent notices, check the office's official site.</span></li>
+          <li><span class="n">5</span><span class="zh">官網公告<b>每天同步一次</b>，並非即時；回答下方會標示資料更新時間，最新或緊急公告仍以處室官網為準。</span><span class="en">Announcements <b>sync once a day</b>, not in real time; answers show the data update time. For the latest or urgent notices, check the office's official site.</span></li>
         </ul>
       </div>
     </div>
