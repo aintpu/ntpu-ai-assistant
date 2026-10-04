@@ -1729,9 +1729,132 @@ def _incumbent_docs(dept: str) -> List[Document]:
     ]
 
 
+MCP_RECORD_LIMIT = 6
+MCP_RECORD_SEARCH_LIMIT = 20  # 每次搜尋多抓一些，排序後再取前 MCP_RECORD_LIMIT 筆
+MCP_RECORD_FULL_TEXT = 3  # 前幾筆另外取全文（search 只回摘要）
+
+
+def mcp_records_available(dept: str = None) -> bool:
+    """這個處室的法規、常見問答可改查 MCP，且開關開著。"""
+    return bool(dept) and dept in mcp_client.DEPT_TO_MCP_RECORD_UNITS and mcp_client.records_enabled()
+
+
+def _record_search_terms(keywords: str) -> list:
+    terms = []
+    for raw in re.split(r"[\s，,、;；]+", keywords or ""):
+        t = raw.strip("。？?！!「」()（）")
+        if t and t not in terms:
+            terms.append(t)
+    return terms[:5]
+
+
+def _record_document(kind: str, item: dict, detail: dict, dept: str) -> Document:
+    prov = item.get("provenance") or {}
+    source_name = item.get("sourceName") or ""
+    if kind == "faq":
+        title = item.get("question", "")
+        body = "\n".join(p for p in ((detail or {}).get("answer"), (detail or {}).get("details")) if p) \
+            or item.get("snippet", "")
+        url = prov.get("sourceUrl") or ""
+        category = "常見問答"
+    else:
+        title = item.get("title", "")
+        body = (detail or {}).get("bodyText") or item.get("snippet", "")
+        if not item.get("hasFullText"):
+            body = f"（法規彙整表目錄，無條文全文，請引導使用者開啟官方檔案）\n{body}"
+        url = item.get("fileUrl") or prov.get("sourceUrl") or ""
+        category = "法規"
+    if source_name:
+        category += f"（來源：{source_name}）"
+    return Document(page_content=unquote(body), metadata={
+        "title": title, "url": url, "type": kind, "category": category, "dept": dept,
+        "date": item.get("sourceDate") or item.get("updatedDate") or "",
+        "source_id": f"mcp:{kind}:{item.get('unit')}:{item.get('id')}",
+    })
+
+
+def _records_from_mcp(search_query: str, keywords: str, dept: str):
+    """從 MCP 查法規與常見問答（人工整理檔，有版本紀錄）。
+
+    MCP 是關鍵字比對：先用全部關鍵字一起查，查不到再逐一用單一關鍵字查，
+    以符合的關鍵字數排序。查不到、證據不足或處室不在對應表時回 None，改用本機索引。
+    """
+    units = mcp_client.DEPT_TO_MCP_RECORD_UNITS.get(dept) if dept else None
+    terms = _record_search_terms(keywords)
+    if not units or not terms:
+        return None
+    reg_unit, faq_unit = units
+    targets = [(k, tool, u) for k, tool, u in (
+        ("faq", "search_faqs", faq_unit), ("regulation", "search_regulations", reg_unit)) if u]
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    def search(job):
+        (kind, tool, unit), attempt = job
+        res = mcp_client.call_tool(tool, {"keyword": " ".join(attempt)[:100], "unit": unit, "limit": MCP_RECORD_SEARCH_LIMIT})
+        return kind, attempt, res
+
+    scored, freshness = {}, []
+    attempts = [terms] + ([[t] for t in terms] if len(terms) > 1 else [])
+    for round_attempts in (attempts[:1], attempts[1:]):
+        jobs = [(t, a) for a in round_attempts for t in targets]
+        if not jobs:
+            break
+        with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+            for kind, attempt, res in pool.map(search, jobs):
+                freshness += res.get("freshness") or []
+                for item in res.get("items") or []:
+                    entry = scored.setdefault((kind, item["id"]), [0, kind, item])
+                    entry[0] += len(attempt)
+                    # 關鍵字出現在標題／問題的排前面（內文只是順帶提到的排後面）
+                    heading = item.get("question") or item.get("title") or ""
+                    entry[0] += sum(2 for t in attempt if t.lower() in heading.lower())
+        if scored:
+            break
+    if not scored:
+        return None
+
+    ranked = sorted(scored.values(), key=lambda e: -e[0])[:MCP_RECORD_LIMIT]
+
+    def full(entry):
+        _, kind, item = entry
+        tool, field = ("get_faq", "faq") if kind == "faq" else ("get_regulation", "regulation")
+        try:
+            return mcp_client.call_tool(tool, {"id": item["id"]}).get(field)
+        except mcp_client.McpUnavailable:
+            return None
+
+    head = ranked[:MCP_RECORD_FULL_TEXT]
+    with ThreadPoolExecutor(max_workers=len(head)) as pool:
+        details = list(pool.map(full, head)) + [None] * (len(ranked) - len(head))
+    docs = [_record_document(kind, item, detail, dept) for (_, kind, item), detail in zip(ranked, details)]
+
+    evidence = check_evidence_sufficiency(search_query, docs)
+    if not evidence.sufficient:
+        return None
+    _record_evidence(evidence.to_dict())
+    _collect_source_docs(docs)
+    _note_data_updated_at(mcp_client.sync_time(freshness))
+    return (
+        "請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。"
+        "這些是各處室提供的人工整理資料；【來源網址】空白時只以文件類型括號內的來源名稱文字標示來源，不要自行產生連結：\n\n"
+        + build_context_snippets(docs)
+    )
+
+
 def tool_search_database(search_query: str, dept: str = None,
-                         previous_source_docs: List[Document] = None) -> str:
-    """工具3：通用知識與法規檢索（偏文件摘錄）"""
+                         previous_source_docs: List[Document] = None, keywords: str = "") -> str:
+    """工具3：通用知識與法規檢索（偏文件摘錄）
+
+    MCP_REGULATIONS 開啟且處室在對應表時先查 MCP；關閉、連不上、查無資料或證據不足時用本機索引。
+    """
+    if keywords and mcp_records_available(dept):
+        try:
+            from_mcp = _records_from_mcp(search_query, keywords, dept)
+            if from_mcp:
+                return from_mcp
+        except mcp_client.McpUnavailable as exc:
+            print(f"[MCP] 法規／常見問答查詢失敗，改用本機資料：{exc}")
     if dept in OFFICE_SEARCH_GROUPS and "副校長" in (search_query or ""):
         # 未指定哪一位副校長：各副校長室分別檢索，並固定帶入「現任…是誰」那題，
         # 避免合併排序或「有哪些」這類問法漏掉某一位的姓名。
@@ -2247,6 +2370,17 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
         },
     ]
     
+    if mcp_records_available(dept):
+        # 法規／常見問答改查 MCP（關鍵字比對），需要模型另外給出關鍵詞。
+        for tool in tools:
+            if tool["name"] == "search_regulations_and_general":
+                tool["parameters"]["properties"]["keywords"] = {
+                    "type": "string",
+                    "description": "從問題擷取 1–3 個最能代表主題的短詞，以空白分隔，例如：請假 、 校友證 補發 、 vpn。"
+                                   "用文件裡可能出現的原詞，不要放「規定」「如何」「請問」這類通用字。",
+                }
+                tool["parameters"]["required"] = ["search_query", "keywords"]
+
     # FAQ-only offices must not call tools backed exclusively by sports data.
     if dept in FAQ_OFFICES:
         allowed = {"search_regulations_and_general", "record_correction"}
@@ -2455,6 +2589,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
                         search_query,
                         dept=dept,
                         previous_source_docs=previous_source_docs,
+                        keywords=str(args.get("keywords") or "").strip(),
                     )
                 elif function_name == "get_competition_records":
                     ctx = tool_get_competition_records(

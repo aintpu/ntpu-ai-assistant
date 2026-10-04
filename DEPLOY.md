@@ -107,17 +107,18 @@ SYSTEM FAQ 的路由門檻預設由 Worker 傳入 Container：
 
 `get_latest_news`（最新公告）先查新 MCP（`https://aia.mcp.ntpu.ai/mcp`，`mcp/` 每天自動同步官網），
 查不到、逾時（8 秒）或錯誤時自動退回本機 `crawler_data`。回答用到 MCP 時，API 回傳 `data_updated_at`，
-前端在答案下方顯示「公告資料更新時間」（該處室公告最後一次完整同步官網的時間，台灣時間）。
+前端在答案下方顯示「資料更新時間」（用到的 MCP 資料最後一次完整同步的時間，多個來源取最早，台灣時間）。
 
 | 變數 | 預設 | 用途 |
 |---|---|---|
 | `MCP_ANNOUNCEMENTS` | `1` | 設 `0` 立即改回只用本機公告 |
+| `MCP_REGULATIONS` | `0` | 設 `1` 讓法規、常見問答改查 MCP（教務、學務、人事、總務與 13 個 FAQ 處室；體育室、通識、語言中心、校長室維持本機） |
 | `MCP_URL` | `https://aia.mcp.ntpu.ai/mcp` | MCP 端點 |
 
 緊急停用：Workers & Pages → `ntpu-aia-api` → Settings → Variables，新增 `MCP_ANNOUNCEMENTS = 0`，
 再重新部署（Actions 頁面 **Run workflow**）。理由同上：Durable Object 會沿用舊的環境變數直到被汰換。
 
-法規、常見問答仍用本機 FAISS（語意搜尋）；之後比較答案品質再決定是否也改用 MCP。
+法規、常見問答預設仍用本機 FAISS（語意搜尋）；`MCP_REGULATIONS=1` 時改查 MCP（模型另給關鍵詞做關鍵字比對），查不到或證據不足時同樣退回本機。開啟前先跑 `evaluate/mcp_records_eval.py` 比對兩條路線。
 
 ---
 

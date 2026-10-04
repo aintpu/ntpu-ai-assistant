@@ -14,7 +14,7 @@ const LABELS = {
     disclaimer: "📌 回答由 AI 整理，最新資訊請以各單位官方公告為準。",
     sources: "參考來源",
     systemSources: "系統說明",
-    dataUpdatedAt: "公告資料更新時間",
+    dataUpdatedAt: "資料更新時間",
     langLabel: "語言",
     welcome: "有什麼我能幫你的？",
     welcomeSub: "支援 21 個單位：體育室・通識教育中心・語言中心・教務處・學務處・人事室・總務處・研究發展處・主計室・圖書館・資訊中心・國際事務處・進修暨推廣部・校友中心・永續辦公室・高等教育深耕計畫辦公室・秘書室・學術副校長室・行政副校長室・財務暨永續發展副校長室・校長室。回答範圍以已匯入資料為限。",
@@ -55,7 +55,7 @@ const LABELS = {
     disclaimer: "📌 AI-generated answers. Please refer to official announcements for the latest information.",
     sources: "Sources",
     systemSources: "About this system",
-    dataUpdatedAt: "Announcements last synced",
+    dataUpdatedAt: "Data last synced",
     langLabel: "Language",
     welcome: "How can I help you?",
     welcomeSub:

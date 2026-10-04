@@ -117,6 +117,8 @@ export class NtpuAiaBackend extends Container {
       // 公告改從 MCP（aia.mcp.ntpu.ai，每天同步官網）查詢；MCP 失敗時後端自動退回本機資料。
       // 緊急停用：後台 Variables 設 MCP_ANNOUNCEMENTS=0 後重新部署（見 DEPLOY.md）。
       MCP_ANNOUNCEMENTS: env.MCP_ANNOUNCEMENTS ?? "1",
+      // 法規、常見問答改查 MCP：預設關閉，評估通過後後台設 MCP_REGULATIONS=1 再重新部署。
+      MCP_REGULATIONS: env.MCP_REGULATIONS ?? "0",
       MCP_URL: env.MCP_URL ?? "https://aia.mcp.ntpu.ai/mcp",
       // 讓後端知道自己在容器平台上：跳過寫 chat_logs.csv 與 events.jsonl
       // （容器檔案系統是暫時的），改由 stdout 的結構化日誌保存。
