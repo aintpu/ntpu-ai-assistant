@@ -1585,12 +1585,51 @@ def _format_news_block(date: str, title: str, preview: str, url: str = "") -> st
     return "\n".join(lines)
 
 
+# 「最新公告」這類詞沒有篩選意義；MCP 的關鍵字要求全部出現在公告裡，
+# 帶進去反而會漏掉標題沒寫「公告」的新公告（例如「【智財權宣導】轉知…」）。
+_GENERIC_NEWS_WORDS = ("最新", "最近", "近期", "公告", "消息", "新聞", "資訊", "通知", "有什麼", "哪些", "目前",
+                       "latest", "recent", "news", "announcements", "announcement")
+
+
+# 處室名稱也沒有篩選意義（已用處室代碼篩選），公告內文不一定會寫處室全名。
+# 只放處室名稱與常見簡稱；「借書」「交換生」這類業務關鍵字仍保留。
+_OFFICE_NAME_WORDS = tuple(sorted(
+    set(DEPT_NAMES.values()) | {"研發處", "國際處", "進修部", "校友中心", "深耕辦公室", "通識中心", "人事處", "總務處",
+                                "教務處", "學務處", "學生事務處", "體育室", "圖書館", "語言中心", "資訊中心", "主計室", "秘書室"},
+    key=len, reverse=True))
+
+
+def _news_search_terms(keyword: str) -> list:
+    terms = []
+    for raw in (keyword or "").split():
+        for name in _OFFICE_NAME_WORDS:
+            raw = raw.replace(name, "")
+        t = raw
+        for w in _GENERIC_NEWS_WORDS:
+            t = t.replace(w, "") if not w.isascii() else (t if t.lower() != w else "")
+        t = t.strip("，。、？?！!的")
+        if t:
+            terms.append(t)
+    return terms[:5]
+
+
+def _taipei_date(iso: str) -> str:
+    """MCP 的 publishedAt 是 UTC（學校公告日期存成台灣 00:00 = 前一天 16:00Z），換算回台灣日期。"""
+    if not iso:
+        return ""
+    try:
+        from datetime import datetime as _dt, timedelta as _td
+        return (_dt.fromisoformat(iso.replace("Z", "+00:00")) + _td(hours=8)).strftime("%Y-%m-%d")
+    except ValueError:
+        return iso[:10]
+
+
 def _latest_news_from_mcp(keyword: str, dept: str = None):
     """從 MCP（每天自動同步官網）查公告；查不到或這個處室 MCP 沒有公告時回 None，改用本機資料。"""
     unit = mcp_client.DEPT_TO_MCP_UNIT.get(dept) if dept else None
     if dept and not unit:
         return None
-    terms = (keyword or "").split()[:5]
+    terms = _news_search_terms(keyword)
     attempts = [terms] + ([terms[:1]] if len(terms) > 1 else [])
     search = None
     for attempt in attempts:
@@ -1622,7 +1661,7 @@ def _latest_news_from_mcp(keyword: str, dept: str = None):
     docs, blocks = [], []
     for item, body in zip(items, bodies):
         url = (item.get("provenance") or {}).get("sourceUrl") or ""
-        date = (item.get("publishedAt") or "")[:10]
+        date = _taipei_date(item.get("publishedAt") or "")
         preview = unquote(body[:800])
         docs.append(Document(page_content=preview, metadata={
             "title": item.get("title", ""), "url": url, "type": "news", "date": date,

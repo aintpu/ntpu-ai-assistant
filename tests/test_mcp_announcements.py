@@ -120,6 +120,26 @@ class McpAnnouncementTests(unittest.TestCase):
             out = core.tool_get_latest_news("", dept="ord")
         self.assertNotIn("【連結】", out)
 
+    def test_generic_words_and_office_names_are_not_used_as_filters(self):
+        # 「教務處最新公告」不能變成要求公告裡一定出現「公告」「教務處」（會漏掉「【智財權宣導】轉知…」這類新公告）。
+        for kw in ("公告", "最新公告", "教務處 最新 公告", "最近有什麼公告", "latest news"):
+            self.assertEqual(core._news_search_terms(kw), [], kw)
+        self.assertEqual(core._news_search_terms("研發處 國科會 計畫"), ["國科會", "計畫"])
+        self.assertEqual(core._news_search_terms("圖書館 借書"), ["借書"])
+        fake, calls = self._fake_tools([_search([_item(1)])])
+        with patch.object(mcp_client, "call_tool", side_effect=fake):
+            core.tool_get_latest_news("教務處最新公告", dept="oaa")
+        self.assertEqual(calls[0], ("search_announcements", {"limit": 6, "unit": "oaa"}))
+
+    def test_dates_are_shown_in_taiwan_time(self):
+        # 學校公告日期存成台灣 00:00＝前一天 16:00Z；直接取前 10 字會少一天。
+        self.assertEqual(core._taipei_date("2026-10-01T16:00:00.000Z"), "2026-10-02")
+        item = dict(_item(1), publishedAt="2026-10-01T16:00:00.000Z")
+        fake, _ = self._fake_tools([_search([item])])
+        with patch.object(mcp_client, "call_tool", side_effect=fake):
+            out = core.tool_get_latest_news("", dept="ord")
+        self.assertIn("【日期】：2026-10-02", out)
+
     def test_sync_time_takes_the_earliest_across_calls(self):
         core._note_data_updated_at("2026-10-04T05:00:00Z")
         core._note_data_updated_at("2026-10-03T05:00:00Z")
