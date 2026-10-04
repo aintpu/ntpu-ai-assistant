@@ -3426,19 +3426,17 @@ def prepare_conversation_turn(
         )
 
     t0 = time.time()
-    scope = run_scope_guardrail(
-        standalone_query=resolution.standalone_query,
-        context={
+    scope = decide_scope(
+        resolution.standalone_query,
+        {
             "active_office": state.active_office,
             "active_topic": state.active_topic,
             "scope_verified": state.scope_verified,
             "raw_query": raw_query,
             **resolution_scope_context(resolution),
         },
-        complete_fn=llm_adapter.complete,
-        retries=1,
+        raw_query,
     )
-    scope = ground_scope_in_data(scope, raw_query)
     _record_timing("scope_guardrail", time.time() - t0)
 
     if scope.status == "OUT_OF_SCOPE":
@@ -3604,6 +3602,35 @@ def ground_scope_in_data(scope, raw_query: str):
     return ScopeDecision("IN_SCOPE", office, 0.8, f"知識庫有標題含「{term}」的{DEPT_NAMES[office]}文件。")
 
 
+SCOPE_REVOTES = 2  # 模型判 OUT_OF_SCOPE 時再問幾次（取多數決）
+
+
+def decide_scope(standalone_query: str, context: dict, raw_query: str):
+    """範圍判斷：規則 → 模型 → 資料依據；模型單獨判 OUT_OF_SCOPE 時再問 SCOPE_REVOTES 次取多數決。
+
+    同一題模型偶爾會給出不同結果（temperature=0 也無法保證一致）。外校與已知無關意圖由規則擋下，
+    不重問；只有「規則沒擋、資料裡也沒有這個主題、模型說不在範圍」才重問，正常問題不增加延遲。
+    """
+    def once():
+        decision = run_scope_guardrail(
+            standalone_query=standalone_query, context=context,
+            complete_fn=llm_adapter.complete, retries=1,
+        )
+        return ground_scope_in_data(decision, raw_query)
+
+    scope = once()
+    if scope.status != "OUT_OF_SCOPE" or SCOPE_REVOTES <= 0:
+        return scope
+    if any(detect_service_entity_conflict(q) or detect_explicit_unsupported_intent(q)
+           for q in (raw_query, standalone_query)):
+        return scope
+    votes = [scope] + [once() for _ in range(SCOPE_REVOTES)]
+    inside = [v for v in votes if v.status != "OUT_OF_SCOPE"]
+    if len(inside) * 2 > len(votes):
+        return max(inside, key=lambda v: (v.status == "IN_SCOPE", v.confidence))
+    return scope
+
+
 def classify_department(query: str, history: list = None) -> str:
     """Backward-compatible adapter; new endpoints use prepare_conversation_turn."""
     state = ConversationState.from_value({})
@@ -3613,7 +3640,7 @@ def classify_department(query: str, history: list = None) -> str:
     system_match = _best_system_match(query, resolution.standalone_query)
     if should_route_system(query, system_match, threshold=SYSTEM_PRIMARY_THRESHOLD):
         return "system"
-    scope = run_scope_guardrail(
+    scope = decide_scope(
         resolution.standalone_query,
         {
             "active_office": state.active_office,
@@ -3621,10 +3648,8 @@ def classify_department(query: str, history: list = None) -> str:
             "scope_verified": state.scope_verified,
             "raw_query": query,
         },
-        llm_adapter.complete,
-        retries=1,
+        query,
     )
-    scope = ground_scope_in_data(scope, query)
     if scope.status == "OUT_OF_SCOPE":
         return "other"
     return scope.office_hint or "chat"

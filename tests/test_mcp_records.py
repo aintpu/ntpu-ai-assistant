@@ -245,3 +245,40 @@ class GroundedScopeTests(unittest.TestCase):
         from conversation_guardrail import ScopeDecision
         scope = ScopeDecision("IN_SCOPE", "lib", 0.9, "")
         self.assertIs(core.ground_scope_in_data(scope, "信義會館"), scope)
+
+
+@unittest.skipIf(_IMPORT_ERROR, f"backend dependencies unavailable: {_IMPORT_ERROR}")
+class ScopeMajorityVoteTests(unittest.TestCase):
+    """模型判 OUT_OF_SCOPE 時再問兩次取多數決，降低同一題結果不一致。"""
+
+    def _run(self, outputs, query="期中考是哪一週"):
+        from conversation_guardrail import ScopeDecision
+        answers = iter(outputs)
+        calls = []
+
+        def fake(**kwargs):
+            calls.append(kwargs["standalone_query"])
+            status = next(answers)
+            return ScopeDecision(status, "oaa" if status == "IN_SCOPE" else None, 0.9, "")
+
+        with patch.object(core, "run_scope_guardrail", side_effect=fake), \
+                patch.object(core, "known_topic_office", return_value=None):
+            scope = core.decide_scope(query, {"raw_query": query}, query)
+        return scope, calls
+
+    def test_in_scope_is_accepted_without_extra_calls(self):
+        scope, calls = self._run(["IN_SCOPE"])
+        self.assertEqual((scope.status, len(calls)), ("IN_SCOPE", 1))
+
+    def test_a_lone_out_of_scope_vote_is_outvoted(self):
+        scope, calls = self._run(["OUT_OF_SCOPE", "IN_SCOPE", "IN_SCOPE"])
+        self.assertEqual((scope.status, scope.office_hint, len(calls)), ("IN_SCOPE", "oaa", 3))
+
+    def test_majority_out_of_scope_stays_blocked(self):
+        scope, calls = self._run(["OUT_OF_SCOPE", "IN_SCOPE", "OUT_OF_SCOPE"], query="什麼是量子力學")
+        self.assertEqual((scope.status, len(calls)), ("OUT_OF_SCOPE", 3))
+
+    def test_rule_based_blocks_are_not_revoted(self):
+        for query in ("台大的宿舍怎麼申請", "今天台北天氣如何"):
+            scope, calls = self._run(["OUT_OF_SCOPE"], query=query)
+            self.assertEqual((scope.status, len(calls)), ("OUT_OF_SCOPE", 1), query)

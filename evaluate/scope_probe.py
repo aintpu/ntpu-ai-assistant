@@ -1,6 +1,7 @@
 """範圍判斷誤擋檢查：用正式模型跑一批「沒寫單位名稱」的自然問法，列出被判成不在範圍的題目。
 
-    python evaluate/scope_probe.py            # 需要 OPENAI_API_KEY（config.txt）
+    python evaluate/scope_probe.py              # 需要 OPENAI_API_KEY（config.txt）
+    python evaluate/scope_probe.py --repeat 3   # 每題跑 3 次，列出結果不一致的題目
 
 SHOULD_ANSWER 都是本校業務、資料庫有可能有答案的問題，理想上都不該被擋；
 SHOULD_BLOCK 是外校或與校務無關的問題，應該被擋。
@@ -41,16 +42,23 @@ SHOULD_BLOCK = [
 
 def main():
     import agentic_v2_5_4high as core  # 載入 config.txt 與知識庫索引（用快取）
-    import llm_adapter
-    from conversation_guardrail import run_scope_guardrail
+
+    repeat = int(sys.argv[sys.argv.index("--repeat") + 1]) if "--repeat" in sys.argv else 1
 
     def judge(q):
-        d = run_scope_guardrail(q, {"raw_query": q}, llm_adapter.complete, retries=1)
-        return q, core.ground_scope_in_data(d, q)
+        return q, core.decide_scope(q, {"raw_query": q}, q)
 
     questions = SHOULD_ANSWER + SHOULD_BLOCK
+    runs = []
     with ThreadPoolExecutor(max_workers=8) as pool:
-        results = dict(pool.map(judge, questions))
+        for _ in range(repeat):
+            runs.append(dict(pool.map(judge, questions)))
+    results = runs[0]
+    if repeat > 1:
+        flaky = [q for q in questions if len({r[q].status for r in runs}) > 1]
+        print(f"重複 {repeat} 次，結果不一致的題目：{len(flaky)}/{len(questions)}")
+        for q in flaky:
+            print("   ", q, [r[q].status for r in runs])
     wrong_block = [q for q in SHOULD_ANSWER if results[q].status == "OUT_OF_SCOPE"]
     wrong_pass = [q for q in SHOULD_BLOCK if results[q].status != "OUT_OF_SCOPE"]
     for q in questions:
