@@ -5,6 +5,7 @@ import { AttachmentSchema, ProvenanceSchema } from "../shared/schemas";
 import { SEARCH_LIMIT_MAX, warningsOf, type AnnouncementService } from "./announcement-service";
 import type { FaqService, RegulationService } from "./manual-service";
 import type { PageService } from "./page-service";
+import { isAllowedPublicTool } from "./tool-registry";
 
 export interface McpServices {
   announcements: AnnouncementService;
@@ -272,10 +273,15 @@ function audit(tool: string, traceId: string, ok: boolean, count: number, starte
 /** 每個 request 建一個新的 server（stateless）。只註冊經審查的唯讀工具。 */
 export function createMcpServer(services: McpServices, traceId: string): McpServer {
   const server = new McpServer({ name: SERVICE_NAME, version: SERVICE_VERSION });
+  // 規格 07 §10：只註冊登記表裡、符合公開 v1 政策（R0／L0／唯讀）的工具；不符合就無法啟動。
+  const reviewed = (name: string): string => {
+    if (!isAllowedPublicTool(name)) throw new Error(`tool not allowed by registry policy: ${name}`);
+    return name;
+  };
   const service = services.announcements;
 
   server.registerTool(
-    "search_announcements",
+    reviewed("search_announcements"),
     {
       title: "搜尋處室公告",
       description: SEARCH_DESCRIPTION,
@@ -308,7 +314,7 @@ export function createMcpServer(services: McpServices, traceId: string): McpServ
   );
 
   server.registerTool(
-    "get_announcement",
+    reviewed("get_announcement"),
     {
       title: "取得公告全文",
       description: GET_DESCRIPTION,
@@ -340,7 +346,7 @@ export function createMcpServer(services: McpServices, traceId: string): McpServ
   );
 
   server.registerTool(
-    "search_pages",
+    reviewed("search_pages"),
     {
       title: "搜尋單位介紹頁",
       description: PAGE_SEARCH_DESCRIPTION,
@@ -373,7 +379,7 @@ export function createMcpServer(services: McpServices, traceId: string): McpServ
   );
 
   server.registerTool(
-    "get_page",
+    reviewed("get_page"),
     {
       title: "取得單位介紹頁全文",
       description: PAGE_GET_DESCRIPTION,
@@ -398,7 +404,7 @@ export function createMcpServer(services: McpServices, traceId: string): McpServ
   );
 
   server.registerTool(
-    "search_regulations",
+    reviewed("search_regulations"),
     {
       title: "搜尋法規",
       description: REGULATION_SEARCH_DESCRIPTION,
@@ -431,7 +437,7 @@ export function createMcpServer(services: McpServices, traceId: string): McpServ
   );
 
   server.registerTool(
-    "get_regulation",
+    reviewed("get_regulation"),
     {
       title: "取得法規全文",
       description: REGULATION_GET_DESCRIPTION,
@@ -461,7 +467,7 @@ export function createMcpServer(services: McpServices, traceId: string): McpServ
   );
 
   server.registerTool(
-    "search_faqs",
+    reviewed("search_faqs"),
     {
       title: "搜尋常見問答",
       description: FAQ_SEARCH_DESCRIPTION,
@@ -491,7 +497,7 @@ export function createMcpServer(services: McpServices, traceId: string): McpServ
   );
 
   server.registerTool(
-    "get_faq",
+    reviewed("get_faq"),
     {
       title: "取得常見問答",
       description: FAQ_GET_DESCRIPTION,

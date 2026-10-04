@@ -38,7 +38,7 @@ const workDir = mkdtempSync(join(tmpdir(), "ntpu-manual-"));
 try {
   const catalog = buildRegulationCatalog(repoRoot);
   const catalogFile = join(workDir, "regulation-catalog.json");
-  writeFileSync(catalogFile, JSON.stringify(catalog, null, 2) + "\n");
+  writeFileSync(catalogFile, `${JSON.stringify(catalog, null, 2)}\n`);
   console.log(`法規彙整表：${catalog.rows.length} 列 → ${CATALOG_PATH}`);
 
   const uploads = [

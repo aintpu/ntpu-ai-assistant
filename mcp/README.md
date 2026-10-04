@@ -197,5 +197,10 @@ npm run manual:upload -- --env production          # 上傳到 ntpu-aia-raw/manu
 - [ ] `corrections.md` 經處室確認後再決定是否收錄
 - [x] 其他處室加入 source registry（15 個有公告的處室）
 - [x] 校長室、副校長室的介紹頁，圖書館、語言中心的網站
-- [ ] Golden set 評估、contract snapshot 測試（規格 10）
-- [ ] 正式環境網域與上線驗收（規格 11）
+- [x] Golden set smoke、contract snapshot 測試（規格 10）；model-in-loop eval 尚未做
+- [x] 正式環境網域與上線驗收（規格 11）
+
+## 文件
+
+- [工具說明](docs/tools.md)、[維運手冊](docs/runbook.md)、[負責人](docs/ownership.md)
+- [架構決策 ADR](docs/adr/README.md)、[上線紀錄](docs/releases/README.md)、[規格驗收清單](docs/acceptance.md)

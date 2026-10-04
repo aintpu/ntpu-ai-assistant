@@ -33,7 +33,12 @@ describe("manual file paths", () => {
 
   it("the R2 inbox only reads under manual/", async () => {
     const keys: string[] = [];
-    const bucket = { get: async (key: string) => (keys.push(key), null) } as unknown as R2Bucket;
+    const bucket = {
+      get: async (key: string) => {
+        keys.push(key);
+        return null;
+      },
+    } as unknown as R2Bucket;
     await new R2ManualInbox(bucket).get(OSA_FILE);
     expect(keys).toEqual([`manual/${OSA_FILE}`]);
     await expect(new R2ManualInbox(bucket).get("../raw/x.md")).rejects.toThrow(/not allowed/);

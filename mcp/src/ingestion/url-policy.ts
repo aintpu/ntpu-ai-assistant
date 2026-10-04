@@ -99,7 +99,7 @@ export function resolveRequestUrl(source: SourceDefinition, request: Pick<Source
   const rules = source.queryRules?.[path] ?? {};
   for (const [name, value] of Object.entries(query ?? {})) {
     const rule = rules[name];
-    if (!rule || !rule.test(value)) {
+    if (!rule?.test(value)) {
       throw new IngestionError("URL_NOT_ALLOWED", `query parameter not allowed: ${name}`);
     }
     url.searchParams.set(name, value);
@@ -151,12 +151,15 @@ export function validateSourceDefinition(source: SourceDefinition): void {
   const fail = (why: string): never => {
     throw new Error(`invalid source ${source.id}: ${why}`);
   };
-  if (isManualSource(source)) return validateManualSource(source, fail);
+  if (isManualSource(source)) {
+    validateManualSource(source, fail);
+    return;
+  }
   let origin: URL;
   try {
     origin = new URL(source.origin);
   } catch {
-    return fail("origin is not a URL");
+    throw new Error(`invalid source ${source.id}: origin is not a URL`);
   }
   if (origin.protocol !== "https:") fail("origin must be https");
   if (origin.username || origin.password) fail("origin must not contain credentials");
