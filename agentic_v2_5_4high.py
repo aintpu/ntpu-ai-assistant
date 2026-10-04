@@ -44,6 +44,7 @@ from conversation_guardrail import (
     build_updated_state,
     check_evidence_sufficiency,
     clarification_text,
+    detect_explicit_unsupported_intent,
     detect_service_entity_conflict,
     redact_sensitive_text,
     resolution_scope_context,
@@ -76,7 +77,7 @@ from urllib.parse import unquote
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import threading
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 # ==========================================
 # 0. Rate Limiting
@@ -3421,6 +3422,7 @@ def prepare_conversation_turn(
         complete_fn=llm_adapter.complete,
         retries=1,
     )
+    scope = ground_scope_in_data(scope, raw_query)
     _record_timing("scope_guardrail", time.time() - t0)
 
     if scope.status == "OUT_OF_SCOPE":
@@ -3533,6 +3535,59 @@ def prepare_conversation_turn(
     }
 
 
+# 範圍判斷的「資料依據」：模型不知道學校有哪些資料，會把「北聯大」「信義會館」「行天宮急難救助」
+# 這類本校資料裡就有的名詞誤判成外部機構。模型判 OUT_OF_SCOPE 時，若知識庫有文件標題含問題裡
+# 連續 3 字以上的內容詞，就改判 IN_SCOPE、交給該文件的處室。外校名稱與天氣、餐廳等無關意圖由規則
+# 先擋下，不會被這裡放行。
+_GROUNDING_BREAK_RE = re.compile(r"[^\u4e00-\u9fffA-Za-z0-9]|[什麼哪些怎誰嗎呢是有可以的了在我你您他她請幫問找去到給從和與跟或吧呀啊喔哦能該想]")
+_GROUNDING_MIN_CHARS = 3
+_title_index = None
+
+
+def _grounding_titles():
+    global _title_index
+    if _title_index is None and INDEX.docs_zh:
+        _title_index = sorted({
+            (str(d.metadata.get("title") or ""), d.metadata.get("dept"))
+            for d in INDEX.docs_zh
+            if d.metadata.get("title") and d.metadata.get("dept") in DEPT_NAMES
+        })
+    return _title_index or []
+
+
+def known_topic_office(query: str):
+    """知識庫有文件標題含 query 裡最長的內容詞（≥3 字）時，回傳 (處室, 該詞)；否則 None。"""
+    titles = _grounding_titles()
+    if not titles:
+        return None
+    for run in sorted((r for r in _GROUNDING_BREAK_RE.split(query or "") if len(r) >= _GROUNDING_MIN_CHARS),
+                      key=len, reverse=True):
+        for size in range(len(run), _GROUNDING_MIN_CHARS - 1, -1):
+            hits = {}
+            for start in range(len(run) - size + 1):
+                term = run[start:start + size]
+                for title, dept in titles:
+                    if term in title:
+                        hits.setdefault(term, Counter())[dept] += 1
+            if hits:
+                term, depts = max(hits.items(), key=lambda kv: sum(kv[1].values()))
+                return depts.most_common(1)[0][0], term
+    return None
+
+
+def ground_scope_in_data(scope, raw_query: str):
+    """模型判 OUT_OF_SCOPE、但規則沒擋（不是外校、不是已知無關意圖）且資料裡有這個主題時，改判 IN_SCOPE。"""
+    if scope.status != "OUT_OF_SCOPE":
+        return scope
+    if detect_service_entity_conflict(raw_query) or detect_explicit_unsupported_intent(raw_query):
+        return scope
+    found = known_topic_office(raw_query)
+    if not found:
+        return scope
+    office, term = found
+    return ScopeDecision("IN_SCOPE", office, 0.8, f"知識庫有標題含「{term}」的{DEPT_NAMES[office]}文件。")
+
+
 def classify_department(query: str, history: list = None) -> str:
     """Backward-compatible adapter; new endpoints use prepare_conversation_turn."""
     state = ConversationState.from_value({})
@@ -3553,6 +3608,7 @@ def classify_department(query: str, history: list = None) -> str:
         llm_adapter.complete,
         retries=1,
     )
+    scope = ground_scope_in_data(scope, query)
     if scope.status == "OUT_OF_SCOPE":
         return "other"
     return scope.office_hint or "chat"

@@ -12,7 +12,6 @@ from concurrent.futures import ThreadPoolExecutor
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 os.chdir(ROOT)
-os.environ["NTPU_SKIP_INDEX_BUILD"] = "1"
 
 SHOULD_ANSWER = [
     "我想問校慶在何時", "校慶是什麼時候", "校慶園遊會攤位怎麼申請", "運動會什麼時候",
@@ -29,21 +28,25 @@ SHOULD_ANSWER = [
     "要捐款給學校怎麼做", "學校的永續報告書在哪", "健身房開放時間", "游泳池怎麼收費",
     "系際盃什麼時候報名", "最近有什麼活動", "最近有什麼講座", "有沒有徵才的公告",
     "現在的校長是誰", "學校電話幾號", "人在國外想捐款給學校怎麼匯", "失物招領在哪裡",
+    # 2026-10-04 端到端評估發現：模型不知道這些是本校資料裡的名詞
+    "北聯大計畫可以補助多少錢", "內控制度手冊去哪裡找最新版", "住信義會館有哪些規定",
+    "內部稽核是誰在負責", "行天宮的急難救助怎麼申請", "全民國防教育法的內容", "用學校 VPN 有什麼要注意",
 ]
 SHOULD_BLOCK = [
     "台大的宿舍怎麼申請", "淡江大學的學費多少", "今天台北天氣如何", "推薦附近好吃的餐廳",
-    "幫我寫一首詩", "比特幣會漲嗎",
+    "幫我寫一首詩", "比特幣會漲嗎", "台北市長是誰", "什麼是量子力學", "美國總統是誰",
+    "推薦好看的電影", "政大的抵免規定", "台積電面試會問什麼",
 ]
 
 
 def main():
-    import agentic_v2_5_4high  # noqa: F401  載入 config.txt
+    import agentic_v2_5_4high as core  # 載入 config.txt 與知識庫索引（用快取）
     import llm_adapter
     from conversation_guardrail import run_scope_guardrail
 
     def judge(q):
         d = run_scope_guardrail(q, {"raw_query": q}, llm_adapter.complete, retries=1)
-        return q, d
+        return q, core.ground_scope_in_data(d, q)
 
     questions = SHOULD_ANSWER + SHOULD_BLOCK
     with ThreadPoolExecutor(max_workers=8) as pool:
