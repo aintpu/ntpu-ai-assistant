@@ -15,13 +15,6 @@ import type { SourceDefinition } from "../types";
 import type { Adapter, AdapterRecord, RejectedRecord, Step, StepOutcome } from "./types";
 import { decodeUtf8 } from "./types";
 
-/** 沒有官方連結的資料，provenance 指向 repo 上的原始檔，仍可追溯。 */
-export const REPO_BLOB_BASE = "https://github.com/aintpu/ntpu-ai-assistant/blob/main/";
-
-export function repoFileUrl(path: string): string {
-  return REPO_BLOB_BASE + path.split("/").map(encodeURIComponent).join("/");
-}
-
 /** 彙整表的「所屬單位／處室」對應到處室代碼；學院、研究中心等沒有代碼的歸為 academic。 */
 export const OWNER_UNITS: Record<string, string> = {
   秘書室: "os",
@@ -153,7 +146,8 @@ export const manualRegulationsAdapter: Adapter = {
                 fileUrl,
                 tags: [...new Set([...doc.tags, ...(match?.tags ?? [])])].slice(0, 30),
                 updatedDate: doc.uploadDate ?? match?.updatedDate ?? null,
-                sourceUrl: fileUrl ?? repoFileUrl(cfg.fullTextFile),
+                // 沒有官方連結就不給網址；來源以文字標示（查詢時由 sourceName 提供），追溯靠 sourceFile。
+                sourceUrl: fileUrl,
                 sourceFile: cfg.fullTextFile,
               },
               rejected,
@@ -261,7 +255,7 @@ export const manualFaqAdapter: Adapter = {
             sourceDate: /^\d{4}-\d{2}-\d{2}$/.test(sourceDate) ? sourceDate : null,
             keywords: splitKeywords(entry.fields["關鍵字"]),
             details: entry.details.slice(0, 10_000),
-            sourceUrl: singleUrl(entry.fields["來源網址"]) ?? repoFileUrl(file),
+            sourceUrl: singleUrl(entry.fields["來源網址"]),
             sourceFile: file,
           };
           const parsed = FaqSchema.safeParse(candidate);

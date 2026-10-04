@@ -9,7 +9,8 @@ export interface CanonicalInput {
   title: string;
   searchText: string;
   sourceId: string;
-  sourceUrl: string;
+  /** 沒有官方連結時為 null，存成空字串（欄位 NOT NULL，避免為此改資料表）。 */
+  sourceUrl: string | null;
   rawSnapshotKey: string;
   contentHash: string;
   publishedAt: string | null;
@@ -139,7 +140,7 @@ export class CanonicalStore {
           input.title,
           input.searchText,
           input.sourceId,
-          input.sourceUrl,
+          input.sourceUrl ?? "",
           input.rawSnapshotKey,
           input.contentHash,
           now,
@@ -202,7 +203,7 @@ export class CanonicalStore {
           JSON.stringify(input.payload),
           input.title,
           input.searchText,
-          input.sourceUrl,
+          input.sourceUrl ?? "",
           input.rawSnapshotKey,
           input.contentHash,
           now,

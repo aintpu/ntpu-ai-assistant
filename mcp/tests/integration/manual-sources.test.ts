@@ -91,8 +91,10 @@ describe("manual regulations", () => {
     const rewards = rows.filter((r) => r.title === "國立臺北大學學生獎懲辦法");
     expect(rewards).toHaveLength(2);
     expect(new Set(rewards.map((r) => r.id)).size).toBe(2);
-    // 配對不到官方連結：provenance 指向 repo 原始檔。
-    expect(rewards[0].sourceUrl).toBe("https://github.com/aintpu/ntpu-ai-assistant/blob/main/crawler_data/osa_regulations.md");
+    // 配對不到官方連結：不給網址（不指向 repo 等非官方網址），追溯靠 sourceFile。
+    expect(rewards[0].sourceUrl).toBeNull();
+    expect(rewards[0].sourceFile).toBe(OSA_FILE);
+    expect(db.rows<{ u: string }>(`SELECT source_url u FROM entities WHERE stable_key = 'osa:${rewards[0].id}'`)[0]!.u).toBe("");
     expect(rows.find((r) => r.title === "國立臺北大學學生宿舍管理要點")).toMatchObject({ hasFullText: false, bodyText: "" });
   });
 
@@ -207,6 +209,20 @@ describe("MCP tools for regulations and FAQs", () => {
     });
   });
 
+  it("a regulation without an official link has no URL, only a plain-text source name", async () => {
+    const out = (await call("search_regulations", { keyword: "獎懲" })).structuredContent;
+    expect(out.items).toHaveLength(2);
+    for (const item of out.items) {
+      expect(item.provenance.sourceUrl).toBeNull();
+      expect(item.sourceName).toBe("學生事務處法規（人工整理資料）");
+    }
+    const linked = (await call("search_regulations", { keyword: "病假" })).structuredContent.items[0];
+    expect(linked.sourceName).toBe("學生事務處法規（人工整理資料）");
+    expect(linked.provenance.sourceUrl).toBe("https://cms-carrier.ntpu.edu.tw/uploads/leave.pdf");
+    const catalogOnly = (await call("search_regulations", { keyword: "宿舍" })).structuredContent.items[0];
+    expect(catalogOnly.sourceName).toBe("學生事務處法規彙整表（人工整理資料）");
+  });
+
   it("search_regulations filters by unit, including catalog-only units", async () => {
     const out = (await call("search_regulations", { unit: "academic" })).structuredContent;
     expect(out.items.map((i: any) => i.owner)).toEqual(["法律學院"]);
@@ -229,6 +245,7 @@ describe("MCP tools for regulations and FAQs", () => {
     expect(faq.faq).toMatchObject({ answer: "請至國科會網站線上申請，校內截止日為公告日期。", status: "active" });
     expect(faq.faq.details).toContain("聯絡窗口：承辦人，分機 1234");
     expect(faq.faq.provenance.trustLevel).toBe("verified");
+    expect(faq.faq.sourceName).toBe("研究發展處常見問答（人工整理資料）");
   });
 
   it("rejects malformed ids instead of querying", async () => {
