@@ -37,7 +37,7 @@ npx wrangler d1 execute ntpu-aia-canonical --remote \
 
 ## 部署
 
-1. PR 合併到 `main` 後由 GitHub Actions 部署；或手動 `npx wrangler deploy -c wrangler.ingest.jsonc` / `-c wrangler.mcp.jsonc`。
+1. PR 合併到 `main` 只會跑 `mcp-ci.yml`（測試與 dry-run），**不會部署**。production 手動部署：`npx wrangler deploy -c wrangler.ingest.jsonc` / `-c wrangler.mcp.jsonc`；staging 用 GitHub Actions 的 **Deploy MCP to staging**。
 2. 部署後跑 smoke：`/health`、`tools/list` 有 8 個工具、每個 search 工具各查一次。
 3. 在 `docs/releases/` 新增一筆上線紀錄（範本見 `docs/releases/README.md`）。
 
