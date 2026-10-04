@@ -252,7 +252,7 @@ const SEARCH_DESCRIPTION = `搜尋國立臺北大學各處室官網公告（new.
 收錄處室：${UNIT_LIST}。
 適用：找某主題的公告、計畫徵件、說明會、最新消息，或某段期間內的公告。
 不適用：法規全文（請用 search_regulations）、常見問答與處室聯絡資訊（請用 search_faqs）、即時行事曆。
-結果依發布日期由新到舊，每筆附官方來源網址與驗證時間（provenance）。
+有關鍵字時，標題含越多關鍵字的排越前面，同分再依發布日期由新到舊；沒有關鍵字時依發布日期由新到舊。每筆附官方來源網址與驗證時間（provenance）。
 同一則公告刊在多個處室時只回一筆，postedBy 列出刊登的處室。
 warnings 含 DATA_STALE 或 INGESTION_INCOMPLETE 時，請提醒使用者資料可能不是最新或不完整，並附官網連結。
 查無資料時 noResult=true，請如實告知使用者，不要自行推測內容。
