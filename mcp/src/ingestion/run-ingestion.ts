@@ -7,7 +7,7 @@ import { adapterFor } from "./adapters";
 import type { KnownRecord, Step, StepContext } from "./adapters/types";
 import { fetchSource } from "./fetch-source";
 import { enabledSources, getSource } from "./source-registry";
-import type { FetchLike, RawArchive, SourceDefinition } from "./types";
+import type { FetchLike, ManualInbox, RawArchive, SourceDefinition } from "./types";
 
 /** 連續幾次完整抓取都沒看到，才把資料標成 inactive。 */
 export const MISSING_RUNS_THRESHOLD = 3;
@@ -25,6 +25,8 @@ export interface IngestionDeps {
   fetch: FetchLike;
   clock: Clock;
   environment: string;
+  /** 人工整理檔（R2 manual/）；只有人工來源會用到。 */
+  manual?: ManualInbox;
   /** 請求之間的等待；測試可換成不等待。 */
   sleep?: (ms: number) => Promise<void>;
 }
@@ -180,7 +182,7 @@ async function ingestSource(
       await store.quarantineMany(
         outcome.rejected.map((r) => ({
           sourceId: source.id,
-          stableKey: r.id,
+          stableKey: r.unit ? `${r.unit}:${r.id}` : r.id,
           reason: r.reason,
           rawSnapshotKey: archived.key,
         })),
@@ -190,7 +192,7 @@ async function ingestSource(
       // 之前已收錄、這次被擋下的資料：不再提供（例如規則更新後才發現含個人資料）。
       await store.withhold(
         source.entityType,
-        outcome.rejected.map((r) => recordKey(source, r.id)),
+        outcome.rejected.map((r) => recordKey(source, r.id, r.unit)),
         runId,
         clock.nowIso(),
       );
@@ -213,8 +215,8 @@ async function ingestSource(
       for (const record of outcome.records) {
         inputs.push({
           entityType: source.entityType,
-          stableKey: recordKey(source, record.id),
-          sourceUnit: source.sourceUnit,
+          stableKey: recordKey(source, record.id, record.unit),
+          sourceUnit: record.unit ?? source.sourceUnit,
           payload: record.payload,
           title: record.title,
           searchText: record.searchText,
@@ -232,7 +234,7 @@ async function ingestSource(
         item.unchanged = counts.unchanged;
         await store.releaseFromQuarantine(
           source.id,
-          outcome.records.map((r) => r.id).filter((id) => quarantined.has(id)),
+          outcome.records.map((r) => (r.unit ? `${r.unit}:${r.id}` : r.id)).filter((key) => quarantined.has(key)),
         );
       } catch (err) {
         publishFailures = outcome.records.length;

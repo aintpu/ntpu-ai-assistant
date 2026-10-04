@@ -29,7 +29,8 @@ beforeEach(() => {
 
 describe("all offices", () => {
   it("registers every office with announcements, each with its own site key", () => {
-    const sources = enabledSources();
+    // 官網來源（公告與介紹頁）；人工整理檔（法規、FAQ）另有測試。
+    const sources = enabledSources().filter((s) => s.entityType === "announcement" || s.entityType === "page");
     expect(new Set(sources.map((s) => s.sourceUnit)).size).toBe(21);
     const strapi = sources.flatMap((s) => (s.adapter.kind === "strapi-publications" ? [s.adapter.siteKey] : []));
     expect(strapi).toHaveLength(15);

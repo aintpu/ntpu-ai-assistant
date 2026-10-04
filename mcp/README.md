@@ -1,4 +1,4 @@
-# NTPU AIA — 資料匯入與 MCP（各處室官網公告）
+# NTPU AIA — 資料匯入與 MCP（各處室官網公告、法規、常見問答）
 
 依照戴敏育老師提供的 AI4X MCP Core 12 規格（Spec-Driven Development），把 NTPU AIA 的知識來源
 從「人工 commit 的 Markdown」逐步改成「排程自動抓官網 → 有版本紀錄的資料庫 → MCP 查詢工具」。
@@ -13,9 +13,12 @@
   → 解析 / 正規化 / schema 驗證
   → SHA-256 / 比對 / 版本紀錄
   → D1 正式資料
-  → 2 個唯讀 MCP 工具（search_announcements、get_announcement）
+  → 唯讀 MCP 工具（公告、介紹頁、法規、常見問答，共 8 個）
   → 測試
 ```
+
+另外，法規全文、法規彙整表與各處室常見問答是**人工整理檔**（repo 的 `crawler_data/`），
+上傳到 R2 後走同一條「原始檔 → 驗證 → 雜湊比對 → 版本 → D1」流程，詳見下方「人工整理檔」。
 
 **不影響正式站**：`aia.ntpu.ai`（`cf/` + FastAPI 容器）完全沒改。`deploy.yml` 只在特定路徑變動時部署，
 `mcp/` 不在其中；這裡的 Worker 另外部署，名稱不同、資料庫不同。
@@ -125,6 +128,51 @@ npx wrangler r2 bucket create ntpu-aia-raw-staging
   一次約 130 個請求、500 個子請求，**超過 Workers 免費方案的上限，staging/production 需要 Workers Paid**。
 - 本機指定來源：`/__scheduled?cron=source:lc-announcements`；不指定就挑下一個到期的來源。
 
+## 人工整理檔（法規、常見問答）
+
+官網沒有可抓的法規全文與 FAQ，這些資料由同學與各處室整理成檔案放在 repo 的 `crawler_data/`。
+新 MCP 把它們當成**人工驗證來源**：`sourceType: manual_verified`、`trustLevel: verified`，
+與排程抓官網的 `official` 分開標示，MCP 工具說明也會要求 client 向使用者說明這一點。
+
+| 來源 id | 內容 | 檔案 | MCP 工具 |
+|---|---|---|---|
+| `oaa-regulations`、`osa-regulations`、`op-regulations`、`oga-regulations`、`cge-regulations` | 教務處、學務處、人事室、總務處、通識中心的法規全文；以「正規化標題」（去空白與副檔名，與 AIA 現行做法相同）配對法規彙整表，補上官方檔案連結與標籤。彙整表有、全文檔沒有的法規也收錄（只有目錄） | `*_regulations.md`、`ge_regulations_extra.md` ＋ 彙整表 | `search_regulations`、`get_regulation` |
+| `regulation-catalog` | 其餘單位（學院、研究中心、秘書室等）的法規目錄：只有名稱、標籤與官方連結（`hasFullText: false`） | 兩份法規彙整 xlsx | 同上 |
+| `office-faqs` | 16 個處室的常見問答，每題附來源網址與處室提供日期 | `*_faq.md`、`hr_content.md`、`oga_content.md` | `search_faqs`、`get_faq` |
+
+**更新方式**：改了 `crawler_data/` 的檔案後重新上傳，下一次排到這些來源時就會比對；
+沒變的只更新驗證時間，有變的舊版存進 `record_versions`，從檔案刪掉的連續 3 次後標為 inactive（不刪除）。
+
+```bash
+cd mcp
+npm run manual:upload -- --env staging --dry-run   # 先看會上傳哪些檔案
+npm run manual:upload -- --env staging             # 上傳到 ntpu-aia-raw-staging/manual/
+npm run manual:upload -- --env production          # 上傳到 ntpu-aia-raw/manual/
+```
+
+- markdown 原樣上傳；兩份 xlsx 由 `scripts/manual-files.mjs` 轉成 `derived/regulation-catalog.json`
+  （用 Node 內建 zlib 讀 xlsx，只轉格式、內容照原表，不另裝套件）。
+- 抓取 Worker 只讀 `manual/` 底下、來源登記過的檔案（`src/ingestion/manual-inbox.ts`），不連任何網站；
+  同樣有大小與 content-type 限制，原始檔一樣存進 `raw/`。
+- 沒有官方連結的資料，provenance 的 `sourceUrl` 指向 GitHub 上的原始檔，仍可追溯。
+- **各處室 FAQ 某個檔案沒上傳或讀不到**：其他處室照樣更新；但那次不算「完整走完」，
+  不會把讀不到的處室的 FAQ 當成消失。
+- **不收錄 `corrections.md`**：它是使用者回饋，未經處室確認，且有些紀錄不是事實（例如「應重新檢查並更新」）。
+
+**已知資料限制**（2026-10-04，用 repo 現有檔案實測）：
+
+| 來源 | 筆數 | 有官方連結 |
+|---|---|---|
+| 教務處法規全文 | 156 | 20 |
+| 學務處法規全文 | 170 | 24 |
+| 人事室、總務處法規全文 | 各 20 | 全部 |
+| 通識中心 | 3 全文 ＋ 20 目錄 | 全部 |
+| 其他單位法規目錄 | 476 | 全部 |
+| 各處室 FAQ | 1038 | 全部 |
+
+行政單位彙整表裡多數處室**剛好 20 筆**，看起來只抓到每個處室的第一頁；教務處、學務處的官方連結覆蓋率因此偏低。
+補齊彙整表後重新上傳即可，程式不用改。
+
 ## 與規格的差異（刻意的決定）
 
 - **POST 抓取**：strapi 的 GraphQL 只接受 POST。請求內容由 parser 用固定查詢產生，只帶站台代碼、
@@ -141,7 +189,9 @@ npx wrangler r2 bucket create ntpu-aia-raw-staging
 - [ ] 用真實回應存一份 fixture 到 `tests/`（目前 fixture 依照既有爬蟲的欄位格式手寫）
 - [ ] 讓 AIA 聊天機器人的研發處問題改從 D1 取資料，與現有版本比對答案品質
 - [ ] 加入檔案清單、內容頁（cms-carrier）兩種來源
-- [ ] 登記非網站來源（各處室 FAQ Excel、人事室整理檔、`corrections.md`）為 `manual_verified`
+- [x] 登記非網站來源（法規全文、法規彙整表、各處室 FAQ、人事室整理檔）為 `manual_verified`
+- [ ] 補齊行政單位法規彙整表（目前多數處室只有 20 筆）
+- [ ] `corrections.md` 經處室確認後再決定是否收錄
 - [x] 其他處室加入 source registry（15 個有公告的處室）
 - [x] 校長室、副校長室的介紹頁，圖書館、語言中心的網站
 - [ ] Golden set 評估、contract snapshot 測試（規格 10）

@@ -51,7 +51,52 @@ export interface HtmlNewsConfig {
   personalDataGuard: PersonalDataGuard;
 }
 
-export type AdapterConfig = StrapiPublicationsConfig | StrapiSectionsConfig | HtmlNewsConfig;
+/**
+ * 人工整理檔（repo 的 crawler_data/，上傳到 R2 的 manual/ 後由抓取 Worker 讀取）。
+ * 檔案路徑都必須列在 entrypoints；不會連到任何網站。
+ */
+/** 一個處室的法規全文檔，並以「正規化標題」配對法規彙整表，補上官方檔案連結與標籤。 */
+export interface ManualRegulationsConfig {
+  kind: "manual-regulations";
+  /** 法規全文 markdown（## 法規名稱 → 內文）。 */
+  fullTextFile: string;
+  /** upload-manual 由兩份法規彙整 xlsx 轉出的 JSON。 */
+  catalogFile: string;
+  /** 彙整表裡屬於本處室的「所屬單位／處室」名稱；彙整表有、全文檔沒有的法規也一併收錄（只有目錄）。 */
+  catalogOwners: string[];
+}
+
+/** 法規彙整表裡沒有全文檔的單位（學院、研究中心、其他處室）：只有目錄與官方連結。 */
+export interface ManualRegulationCatalogConfig {
+  kind: "manual-regulation-catalog";
+  catalogFile: string;
+  /** 已由 manual-regulations 來源收錄的單位，這裡跳過，避免同一份法規出現兩次。 */
+  excludeOwners: string[];
+}
+
+/** 各處室常見問答 markdown（### 問題 → 回答 → 欄位）。 */
+export interface ManualFaqConfig {
+  kind: "manual-faq";
+  files: { file: string; unit: string }[];
+}
+
+export type ManualAdapterConfig = ManualRegulationsConfig | ManualRegulationCatalogConfig | ManualFaqConfig;
+
+export type AdapterConfig =
+  | StrapiPublicationsConfig
+  | StrapiSectionsConfig
+  | HtmlNewsConfig
+  | ManualAdapterConfig;
+
+export const MANUAL_ADAPTER_KINDS: readonly ManualAdapterConfig["kind"][] = [
+  "manual-regulations",
+  "manual-regulation-catalog",
+  "manual-faq",
+];
+
+export function isManualSource(source: Pick<SourceDefinition, "adapter">): boolean {
+  return (MANUAL_ADAPTER_KINDS as readonly string[]).includes(source.adapter.kind);
+}
 
 export interface SourceDefinition {
   id: string;
@@ -71,7 +116,12 @@ export interface SourceDefinition {
 
   parser: AdapterConfig["kind"];
   adapter: AdapterConfig;
-  entityType: "announcement" | "page";
+  entityType: EntityType;
+  /**
+   * 一個來源的資料分屬多個處室時（例如各處室 FAQ 合成一個來源），列出這些處室；
+   * 每筆資料的處室由 adapter 給。沒列的話，資料都屬於 sourceUnit。
+   */
+  recordUnits?: string[];
   enabled: boolean;
 
   fetch: FetchPolicy;
@@ -115,3 +165,10 @@ export interface RawArchive {
 }
 
 export type FetchLike = (input: Request) => Promise<Response>;
+
+export type EntityType = "announcement" | "page" | "regulation" | "faq";
+
+/** 人工整理檔的存放處（R2 的 manual/ 前綴）。只能讀，key 必須是來源登記的 entrypoint。 */
+export interface ManualInbox {
+  get(path: string): Promise<{ bytes: Uint8Array; contentType: string | null } | null>;
+}

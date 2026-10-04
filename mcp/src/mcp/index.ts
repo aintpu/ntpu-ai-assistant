@@ -3,6 +3,7 @@ import { ReadRepository } from "../db/read-repository";
 import { assertRegistryValid, SOURCES } from "../ingestion/source-registry";
 import { systemClock, type Clock } from "../shared/clock";
 import { AnnouncementService } from "./announcement-service";
+import { FaqService, RegulationService } from "./manual-service";
 import { PageService } from "./page-service";
 import { createMcpServer, SERVICE_NAME, SERVICE_VERSION, type McpServices } from "./tools";
 
@@ -61,13 +62,20 @@ export function createHandler(clock: Clock = systemClock) {
       const { pathname } = new URL(request.url);
       const repo = new ReadRepository(env.DB);
       const service = new AnnouncementService(repo, clock);
-      const services: McpServices = { announcements: service, pages: new PageService(repo) };
+      const services: McpServices = {
+        announcements: service,
+        pages: new PageService(repo),
+        regulations: new RegulationService(repo),
+        faqs: new FaqService(repo),
+      };
 
       if (pathname === "/mcp") return handleMcp(request, services);
 
       if (pathname === "/health") {
-        const sources = await Promise.all([service.freshness(), service.freshness(undefined, "page")])
-          .then(([a, p]) => [...a, ...p])
+        const sources = await Promise.all(
+          (["announcement", "page", "regulation", "faq"] as const).map((t) => service.freshness(undefined, t)),
+        )
+          .then((groups) => groups.flat())
           .catch(() => null);
         if (!sources) return json({ status: "degraded", service: SERVICE_NAME, error: "DEPENDENCY_UNAVAILABLE" }, 503);
         return json({
@@ -88,12 +96,22 @@ export function createHandler(clock: Clock = systemClock) {
         return json({
           service: SERVICE_NAME,
           version: SERVICE_VERSION,
-          description: "國立臺北大學處室官方公開資料的唯讀 MCP server。資料由排程抓取官網後存入資料庫，查詢時不即時爬網站。",
+          description:
+            "國立臺北大學處室公開資料的唯讀 MCP server。公告與介紹頁由排程抓取官網；法規與常見問答來自人工整理檔（manual_verified）。查詢時不即時爬網站。",
           endpoint: "/mcp",
           transport: "streamable-http (stateless, JSON response)",
           readOnly: true,
           dataClass: "L0 (public)",
-          tools: ["search_announcements", "get_announcement", "search_pages", "get_page"],
+          tools: [
+            "search_announcements",
+            "get_announcement",
+            "search_pages",
+            "get_page",
+            "search_regulations",
+            "get_regulation",
+            "search_faqs",
+            "get_faq",
+          ],
           sources: SOURCES.map((s) => ({ id: s.id, unit: s.sourceUnit, url: s.homepageUrl, type: s.sourceType })),
         });
       }

@@ -1,8 +1,9 @@
 import type { Clock } from "../shared/clock";
 import { IngestionError } from "../shared/errors";
 import { sha256Hex } from "../shared/hash";
+import { assertManualPath, MANUAL_PREFIX } from "./manual-inbox";
 import { assertUrlAllowed, resolveRequestUrl } from "./url-policy";
-import type { FetchLike, RawSnapshot, SourceDefinition, SourceRequest } from "./types";
+import { isManualSource, type FetchLike, type ManualInbox, type RawSnapshot, type SourceDefinition, type SourceRequest } from "./types";
 
 /** 只保留這些回應標頭到原始檔的 metadata，避免存入 cookie 等資料。 */
 const SAFE_HEADERS = ["content-type", "content-length", "etag", "last-modified", "date", "cache-control"];
@@ -37,14 +38,53 @@ async function readCapped(response: Response, maxBytes: number): Promise<Uint8Ar
 }
 
 /**
+ * 人工整理檔：從 R2 manual/ 讀取，不連任何網站。只能讀來源登記的 entrypoint，
+ * 並套用同樣的大小與 content-type 限制；之後一樣存原始檔、雜湊、比對版本。
+ */
+async function readManual(
+  source: SourceDefinition,
+  request: SourceRequest,
+  deps: { clock: Clock; manual?: ManualInbox },
+): Promise<RawSnapshot> {
+  if (!source.entrypoints.includes(request.path) || request.query || request.body) {
+    throw new IngestionError("URL_NOT_ALLOWED", `manual file is not registered: ${request.path}`);
+  }
+  assertManualPath(request.path);
+  if (!deps.manual) throw new IngestionError("DEPENDENCY_UNAVAILABLE", "manual inbox is not configured");
+  const file = await deps.manual.get(request.path);
+  if (!file) throw new IngestionError("FETCH_HTTP_ERROR", `manual file not uploaded: ${request.path}`);
+  if (file.bytes.byteLength > source.fetch.maxResponseBytes) {
+    throw new IngestionError("FETCH_TOO_LARGE", `manual file exceeds ${source.fetch.maxResponseBytes} bytes`);
+  }
+  const mediaType = (file.contentType ?? "").split(";")[0]!.trim().toLowerCase();
+  if (!source.fetch.acceptedContentTypes.includes(mediaType)) {
+    throw new IngestionError("CONTENT_TYPE_REJECTED", `content type not accepted: ${mediaType || "(none)"}`);
+  }
+  const location = `r2:${MANUAL_PREFIX}${request.path}`;
+  return {
+    sourceId: source.id,
+    requestedUrl: location,
+    finalUrl: location,
+    fetchedAt: deps.clock.nowIso(),
+    httpStatus: 200,
+    contentType: file.contentType,
+    headers: {},
+    requestBody: null,
+    bytes: file.bytes,
+    rawHash: await sha256Hex(file.bytes),
+  };
+}
+
+/**
  * 依來源設定抓一個 entrypoint（規格 06 §7–8）。呼叫端只能指定 entrypoint，
  * 不能指定網址；轉址也必須通過同一套檢查。
  */
 export async function fetchSource(
   source: SourceDefinition,
   request: SourceRequest,
-  deps: { fetch: FetchLike; clock: Clock },
+  deps: { fetch: FetchLike; clock: Clock; manual?: ManualInbox },
 ): Promise<RawSnapshot> {
+  if (isManualSource(source)) return readManual(source, request, deps);
   const policy = source.fetch;
   let url = resolveRequestUrl(source, request);
   const method = request.method ?? policy.methods[0]!;

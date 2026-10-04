@@ -5,6 +5,7 @@ import { createHandler, type McpEnv } from "../../src/mcp/index";
 import { TestD1 } from "../helpers/d1-shim";
 import { FakeStrapi, FixedClock, MemoryRawArchive, publication, routedFetch } from "../helpers/fixtures";
 import { FakeSites, lcId, libraryId } from "../helpers/html-fixtures";
+import { MemoryManualInbox, seedManualInbox } from "../helpers/manual-fixtures";
 
 let db: TestD1;
 let clock: FixedClock;
@@ -38,6 +39,7 @@ beforeEach(async () => {
       clock,
       environment: "test",
       sleep: async () => {},
+      manual: seedManualInbox(new MemoryManualInbox()),
     },
     { trigger: "test" },
   );
@@ -72,9 +74,13 @@ describe("MCP endpoint", () => {
     const tools = body.result.tools;
     expect(tools.map((t: any) => t.name).sort()).toEqual([
       "get_announcement",
+      "get_faq",
       "get_page",
+      "get_regulation",
       "search_announcements",
+      "search_faqs",
       "search_pages",
+      "search_regulations",
     ]);
     for (const tool of tools) {
       expect(tool.annotations.readOnlyHint).toBe(true);
@@ -193,9 +199,11 @@ describe("MCP endpoint", () => {
   });
 
   it("unknown tools are not callable", async () => {
+    const before = db.count("entities");
+    expect(before).toBeGreaterThan(0);
     const { body } = await call("execute_sql", { sql: "DROP TABLE entities" });
     expect(body.result?.isError ?? Boolean(body.error)).toBe(true);
-    expect(db.count("entities")).toBe(11);
+    expect(db.count("entities")).toBe(before);
   });
 
   it("T-010 freshness: data becomes stale after the declared max staleness", async () => {

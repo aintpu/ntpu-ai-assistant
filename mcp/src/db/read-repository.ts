@@ -22,9 +22,11 @@ export interface SourceStatusRow {
   quarantined: number;
 }
 
+export type ReadEntityType = "announcement" | "page" | "regulation" | "faq";
+
 export interface AnnouncementQuery {
-  /** announcement（公告）或 page（內容頁）。 */
-  entityType?: "announcement" | "page";
+  /** announcement（公告）、page（內容頁）、regulation（法規）或 faq（常見問答）。 */
+  entityType?: ReadEntityType;
   unit?: string;
   keywords: string[];
   fromDate?: string;
@@ -72,7 +74,7 @@ export class ReadRepository {
   async getAnnouncementRows(
     id: string,
     units: string[],
-    entityType: "announcement" | "page" = "announcement",
+    entityType: ReadEntityType = "announcement",
   ): Promise<AnnouncementRow[]> {
     if (units.length === 0) return [];
     const placeholders = units.map((_, i) => `?${i + 2}`).join(", ");
@@ -85,6 +87,22 @@ export class ReadRepository {
       .bind(entityType, ...units.map((u) => `${u}:${id}`))
       .all<AnnouncementRow>();
     return results;
+  }
+
+  /**
+   * 法規、FAQ 的編號在同類資料裡唯一，但所屬處室由資料決定（stable_key 是「處室:編號」）；
+   * 依編號查詢，不必先知道處室。編號格式已由呼叫端驗證，這裡仍跳脫 LIKE 特殊字元。
+   */
+  async getRowsByRecordId(entityType: ReadEntityType, id: string): Promise<AnnouncementRow[]> {
+    const { results } = await this.db
+      .prepare(
+        `SELECT ${ROW_COLUMNS} FROM entities e JOIN sources s ON s.id = e.source_id
+         WHERE e.entity_type = ?1 AND e.stable_key LIKE ?2 ESCAPE '\\' AND e.status != 'withheld'
+         ORDER BY e.source_unit LIMIT 5`,
+      )
+      .bind(entityType, `%:${escapeLike(id)}`)
+      .all<AnnouncementRow>();
+    return results.filter((r) => r.stable_key.endsWith(`:${id}`));
   }
 
   async sourceStatuses(): Promise<SourceStatusRow[]> {
