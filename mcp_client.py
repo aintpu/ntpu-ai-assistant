@@ -35,6 +35,31 @@ DEPT_TO_MCP_UNIT = {
 }
 
 
+# AIA 的處室代碼 → MCP 的（法規 unit, 常見問答 unit）。只列「本機索引用到的法規／FAQ 檔案
+# MCP 全部都有」的處室，避免切過去少資料：
+# - 體育室、通識（cge_content.md）、語言中心（lc_content.md）有 MCP 沒收的檔案，不在這裡。
+# - 校長室要固定帶入「現任校長」並跨副校長室檢索（OFFICE_SEARCH_GROUPS），維持本機。
+DEPT_TO_MCP_RECORD_UNITS = {
+    "oaa": ("oaa", None),
+    "osa": ("osa", None),
+    "hr": ("op", "op"),
+    "oga": ("oga", "oga"),
+    "ord": ("ord", "ord"),
+    "oa": ("oa", "oa"),
+    "lib": ("library", "library"),
+    "cic": ("cic", "cic"),
+    "oia": ("oia", "oia"),
+    "eec": ("eec", "eec"),
+    "alu": ("alumni", "alumni"),
+    "sus": (None, "sustainable"),
+    "edusp": ("edusp", "edusp"),
+    "os": ("os", "os"),
+    "vpa": (None, "vice-president-academic"),
+    "vpad": (None, "vice-president-administration"),
+    "vpf": (None, "vice-president-financial"),
+}
+
+
 class McpUnavailable(Exception):
     """MCP 關閉、連不上、逾時或回傳錯誤。"""
 
@@ -46,6 +71,11 @@ def mcp_url() -> str:
 def announcements_enabled() -> bool:
     """預設開啟；設 MCP_ANNOUNCEMENTS=0 可立即改回只用本機資料。"""
     return os.environ.get("MCP_ANNOUNCEMENTS", "1").strip().lower() not in ("0", "false", "off")
+
+
+def records_enabled() -> bool:
+    """法規、常見問答改查 MCP。預設關閉；評估通過後設 MCP_REGULATIONS=1 才開啟。"""
+    return os.environ.get("MCP_REGULATIONS", "0").strip().lower() in ("1", "true", "on")
 
 
 def call_tool(name: str, arguments: Dict[str, Any], *, session: Optional[requests.Session] = None) -> Dict[str, Any]:
