@@ -147,8 +147,12 @@ DEFAULT_SERVICE_ENTITY_ALIASES = (
 # Keep only high-precision competing aliases here; full organization names are
 # detected generically below and the structured scope classifier handles other
 # named entities.
+# 常見外校簡稱（全名由 ENTITY_SUFFIXES 規則處理）。不含「北大」（本校），也不含「中央」「東海」「文化」
+# 這類容易出現在一般語句裡的詞。
 DEFAULT_EXTERNAL_ENTITY_ALIASES = (
     "台大", "臺大", "NTU", "National Taiwan University",
+    "政大", "清大", "交大", "陽明交大", "成大", "師大", "台師大", "臺師大",
+    "台科大", "臺科大", "北科大", "北醫", "輔大", "淡大", "世新", "銘傳", "東吳", "逢甲",
 )
 ENTITY_SUFFIXES = (
     "大學", "學院", "高中", "國中", "國小", "學校", "研究院",
@@ -425,6 +429,21 @@ def _contains_entity_alias(text: str, alias: str) -> bool:
     return normalized_alias in normalized_text
 
 
+# 外校簡稱前面只能是句首、標點／空白或這些字，避免「行政大樓」裡的「政大」、「完成大學」裡的「成大」、
+# 「台北醫院」裡的「北醫」被當成外校。
+_ALIAS_LEFT_OK = "那這在去到和與跟或讀念考上從是我你的對比像轉及問要說選申、，,。？?！! "
+
+
+def _contains_external_alias(text: str, alias: str) -> bool:
+    normalized_alias = _normalize_entity_text(alias)
+    if not normalized_alias or re.fullmatch(r"[a-z0-9 ]+", normalized_alias, flags=re.IGNORECASE):
+        return _contains_entity_alias(text, alias)
+    for m in re.finditer(re.escape(alias), text or ""):
+        if m.start() == 0 or text[m.start() - 1] in _ALIAS_LEFT_OK or not re.match(r"[\u4e00-\u9fff]", text[m.start() - 1]):
+            return True
+    return False
+
+
 def _configured_aliases(
     context: dict[str, Any],
     key: str,
@@ -446,7 +465,7 @@ def _configured_aliases(
 # 而「我想轉學到淡江大學」仍保留「淡江大學」。
 _ENTITY_BREAK_RE = re.compile(r"[我你您他她它們想要請幫給在的了嗎呢和與跟或去到從對把被讓問查找看說是有]")
 ENTITY_LEADING_VERBS = (
-    "整理", "比較", "申請", "查詢", "列出", "說明", "介紹", "報考", "就讀", "轉學", "考上", "考",
+    "整理", "比較", "申請", "查詢", "列出", "說明", "介紹", "報考", "就讀", "轉學", "考上", "完成", "修完", "考",
     "讀", "念", "上",
 )
 
@@ -498,7 +517,7 @@ def detect_service_entity_conflict(
     text = query or ""
     supported = tuple(alias for alias in supported_aliases if alias)
     for alias in external_aliases:
-        if alias and _contains_entity_alias(text, alias):
+        if alias and _contains_external_alias(text, alias):
             return str(alias)
 
     for candidate in _extract_entity_candidates(text):
@@ -905,7 +924,7 @@ def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[s
         "必須回 OUT_OF_SCOPE，entity_conflict=true，不能因為前文有相似主題而繼承原處室。"
         "目前問題的明確指向優先於 active_topic、active_office 與歷史來源。\n"
         "自然語句不一定包含處室名稱；例如行政人員午休、特別休假、差勤等仍屬 hr 人事室，"
-        "學生團體保險、學生平安保險等仍屬 osa 學務處。"
+        "學生團體保險、學生平安保險等仍屬 osa 學務處；捐款給學校（含從國外匯款）屬 alu 校友中心。"
         f"以 FAQ 匯入的單位涵蓋範圍舉例：{_faq_office_topics()}。"
         "校長室與各副校長室 FAQ 收錄現任首長姓名、學經歷、研究領域、榮譽與聯絡方式，"
         "詢問本校校長或副校長的這些資訊（含『他們的研究領域呢』這類追問）都屬 IN_SCOPE。"

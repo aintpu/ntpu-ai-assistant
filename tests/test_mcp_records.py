@@ -174,3 +174,46 @@ class McpRecordTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipIf(_IMPORT_ERROR, f"backend dependencies unavailable: {_IMPORT_ERROR}")
+class GroundedScopeTests(unittest.TestCase):
+    """模型把本校資料裡的名詞（信義會館、北聯大…）誤判成外部機構時，用知識庫標題改判。"""
+
+    def setUp(self):
+        from langchain_core.documents import Document
+        docs = [
+            Document(page_content="x", metadata={"title": "信義會館住宿有什麼規定？", "dept": "eec"}),
+            Document(page_content="x", metadata={"title": "北聯大計畫有哪些類型？補助多少？", "dept": "ord"}),
+        ]
+        self.patch = patch.object(core.INDEX, "docs_zh", docs)
+        self.patch.start()
+        core._title_index = None
+
+    def tearDown(self):
+        self.patch.stop()
+        core._title_index = None
+
+    def _out(self):
+        from conversation_guardrail import ScopeDecision
+        return ScopeDecision("OUT_OF_SCOPE", None, 1.0, "模型判斷為外部機構")
+
+    def test_known_topic_overrides_model_out_of_scope(self):
+        scope = core.ground_scope_in_data(self._out(), "住信義會館有哪些規定")
+        self.assertEqual((scope.status, scope.office_hint), ("IN_SCOPE", "eec"))
+        scope = core.ground_scope_in_data(self._out(), "北聯大計畫可以補助多少錢")
+        self.assertEqual((scope.status, scope.office_hint), ("IN_SCOPE", "ord"))
+
+    def test_rule_based_blocks_are_never_overridden(self):
+        # 外校與已知無關意圖：即使標題剛好有相同字詞也不放行
+        for q in ("淡江大學的信義會館", "政大的北聯大計畫"):
+            self.assertEqual(core.ground_scope_in_data(self._out(), q).status, "OUT_OF_SCOPE", q)
+
+    def test_unknown_topics_and_short_words_stay_blocked(self):
+        for q in ("什麼是量子力學", "會館在哪", "幫我寫一首詩"):
+            self.assertEqual(core.ground_scope_in_data(self._out(), q).status, "OUT_OF_SCOPE", q)
+
+    def test_in_scope_decisions_are_untouched(self):
+        from conversation_guardrail import ScopeDecision
+        scope = ScopeDecision("IN_SCOPE", "lib", 0.9, "")
+        self.assertIs(core.ground_scope_in_data(scope, "信義會館"), scope)
