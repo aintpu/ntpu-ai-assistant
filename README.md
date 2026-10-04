@@ -15,8 +15,17 @@
 > 目前只有研究發展處公告，與正式站分開部署。說明見 [mcp/README.md](mcp/README.md)。
 
 新增 FAQ 沿用 `crawler_data/*_faq.md` → `CRAWLER_SOURCES` → FAISS/BM25 的既有流程。
-單位代碼與別名位於 `office_catalog.py`。原始 Excel 不修改，可用
-`python scripts/import_office_faqs.py /path/to/ntpu-faq` 重現本批匯入；
+單位代碼與別名位於 `office_catalog.py`。原始 Excel 不修改。
+
+更新 FAQ（改完 Excel 後）：
+
+```bash
+python scripts/import_office_faqs.py ~/Downloads --upload production
+```
+
+一次完成：每個處室取檔名日期最新的 Excel → 整批驗證 → 轉成 `crawler_data/*_faq.md` → 上傳到 MCP。
+MCP 在下一輪抓取時更新（約 5 小時內）；機器人本機索引要把 `crawler_data/` 的變更開 PR 合併後才會更新。
+不加 `--upload` 就只轉檔。
 `crawler_data/office_faq_manifest.json` 記錄原檔 SHA-256、各題 ID、問題與來源連結。
 這批資料不是即時公告或完整法規全文，時效性資訊應核對原始官網。
 
