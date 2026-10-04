@@ -57,7 +57,9 @@ export class ReadRepository {
     if (q.fromDate) where.push(`e.published_at >= ${bind(q.fromDate)}`);
     if (q.beforeIso) where.push(`e.published_at < ${bind(q.beforeIso)}`);
     for (const term of q.keywords) {
-      where.push(`e.search_text LIKE ${bind(`%${escapeLike(term)}%`)} ESCAPE '\\'`);
+      // 用 instr 而非 LIKE：D1 限制 LIKE 樣式長度（約 50 bytes），17 個中文字以上的關鍵字會 INTERNAL_ERROR。
+      // lower() 保留 LIKE 原本「英文不分大小寫」的行為；instr 不認萬用字元，% 與 _ 照字面比對。
+      where.push(`instr(lower(e.search_text), lower(${bind(term)})) > 0`);
     }
     const sql = `SELECT ${ROW_COLUMNS} FROM entities e JOIN sources s ON s.id = e.source_id
       WHERE ${where.join(" AND ")}
