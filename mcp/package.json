@@ -8,6 +8,7 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:security": "vitest run tests/security",
+    "test:contract": "vitest run tests/contract",
     "check": "npm run typecheck && npm test",
     "dev:ingest": "wrangler dev --config wrangler.ingest.jsonc --test-scheduled",
     "dev:mcp": "wrangler dev --config wrangler.mcp.jsonc",

@@ -5,6 +5,7 @@ import { systemClock, type Clock } from "../shared/clock";
 import { AnnouncementService } from "./announcement-service";
 import { FaqService, RegulationService } from "./manual-service";
 import { PageService } from "./page-service";
+import { TOOL_REGISTRY } from "./tool-registry";
 import { createMcpServer, SERVICE_NAME, SERVICE_VERSION, type McpServices } from "./tools";
 
 export interface McpEnv {
@@ -102,16 +103,16 @@ export function createHandler(clock: Clock = systemClock) {
           transport: "streamable-http (stateless, JSON response)",
           readOnly: true,
           dataClass: "L0 (public)",
-          tools: [
-            "search_announcements",
-            "get_announcement",
-            "search_pages",
-            "get_page",
-            "search_regulations",
-            "get_regulation",
-            "search_faqs",
-            "get_faq",
-          ],
+          tools: TOOL_REGISTRY.map((t) => t.name),
+          // 規格 07 §10：工具登記表（風險等級、資料分級、唯讀、負責人）。
+          toolRegistry: TOOL_REGISTRY,
+          owners: {
+            dataOwner: "盧信廷",
+            technicalOwner: "盧信廷",
+            securityReviewer: "盧信廷",
+            productionOperator: "盧信廷",
+            note: "官網公告內容由各處室發布，本服務負責同步；法規與常見問答人工整理檔由盧信廷維護。",
+          },
           sources: SOURCES.map((s) => ({ id: s.id, unit: s.sourceUnit, url: s.homepageUrl, type: s.sourceType })),
         });
       }
