@@ -130,6 +130,31 @@ class McpAnnouncementTests(unittest.TestCase):
 
 
 @unittest.skipIf(_IMPORT_ERROR, f"backend dependencies unavailable: {_IMPORT_ERROR}")
+class OfficeToolRuleTests(unittest.TestCase):
+    """MCP 有公告的處室要能使用 get_latest_news；以前只有體育室、通識、語言中心能用。"""
+
+    def test_offices_with_mcp_announcements_may_use_the_news_tool(self):
+        with patch.dict(os.environ, {"MCP_ANNOUNCEMENTS": "1"}):
+            for dept in ("ord", "oaa", "osa", "hr", "oga", "lib", "cic", "oia"):
+                self.assertTrue(core.mcp_news_available(dept), dept)
+                rule = core.office_tool_rule(dept)
+                self.assertIn("請用 get_latest_news", rule)
+                self.assertNotIn("get_latest_news 皆【不可使用】", rule)
+                self.assertIn("find_forms 皆【不可使用】", rule)
+
+    def test_offices_without_mcp_announcements_keep_the_old_rule(self):
+        with patch.dict(os.environ, {"MCP_ANNOUNCEMENTS": "1"}):
+            for dept in ("pres", "vpa", "vpad", "vpf", None):
+                self.assertFalse(core.mcp_news_available(dept), dept)
+                self.assertIn("get_latest_news 皆【不可使用】", core.office_tool_rule(dept))
+
+    def test_switch_off_restores_the_old_rule_everywhere(self):
+        with patch.dict(os.environ, {"MCP_ANNOUNCEMENTS": "0"}):
+            self.assertFalse(core.mcp_news_available("ord"))
+            self.assertIn("get_latest_news 皆【不可使用】", core.office_tool_rule("ord"))
+
+
+@unittest.skipIf(_IMPORT_ERROR, f"backend dependencies unavailable: {_IMPORT_ERROR}")
 class McpClientTests(unittest.TestCase):
     def _resp(self, status=200, body=None, bad_json=False):
         r = MagicMock(status_code=status)
