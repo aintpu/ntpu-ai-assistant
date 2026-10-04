@@ -14,6 +14,7 @@ const LABELS = {
     disclaimer: "📌 回答由 AI 整理，最新資訊請以各單位官方公告為準。",
     sources: "參考來源",
     systemSources: "系統說明",
+    dataUpdatedAt: "公告資料更新時間",
     langLabel: "語言",
     welcome: "有什麼我能幫你的？",
     welcomeSub: "支援 21 個單位：體育室・通識教育中心・語言中心・教務處・學務處・人事室・總務處・研究發展處・主計室・圖書館・資訊中心・國際事務處・進修暨推廣部・校友中心・永續辦公室・高等教育深耕計畫辦公室・秘書室・學術副校長室・行政副校長室・財務暨永續發展副校長室・校長室。回答範圍以已匯入資料為限。",
@@ -54,6 +55,7 @@ const LABELS = {
     disclaimer: "📌 AI-generated answers. Please refer to official announcements for the latest information.",
     sources: "Sources",
     systemSources: "About this system",
+    dataUpdatedAt: "Announcements last synced",
     langLabel: "Language",
     welcome: "How can I help you?",
     welcomeSub:
@@ -160,6 +162,16 @@ const QUICK_QUESTIONS = {
 // style：CSP 的 style-src 不允許 'unsafe-inline'，靜態輸出中的 style="" 會被瀏覽器擋掉。
 
 // ─── 工具函式 ──────────────────────────────────────────────────────────────────
+
+/** ISO 時間 → 台灣時間「2026/10/04 13:20」；格式不對時回空字串（不顯示）。 */
+function formatTaipeiTime(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("zh-TW", {
+    timeZone: "Asia/Taipei", hour12: false,
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  });
+}
 
 function fileToBase64(blob) {
   return new Promise((resolve) => {
@@ -548,6 +560,13 @@ function MessageBubble({ msg, lang, T, sessionId }) {
             </div>
           )}
 
+          {/* 本輪用到 MCP 公告（每天自動同步官網）時，顯示資料最後同步時間（台灣時間） */}
+          {msg.dataUpdatedAt && formatTaipeiTime(msg.dataUpdatedAt) && (
+            <div className={`mt-1 px-1 text-xs ${T.sourceText}`}>
+              {labels.dataUpdatedAt}：{formatTaipeiTime(msg.dataUpdatedAt)}
+            </div>
+          )}
+
           {/* 回答完整結束（有 message_id）才顯示評價，串流中途不顯示 */}
           {msg.messageId && msg.content && (
             <AnswerFeedback messageId={msg.messageId} sessionId={sessionId} lang={lang} T={T} />
@@ -896,7 +915,7 @@ export default function ChatPage() {
             else if (evt.type === "sources") { current.sources = evt.sources ?? []; push(); }
             else if (evt.type === "blocked") { current = { role: "assistant", status: "blocked", content: evt.message }; setLoading(false); push(); }
             else if (evt.type === "error")   { current = { role: "assistant", status: "error", content: evt.message }; setLoading(false); push(); }
-            else if (evt.type === "done")    { if (evt.answer) { current.content = evt.answer; current.rawAnswer = evt.answer; } if (evt.message_id) current.messageId = evt.message_id; current.statusText = ""; push(); }
+            else if (evt.type === "done")    { if (evt.answer) { current.content = evt.answer; current.rawAnswer = evt.answer; } if (evt.message_id) current.messageId = evt.message_id; current.dataUpdatedAt = evt.data_updated_at ?? null; current.statusText = ""; push(); }
           }
         }
         if (!gotAnything) throw new Error("empty stream");
@@ -906,7 +925,7 @@ export default function ChatPage() {
       let aiMsg;
       applyConversationMetadata(data);
       if (data.status === "ok") {
-        aiMsg = { role: "assistant", status: "ok", content: data.answer, rawAnswer: data.answer, sources: data.sources ?? [], audioBase64: data.audio_base64 ?? null, messageId: data.message_id ?? null };
+        aiMsg = { role: "assistant", status: "ok", content: data.answer, rawAnswer: data.answer, sources: data.sources ?? [], audioBase64: data.audio_base64 ?? null, messageId: data.message_id ?? null, dataUpdatedAt: data.data_updated_at ?? null };
         if (data.audio_base64) playBase64Audio(data.audio_base64);
       } else {
         aiMsg = { role: "assistant", status: data.status, content: data.message ?? "發生未知錯誤。" };
