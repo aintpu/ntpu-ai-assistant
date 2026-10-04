@@ -103,6 +103,34 @@ class McpRecordTests(unittest.TestCase):
         self.assertEqual(core.get_last_data_updated_at(), SYNC)
         self.assertEqual([c["title"] for c in core._source_ctx.candidates], ["圖書如何續借？"])
 
+    def test_also_searches_the_offices_announcements(self):
+        # 成績單自動列印機台的位置只寫在教務處公告裡，不在法規或常見問答。
+        news = {"id": "6a" + "0" * 22, "unit": "oaa", "title": "成績單及證明文件申請管道說明",
+                "publishedAt": "2025-04-13T16:00:00.000Z", "snippet": "成績單自動列印服務系統機器",
+                "provenance": {"sourceUrl": "https://new.ntpu.edu.tw/oaa/news/x"}}
+        fake = FakeMcp({("search_announcements", "成績單"): [news]})
+        orig = fake.__call__
+
+        def call(name, args, **kw):
+            if name == "get_announcement":
+                fake.calls.append((name, dict(args)))
+                return {"announcement": {"bodyText": "機器擺放位置於台北校區教學大樓1樓"}}
+            return orig(name, args, **kw)
+
+        with patch.object(mcp_client, "call_tool", side_effect=call):
+            out = core.tool_search_database("成績單列印機台在哪裡", dept="oaa", keywords="成績單")
+        self.assertIn("成績單及證明文件申請管道說明", out)
+        self.assertIn("機器擺放位置於台北校區教學大樓1樓", out)
+        self.assertIn("公告（2025-04-14）", out)
+        self.assertIn(("search_announcements", {"keyword": "成績單", "unit": "oaa", "limit": 20}), fake.calls)
+        self.assertIn(("get_announcement", {"id": news["id"], "unit": "oaa"}), fake.calls)
+
+    def test_announcements_switch_off_skips_announcement_search(self):
+        fake = FakeMcp({})
+        with patch.dict(os.environ, {"MCP_ANNOUNCEMENTS": "0"}), patch.object(mcp_client, "call_tool", side_effect=fake):
+            core.tool_search_database("成績單", dept="oaa", keywords="成績單")
+        self.assertFalse(any(n == "search_announcements" for n, _ in fake.calls))
+
     def test_falls_back_to_single_keywords_and_ranks_by_matches(self):
         fake = FakeMcp({
             ("search_regulations", "請假"): [_reg(1, "學生請假辦法"), _reg(2, "教職員請假須知")],

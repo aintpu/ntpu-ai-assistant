@@ -36,6 +36,7 @@
     {"id": "R32", "dept": "osa", "question": "軍公教遺族讀書費用有優待嗎", "keywords": "軍公教遺族 就學", "expect": "軍公教遺族就學費用優待條例"},
     {"id": "R33", "dept": "osa", "question": "行天宮的急難救助怎麼申請", "keywords": "行天宮 急難", "expect": "行天宮"},
     {"id": "R34", "dept": "osa", "question": "全民國防教育法的內容", "keywords": "全民國防教育法", "expect": "全民國防教育法"},
+    {"id": "R37", "dept": "oaa", "question": "成績單列印機台在哪裡", "keywords": "成績單 列印", "expect": "成績單及證明文件申請管道說明"},
     {"id": "R35", "dept": "lib", "question": "圖書館可以幫我修電腦嗎", "keywords": "修電腦", "expect": null},
     {"id": "R36", "dept": "osa", "question": "宿舍可以養貓嗎", "keywords": "宿舍 養貓", "expect": null}
   ]
