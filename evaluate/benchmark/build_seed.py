@@ -1,4 +1,6 @@
-"""NTPU AIA Benchmark 種子題庫：把現有的 FAQ 與歷次測試題轉成統一格式。
+"""NTPU AIA Benchmark 題庫：把現有的 FAQ 與歷次測試題轉成統一格式，並合併 generate.py 產生的題目。
+
+題庫只用於評估，不放進系統：evaluate/ 已被 .dockerignore 排除，知識庫索引與 MCP 上傳都只讀 crawler_data/。
 
     python evaluate/benchmark/build_seed.py
 
@@ -167,16 +169,48 @@ def coverage_report(items):
     for r, name in (("high", "高"), ("medium", "中"), ("low", "低")):
         lines.append(f"| {name} | {risks.get(r, 0)} |")
     no_source = sum(1 for i in items if i["answerable"] and not i["official_source"]["url"])
+    generated = sum(1 for i in items if i["origin"].startswith("generated:"))
     lines += ["", "## 待補", "",
-              f"- 口語化／改寫題、追問題：需用模型由現有題目產生（目前 0 題）。",
-              f"- 教務處、學務處：沒有問答格式的資料，需由法規條文產生題目。",
+              f"- 模型產生的題目：{generated} 題（法規題、改寫題、追問題、應拒答題，皆未經人工審核）。"
+              + (f"品質過濾排除：{'、'.join(f'{k} {v} 題' for k, v in FILTERED.items())}。" if FILTERED else ""),
               f"- 有 {no_source} 題缺官方來源網址（多為體育室、通識、語言中心的舊測試題）。",
               f"- 風險等級為關鍵字自動標記；所有題目 `reviewed=false`，尚未人工審核。"]
     return "\n".join(lines) + "\n"
 
 
+def collect_seed():
+    return from_faq_files() + from_legacy_tests() + unanswerable_seeds()
+
+
+NTPU_RE = re.compile(r"臺北大學|台北大學|北大|本校|我們學校")
+CJK_RE = re.compile(r"[\u4e00-\u9fff]")
+FILTERED = Counter()
+
+
+def keep_generated(r) -> bool:
+    """抽查發現的品質問題：應拒答題其實在問本校的事；追問題的答案沒有中文內容（例如只有英文法規名稱）。"""
+    if r.get("type") == "skip":
+        return False
+    if r["type"] == "unanswerable" and r.get("refuse_kind") in ("external", "unrelated") and NTPU_RE.search(r["question"]):
+        FILTERED["應拒答題提到本校"] += 1
+        return False
+    if r["type"] == "followup" and not CJK_RE.search(r["standard_answer"]):
+        FILTERED["追問答案沒有中文"] += 1
+        return False
+    return True
+
+
+def load_generated():
+    """generate.py 產生的題目（略過出題失敗與品質過濾掉的題目）。"""
+    path = os.path.join(OUT_DIR, "generated.jsonl")
+    if not os.path.exists(path):
+        return []
+    rows = [json.loads(line) for line in open(path, encoding="utf-8")]
+    return [r for r in rows if keep_generated(r)]
+
+
 def main():
-    items = from_faq_files() + from_legacy_tests() + unanswerable_seeds()
+    items = collect_seed() + load_generated()
     seen = Counter(i["id"] for i in items)
     dup = defaultdict(int)
     for i in items:  # 同一編號出現多次時加流水號，確保 id 唯一
