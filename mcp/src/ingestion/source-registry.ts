@@ -193,6 +193,32 @@ const PAGE_UNITS: { unit: string; pagePaths: string[] }[] = [
   { unit: "vice-president-financial", pagePaths: ["/vice-president-financial"] },
 ];
 
+/**
+ * 處室官網（new.ntpu.edu.tw）整站的內容頁：組別介紹、業務說明、各專區等。
+ * 2026-10-06 盤點學校 API：17 個前綴約 520 頁，其中約 430 頁有實質內容；少於 50 字的空殼頁不收錄。
+ * /admission/ 是教務處的招生資訊頁，/oia2/ 是國際處的第二個站台。
+ */
+const SITE_PAGE_PREFIXES: { id: string; unit: string; prefix: string }[] = [
+  { id: "oaa", unit: "oaa", prefix: "/oaa/" },
+  { id: "admission", unit: "oaa", prefix: "/admission/" },
+  { id: "osa", unit: "osa", prefix: "/osa/" },
+  { id: "op", unit: "op", prefix: "/op/" },
+  { id: "oga", unit: "oga", prefix: "/oga/" },
+  { id: "ord", unit: "ord", prefix: "/ord/" },
+  { id: "oa", unit: "oa", prefix: "/oa/" },
+  { id: "cic", unit: "cic", prefix: "/cic/" },
+  { id: "oia", unit: "oia", prefix: "/oia/" },
+  { id: "oia2", unit: "oia", prefix: "/oia2/" },
+  { id: "eec", unit: "eec", prefix: "/eec/" },
+  { id: "alumni", unit: "alumni", prefix: "/alumni/" },
+  { id: "edusp", unit: "edusp", prefix: "/edusp/" },
+  { id: "os", unit: "os", prefix: "/os/" },
+  { id: "sustainable", unit: "sustainable", prefix: "/sustainable/" },
+  { id: "ope", unit: "ope", prefix: "/ope/" },
+  { id: "cge", unit: "cge", prefix: "/cge/" },
+  { id: "library", unit: "library", prefix: "/library/" },
+];
+
 const strapiOrigin = {
   origin: "https://api-carrier.ntpu.edu.tw",
   allowedPathPrefixes: ["/strapi"],
@@ -233,6 +259,23 @@ const WEB_SOURCES: SourceDefinition[] = [
       ...strapiOrigin,
       parser: "strapi-sections",
       adapter: { kind: "strapi-sections", pagePaths },
+      entityType: "page",
+      enabled: true,
+      fetch: STRAPI_FETCH,
+      freshness: DAILY,
+    }),
+  ),
+  ...SITE_PAGE_PREFIXES.map(
+    ({ id, unit, prefix }): SourceDefinition => ({
+      id: `${id}-site-pages`,
+      sourceUnit: unit,
+      sourceType: "official_api",
+      trustLevel: "official",
+      homepageUrl: `https://new.ntpu.edu.tw${prefix.replace(/\/$/, "")}`,
+      newsUrlBase: `https://new.ntpu.edu.tw${prefix.replace(/\/$/, "")}`,
+      ...strapiOrigin,
+      parser: "strapi-sections",
+      adapter: { kind: "strapi-sections", pathPrefix: prefix },
       entityType: "page",
       enabled: true,
       fetch: STRAPI_FETCH,
