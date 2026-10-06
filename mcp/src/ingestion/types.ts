@@ -32,11 +32,13 @@ export interface StrapiPublicationsConfig {
   personalDataGuard: PersonalDataGuard;
 }
 
-/** 學校 Strapi 的固定內容頁（sections），以頁面路徑指定。 */
+/** 學校 Strapi 的內容頁（sections）：以頁面路徑逐一指定，或以路徑前綴抓整個處室站台的所有頁面。 */
 export interface StrapiSectionsConfig {
   kind: "strapi-sections";
   /** 頁面路徑，例如 /president；公開網址是 https://new.ntpu.edu.tw + 路徑。 */
-  pagePaths: string[];
+  pagePaths?: string[];
+  /** 路徑前綴，例如 /osa/：抓這個前綴下所有有內容的頁面（翻頁到底）。與 pagePaths 擇一。 */
+  pathPrefix?: string;
 }
 
 /** 伺服器端產生的 HTML 公告網站：列表頁翻頁，再逐則抓內文。 */

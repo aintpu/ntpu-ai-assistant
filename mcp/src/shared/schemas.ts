@@ -31,7 +31,8 @@ export const PageSchema = z
   .object({
     id: RecordIdSchema,
     unit: UnitSchema,
-    path: z.string().regex(/^\/[a-z0-9][a-z0-9/-]{0,100}$/),
+    // 招生頁等路徑含中文與括號（例如 /admission/碩士班一般入學）；不允許空白、引號、角括號與反斜線。
+    path: z.string().regex(/^\/[^\s"'<>\\]{1,200}$/u),
     title: z.string().min(1).max(500),
     updatedAt: z.string().datetime(),
     bodyText: z.string().min(1).max(200_000),
