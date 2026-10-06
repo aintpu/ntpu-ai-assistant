@@ -60,6 +60,32 @@ DEPT_TO_MCP_RECORD_UNITS = {
 }
 
 
+# AIA 的處室代碼 → MCP 官網內容頁（search_pages）的 unit。只列 MCP 有登記頁面來源的單位；
+# 傳入沒有頁面的 unit（例如 lc）會讓工具回錯誤，所以不能直接沿用公告的對應表。
+DEPT_TO_MCP_PAGE_UNIT = {
+    "ope": "ope",
+    "ge": "cge",
+    "oaa": "oaa",
+    "osa": "osa",
+    "hr": "op",
+    "oga": "oga",
+    "ord": "ord",
+    "oa": "oa",
+    "lib": "library",
+    "cic": "cic",
+    "oia": "oia",
+    "eec": "eec",
+    "alu": "alumni",
+    "sus": "sustainable",
+    "edusp": "edusp",
+    "os": "os",
+    "pres": "president",
+    "vpa": "vice-president-academic",
+    "vpad": "vice-president-administration",
+    "vpf": "vice-president-financial",
+}
+
+
 class McpUnavailable(Exception):
     """MCP 關閉、連不上、逾時或回傳錯誤。"""
 
