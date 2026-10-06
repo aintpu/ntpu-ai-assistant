@@ -1752,6 +1752,13 @@ def _record_search_terms(keywords: str) -> list:
 def _record_document(kind: str, item: dict, detail: dict, dept: str) -> Document:
     prov = item.get("provenance") or {}
     source_name = item.get("sourceName") or ""
+    if kind == "page":
+        body = (detail or {}).get("bodyText") or item.get("snippet", "")
+        return Document(page_content=unquote(body[:3000]), metadata={
+            "title": item.get("title", ""), "url": prov.get("sourceUrl") or "", "type": "page",
+            "category": "官網頁面", "dept": dept, "date": _taipei_date(item.get("updatedAt") or ""),
+            "source_id": f"mcp:page:{item.get('unit')}:{item.get('id')}",
+        })
     if kind == "announcement":
         title = item.get("title", "")
         body = (detail or {}).get("bodyText") or item.get("snippet", "")
@@ -1797,15 +1804,23 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
     # 也查該處室公告：「怎麼申請」「在哪裡」這類長期有效的說明有時只寫在公告裡
     # （例如教務處〈成績單及證明文件申請管道說明〉寫了成績單自動列印機台的位置）。
     news_unit = mcp_client.DEPT_TO_MCP_UNIT.get(dept) if mcp_client.announcements_enabled() else None
+    page_unit = mcp_client.DEPT_TO_MCP_PAGE_UNIT.get(dept)  # 處室官網內容頁（組別業務、各專區、招生資訊）
     targets = [(k, tool, u) for k, tool, u in (
         ("faq", "search_faqs", faq_unit), ("regulation", "search_regulations", reg_unit),
-        ("announcement", "search_announcements", news_unit)) if u]
+        ("announcement", "search_announcements", news_unit), ("page", "search_pages", page_unit)) if u]
 
     from concurrent.futures import ThreadPoolExecutor
 
+    failures = []
+
     def search(job):
         (kind, tool, unit), attempt = job
-        res = mcp_client.call_tool(tool, {"keyword": " ".join(attempt)[:100], "unit": unit, "limit": MCP_RECORD_SEARCH_LIMIT})
+        try:
+            res = mcp_client.call_tool(tool, {"keyword": " ".join(attempt)[:100], "unit": unit, "limit": MCP_RECORD_SEARCH_LIMIT})
+        except mcp_client.McpUnavailable as exc:
+            # 單一工具失敗（例如 MCP 還沒登記這個處室的頁面）不影響其他工具的結果
+            failures.append(f"{tool}:{exc}")
+            res = {}
         return kind, attempt, res
 
     scored, freshness = {}, []
@@ -1825,6 +1840,8 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
                     entry[0] += sum(2 for t in attempt if t.lower() in heading.lower())
         if scored:
             break
+    if failures:
+        print(f"[MCP] 部分查詢失敗，其餘照常使用：{failures[:3]}")
     if not scored:
         return None
 
@@ -1833,7 +1850,7 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
     def full(entry):
         _, kind, item = entry
         tool, field = {"faq": ("get_faq", "faq"), "regulation": ("get_regulation", "regulation"),
-                       "announcement": ("get_announcement", "announcement")}[kind]
+                       "announcement": ("get_announcement", "announcement"), "page": ("get_page", "page")}[kind]
         args = {"id": item["id"], "unit": item["unit"]} if kind == "announcement" else {"id": item["id"]}
         try:
             return mcp_client.call_tool(tool, args).get(field)
@@ -1853,7 +1870,7 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
     _note_data_updated_at(mcp_client.sync_time(freshness))
     return (
         "請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。"
-        "這些是各處室提供的人工整理資料或官網公告；公告請一併說明公告日期，較舊的公告內容可能已變動。"
+        "這些是各處室提供的人工整理資料、官網頁面或公告；公告請一併說明公告日期，較舊的公告內容可能已變動。"
         "【來源網址】空白時只以文件類型括號內的來源名稱文字標示來源，不要自行產生連結：\n\n"
         + build_context_snippets(docs)
     )

@@ -131,6 +131,44 @@ class McpRecordTests(unittest.TestCase):
             core.tool_search_database("成績單", dept="oaa", keywords="成績單")
         self.assertFalse(any(n == "search_announcements" for n, _ in fake.calls))
 
+    def test_also_searches_the_offices_site_pages(self):
+        page = {"id": "6c" + "0" * 22, "unit": "osa", "title": "住宿服務組", "path": "/osa/housing",
+                "updatedAt": "2026-09-01T00:00:00.000Z", "snippet": "宿舍申請",
+                "provenance": {"sourceUrl": "https://new.ntpu.edu.tw/osa/housing"}}
+        fake = FakeMcp({("search_pages", "宿舍"): [page]})
+        orig = fake.__call__
+
+        def call(name, args, **kw):
+            if name == "get_page":
+                fake.calls.append((name, dict(args)))
+                return {"page": {"bodyText": "宿舍申請每學期於期末前開放"}}
+            return orig(name, args, **kw)
+
+        with patch.object(mcp_client, "call_tool", side_effect=call):
+            out = core.tool_search_database("宿舍怎麼申請", dept="osa", keywords="宿舍")
+        self.assertIn("住宿服務組", out)
+        self.assertIn("宿舍申請每學期於期末前開放", out)
+        self.assertIn("官網頁面", out)
+        self.assertIn(("search_pages", {"keyword": "宿舍", "unit": "osa", "limit": 20}), fake.calls)
+
+    def test_one_failing_tool_does_not_discard_the_others(self):
+        # 正式 MCP 尚未登記某處室頁面時 search_pages 會回錯誤；法規結果仍要照常使用
+        fake = FakeMcp({("search_regulations", "請假"): [_reg(1, "學生請假辦法")]})
+
+        def call(name, args, **kw):
+            if name == "search_pages":
+                raise mcp_client.McpUnavailable("tool returned an error")
+            return fake(name, args, **kw)
+
+        with patch.object(mcp_client, "call_tool", side_effect=call):
+            out = core.tool_search_database("學生請假", dept="osa", keywords="請假")
+        self.assertIn("學生請假辦法", out)
+        self.local_mock.assert_not_called()
+
+    def test_language_center_has_no_page_unit(self):
+        # lc 沒有官網內容頁來源；傳進 search_pages 會讓工具回錯誤
+        self.assertNotIn("lc", mcp_client.DEPT_TO_MCP_PAGE_UNIT)
+
     def test_falls_back_to_single_keywords_and_ranks_by_matches(self):
         fake = FakeMcp({
             ("search_regulations", "請假"): [_reg(1, "學生請假辦法"), _reg(2, "教職員請假須知")],
