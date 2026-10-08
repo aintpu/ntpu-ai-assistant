@@ -55,6 +55,7 @@ from conversation_guardrail import (
 from system_faq import (
     SystemFAQMatch,
     SystemFAQRetriever,
+    answer_language,
     detect_language,
     should_route_system,
     should_use_system_fallback,
@@ -3924,7 +3925,7 @@ async def chat_endpoint(req: ChatRequest, request: Request):
         }
 
     answer = synthesize_agentic_answer(
-        q, "zh-TW", req.history,
+        q, answer_language(q), req.history,
         dept=decision["office"],
         injection_checked=True,
         session_id=conversation_id,
@@ -4019,7 +4020,7 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
         full_answer = ""
         try:
             for kind, payload in synthesize_agentic_answer_stream(
-                q, "zh-TW", req.history,
+                q, answer_language(q), req.history,
                 dept=decision["office"],
                 injection_checked=True,
                 session_id=conversation_id,
@@ -4123,7 +4124,7 @@ async def voice_endpoint(req: VoiceRequest, request: Request):
         }
 
     answer = synthesize_agentic_answer(
-        transcribed, "zh-TW", req.history, event_type="voice",
+        transcribed, answer_language(transcribed), req.history, event_type="voice",
         dept=decision["office"],
         injection_checked=True,
         session_id=conversation_id,
