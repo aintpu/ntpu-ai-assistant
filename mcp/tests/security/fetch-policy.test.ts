@@ -95,8 +95,12 @@ describe("T-008 response limits", () => {
 
   it("times out", async () => {
     const fast = withSource({ fetch: { ...ord.fetch, timeoutMs: 20 } });
+    // 慢的 CI 機器上，呼叫 fetch 之前 20ms 可能已經到期：訊號已中斷時立即拒絕，否則永遠等不到 abort 事件
     const fetch = (r: Request) =>
-      new Promise<Response>((_, reject) => r.signal.addEventListener("abort", () => reject(new Error("aborted"))));
+      new Promise<Response>((_, reject) => {
+        if (r.signal.aborted) reject(new Error("aborted"));
+        r.signal.addEventListener("abort", () => reject(new Error("aborted")));
+      });
     await expect(fetchSource(fast, req, { fetch, clock })).rejects.toMatchObject({ code: "FETCH_TIMEOUT" });
   });
 
