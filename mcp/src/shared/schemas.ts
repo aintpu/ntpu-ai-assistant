@@ -43,6 +43,29 @@ export const PageSchema = z
 
 export type Page = z.infer<typeof PageSchema>;
 
+/** 公告附件的內容（抽出的文字或 OCR 結果）。extracted=false 表示只有檔名與連結（例如掃描檔，待 OCR）。 */
+export const AttachmentDocSchema = z
+  .object({
+    id: RecordIdSchema,
+    unit: UnitSchema,
+    postedBy: z.array(UnitSchema).min(1).max(30),
+    name: z.string().min(1).max(500),
+    url: z.string().url().max(2000),
+    fileType: z.string().regex(/^[a-z0-9]{2,5}$/),
+    announcementId: z.string().min(1).max(100),
+    announcementTitle: z.string().min(1).max(500),
+    publishedAt: z.string().datetime().nullable(),
+    method: z.enum(["pdf", "office", "ocr", "none"]),
+    extracted: z.boolean(),
+    /** 沒有抽出內容的原因，例如 scanned、too_large、unsupported、no_text。 */
+    note: z.string().max(100).nullable(),
+    pages: z.number().int().nonnegative().nullable(),
+    text: z.string().max(300_000),
+  })
+  .strict();
+
+export type AttachmentDoc = z.infer<typeof AttachmentDocSchema>;
+
 /** 人工整理檔在 repo 裡的路徑，例如 crawler_data/oaa_regulations.md。 */
 const SourceFileSchema = z.string().regex(/^crawler_data\/[^\s/]{1,200}$/);
 

@@ -126,7 +126,10 @@ describe("all offices", () => {
 
 describe("one office per cron run", () => {
   it("picks never-run offices first, then the oldest, and skips offices run in the last 20 hours", async () => {
-    const order = enabledSources().map((s) => s.id);
+    // 公告附件由專用排程處理，一般排程不挑
+    const order = enabledSources()
+      .filter((s) => s.adapter.kind !== "attachments")
+      .map((s) => s.id);
     const seen: string[] = [];
     for (let i = 0; i < order.length; i++) {
       const due = await pickDueSource(store, clock.nowIso());

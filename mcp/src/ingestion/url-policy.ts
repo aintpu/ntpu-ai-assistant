@@ -2,7 +2,7 @@ import { IngestionError } from "../shared/errors";
 import { MANUAL_PATH } from "./manual-inbox";
 import { isManualSource, type SourceDefinition, type SourceRequest } from "./types";
 
-const ADAPTER_KINDS = ["strapi-publications", "strapi-sections", "html-news"];
+const ADAPTER_KINDS = ["strapi-publications", "strapi-sections", "html-news", "attachments"];
 
 const METADATA_HOSTS = new Set([
   "metadata",
@@ -89,7 +89,8 @@ export function resolveEntrypoint(source: SourceDefinition, path: string): URL {
  */
 export function resolveRequestUrl(source: SourceDefinition, request: Pick<SourceRequest, "path" | "query">): URL {
   const { path, query } = request;
-  if (!source.entrypoints.includes(path)) {
+  const dynamic = !source.entrypoints.includes(path) && (source.pathRules ?? []).some((rule) => rule.test(path));
+  if (!source.entrypoints.includes(path) && !dynamic) {
     throw new IngestionError("URL_NOT_ALLOWED", `entrypoint not registered: ${path}`);
   }
   const url = new URL(path, source.origin);
@@ -192,6 +193,10 @@ export function validateSourceDefinition(source: SourceDefinition): void {
   }
   if (f.methods.length === 0 || f.methods.some((m) => m !== "GET" && m !== "POST")) fail("methods invalid");
   if (!(f.minIntervalMs >= 0 && f.minIntervalMs <= 10_000)) fail("minIntervalMs out of range");
+  for (const rule of source.pathRules ?? []) {
+    if (!rule.source.startsWith("^") || !rule.source.endsWith("$")) fail("path rule must be anchored");
+    if (rule.flags.includes("g") || rule.flags.includes("y")) fail("path rule must not be global or sticky");
+  }
   for (const [path, params] of Object.entries(source.queryRules ?? {})) {
     if (!source.entrypoints.includes(path)) fail(`queryRules for unknown entrypoint: ${path}`);
     for (const [name, rule] of Object.entries(params)) {

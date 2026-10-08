@@ -11,3 +11,4 @@
 | [0005](0005-one-source-per-run.md) | 每次排程只處理一個到期來源 | Accepted | 擴充：規格 05 §22.1 建議有界並行 |
 | [0006](0006-per-record-unit.md) | 一個來源的資料可分屬多個處室 | Accepted | 擴充 |
 | [0007](0007-domain-cutover.md) | `aia.mcp.ntpu.ai` 改由新 MCP 提供 | Accepted | 營運決策 |
+| [0008](0008-announcement-attachments.md) | 讀取公告附件內容（PDF、ODF、圖片 OCR） | Accepted | 擴充；個資「讀取但不公開」 |

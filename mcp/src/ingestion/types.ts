@@ -41,6 +41,20 @@ export interface StrapiSectionsConfig {
   pathPrefix?: string;
 }
 
+/**
+ * 公告附件的內容：從已收錄公告的附件清單取得檔案，抽出文字（PDF、ODF、DOCX）或以看圖模型辨識（圖片）。
+ * 每次執行處理一小批，其餘留到下一次；含個人資料的檔案只記入隔離區，內容不公開。
+ */
+export interface AttachmentsConfig {
+  kind: "attachments";
+  /** 每次執行最多處理幾個附件。 */
+  maxPerRun: number;
+  /** 每次執行最多送幾張圖片給看圖模型（OCR 較慢、會用到 Workers AI 額度）。 */
+  maxOcrPerRun: number;
+  /** 看圖模型（Workers AI）。 */
+  ocrModel: string;
+}
+
 /** 伺服器端產生的 HTML 公告網站：列表頁翻頁，再逐則抓內文。 */
 export interface HtmlNewsConfig {
   kind: "html-news";
@@ -88,6 +102,7 @@ export type AdapterConfig =
   | StrapiPublicationsConfig
   | StrapiSectionsConfig
   | HtmlNewsConfig
+  | AttachmentsConfig
   | ManualAdapterConfig;
 
 export const MANUAL_ADAPTER_KINDS: readonly ManualAdapterConfig["kind"][] = [
@@ -115,6 +130,11 @@ export interface SourceDefinition {
   entrypoints: string[];
   /** entrypoint → 允許的查詢參數；沒列出的 entrypoint 不得帶任何查詢參數。 */
   queryRules?: QueryRules;
+  /**
+   * 動態路徑（例如附件檔案 /uploads/xxx.pdf）：路徑不在 entrypoints 時，必須完全符合其中一條規則，
+   * 且仍受 origin 與 allowedPathPrefixes 限制。規則必須以 ^ 開頭、$ 結尾。
+   */
+  pathRules?: RegExp[];
 
   parser: AdapterConfig["kind"];
   adapter: AdapterConfig;
@@ -168,7 +188,7 @@ export interface RawArchive {
 
 export type FetchLike = (input: Request) => Promise<Response>;
 
-export type EntityType = "announcement" | "page" | "regulation" | "faq";
+export type EntityType = "announcement" | "page" | "regulation" | "faq" | "attachment";
 
 /** 人工整理檔的存放處（R2 的 manual/ 前綴）。只能讀，key 必須是來源登記的 entrypoint。 */
 export interface ManualInbox {

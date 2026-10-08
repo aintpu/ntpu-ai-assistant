@@ -1,4 +1,5 @@
 import type { SourceDefinition } from "../types";
+import { attachmentsAdapter } from "./attachments";
 import { htmlNewsAdapter } from "./html-news";
 import { manualFaqAdapter, manualRegulationCatalogAdapter, manualRegulationsAdapter } from "./manual";
 import { strapiPublicationsAdapter } from "./strapi-publications";
@@ -9,6 +10,7 @@ const ADAPTERS: Record<SourceDefinition["parser"], Adapter> = {
   "strapi-publications": strapiPublicationsAdapter,
   "strapi-sections": strapiSectionsAdapter,
   "html-news": htmlNewsAdapter,
+  attachments: attachmentsAdapter,
   "manual-regulations": manualRegulationsAdapter,
   "manual-regulation-catalog": manualRegulationCatalogAdapter,
   "manual-faq": manualFaqAdapter,

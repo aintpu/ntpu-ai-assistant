@@ -74,10 +74,12 @@ describe("MCP endpoint", () => {
     const tools = body.result.tools;
     expect(tools.map((t: any) => t.name).sort()).toEqual([
       "get_announcement",
+      "get_attachment",
       "get_faq",
       "get_page",
       "get_regulation",
       "search_announcements",
+      "search_attachments",
       "search_faqs",
       "search_pages",
       "search_regulations",

@@ -1,4 +1,5 @@
 import { validateSourceDefinition } from "./url-policy";
+import { ATTACHMENT_HOST, ATTACHMENT_PATH } from "./adapters/attachments";
 import type { FetchPolicy, PersonalDataGuard, SourceDefinition } from "./types";
 
 const USER_AGENT = "NTPU-AIA-Ingestion/0.1 (+https://aia.ntpu.ai/about)";
@@ -133,6 +134,7 @@ const MANUAL_SOURCES: SourceDefinition[] = [
 
 /** 處室代碼 → 中文名稱（MCP 工具說明與回應使用）。 */
 export const UNIT_NAMES: Record<string, string> = {
+  attachments: "公告附件（各處室）",
   ord: "研究發展處",
   oga: "總務處",
   osa: "學生事務處",
@@ -219,6 +221,29 @@ const SITE_PAGE_PREFIXES: { id: string; unit: string; prefix: string }[] = [
   { id: "library", unit: "library", prefix: "/library/" },
 ];
 
+/** 公告附件檔案（cms-carrier.ntpu.edu.tw/uploads/）：每個請求間隔 0.5 秒，單檔上限 15 MB。 */
+const ATTACHMENT_FETCH: FetchPolicy = {
+  methods: ["GET"],
+  timeoutMs: 30_000,
+  maxResponseBytes: 15 * 1024 * 1024,
+  acceptedContentTypes: [
+    "application/pdf",
+    "application/vnd.oasis.opendocument.text",
+    "application/vnd.oasis.opendocument.spreadsheet",
+    "application/vnd.oasis.opendocument.presentation",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/jpeg",
+    "image/png",
+    // 部分檔案伺服器以通用二進位類型回應；實際格式依副檔名判斷、解析失敗只留檔名與連結
+    "application/octet-stream",
+    "binary/octet-stream",
+  ],
+  userAgent: USER_AGENT,
+  followRedirects: false,
+  maxRedirects: 0,
+  minIntervalMs: 500,
+};
+
 const strapiOrigin = {
   origin: "https://api-carrier.ntpu.edu.tw",
   allowedPathPrefixes: ["/strapi"],
@@ -282,6 +307,32 @@ const WEB_SOURCES: SourceDefinition[] = [
       freshness: DAILY,
     }),
   ),
+  {
+    // 公告附件的內容（PDF、ODF、DOCX 抽文字；圖片以 Workers AI 看圖模型辨識）。
+    // 附件清單來自已收錄的公告，每次處理一小批；含個人資料的附件只記入隔離區，內容不公開。
+    id: "announcement-attachments",
+    sourceUnit: "attachments",
+    sourceType: "official_document",
+    trustLevel: "official",
+    homepageUrl: "https://new.ntpu.edu.tw",
+    newsUrlBase: "https://cms-carrier.ntpu.edu.tw/uploads",
+    origin: `https://${ATTACHMENT_HOST}`,
+    allowedPathPrefixes: ["/uploads"],
+    entrypoints: ["/uploads"],
+    pathRules: [ATTACHMENT_PATH],
+    parser: "attachments",
+    adapter: {
+      kind: "attachments",
+      maxPerRun: 40,
+      maxOcrPerRun: 15,
+      ocrModel: "@cf/mistralai/mistral-small-3.1-24b-instruct",
+    },
+    entityType: "attachment",
+    recordUnits: [...STRAPI_ANNOUNCEMENT_UNITS.map((u) => u.unit), "library", "lc"],
+    enabled: true,
+    fetch: ATTACHMENT_FETCH,
+    freshness: DAILY,
+  },
   {
     // 圖書館真正的官網（new.ntpu.edu.tw/library 幾乎是空頁）。最新消息約 51 則。
     id: "library-announcements",

@@ -245,6 +245,52 @@ export class CanonicalStore {
   }
 
   /**
+   * 目前有效公告的附件清單（公告處室、公告編號、標題、發布時間、附件名稱與網址）。
+   * 只讀 payload 的必要欄位，不讀公告全文。
+   */
+  async announcementAttachments(): Promise<
+    { unit: string; announcementId: string; title: string; publishedAt: string | null; attachments: string }[]
+  > {
+    const { results } = await this.db
+      .prepare(
+        `SELECT source_unit AS unit, json_extract(payload_json, '$.id') AS announcementId, title,
+                published_at AS publishedAt, json_extract(payload_json, '$.attachments') AS attachments
+         FROM entities WHERE entity_type = 'announcement' AND status = 'active'
+         ORDER BY published_at DESC, stable_key ASC`,
+      )
+      .all<{ unit: string; announcementId: string; title: string; publishedAt: string | null; attachments: string }>();
+    return results;
+  }
+
+  /** 附件來源已處理過的鍵：已收錄（含 withheld）與隔離區（例如含個人資料）。 */
+  async handledKeys(sourceId: string, entityType: string): Promise<Set<string>> {
+    const out = new Set<string>();
+    const entities = await this.db
+      .prepare("SELECT stable_key FROM entities WHERE entity_type = ?1")
+      .bind(entityType)
+      .all<{ stable_key: string }>();
+    for (const r of entities.results) out.add(r.stable_key);
+    const quarantined = await this.db
+      .prepare("SELECT stable_key FROM quarantined_records WHERE source_id = ?1")
+      .bind(sourceId)
+      .all<{ stable_key: string }>();
+    for (const r of quarantined.results) out.add(r.stable_key);
+    return out;
+  }
+
+  /** 最近抓取失敗的目標（例如 404），這段期間先略過，避免同一批壞連結每次都佔掉名額。 */
+  async recentlyFailedTargets(sourceId: string, sinceIso: string): Promise<Set<string>> {
+    const { results } = await this.db
+      .prepare(
+        `SELECT DISTINCT target FROM ingestion_items
+         WHERE source_id = ?1 AND status = 'failed' AND started_at >= ?2`,
+      )
+      .bind(sourceId, sinceIso)
+      .all<{ target: string }>();
+    return new Set(results.map((r) => r.target));
+  }
+
+  /**
    * 來源列表上看到、這次沒重抓內文的資料：記為這次有看到（不算消失），但不更新 verified_at，
    * 因為內容這次沒有重新驗證。隔離區裡的同一筆也記為有看到，避免被清掉。
    */
