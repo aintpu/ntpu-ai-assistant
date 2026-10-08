@@ -3592,6 +3592,10 @@ _GROUNDING_BREAK_RE = re.compile(r"[^\u4e00-\u9fff]|[什麼哪些怎誰嗎呢是
 # 問人名的句型：名字通常只出現在 FAQ 回答內容（例如「現任校長是誰？A: 林道通」），標題沒有
 _PERSON_QUESTION_RE = re.compile(r"誰是|是誰|是哪位|who\s+is|who's", re.I)
 _content_index = None
+_SURNAMES = set(
+    "陳林黃張李王吳劉蔡楊許鄭謝洪郭邱曾廖賴徐周葉蘇莊呂江何蕭羅高潘簡朱鍾游彭詹胡施沈余盧梁趙顏柯翁魏孫戴范方宋鄧杜傅侯"
+    "曹薛丁卓阮馬董温溫唐藍蔣石古紀姚連馮歐程湯田康姜白汪鄒尤巫鐘黎涂龔嚴韓袁金童陸夏柳凃邵錢伍倪于譚駱熊任甘秦顧毛章史官萬俞雷粘饒"
+)
 # 寫明身分的文件（例如校長室 FAQ「現任校長是誰？」）優先於只是順帶提到名字的文件（例如運動會新聞）
 _IDENTITY_TITLE_RE = re.compile(r"首長|校長|副校長|處長|主任|館長|執行長|主任秘書|研發長|教務長|學務長|總務長")
 # 標題就是在問「這個人是誰」（例如「現任校長是誰？」）：權重最高，勝過只是標題提到職稱的新聞
@@ -3628,12 +3632,20 @@ def known_person_office(query: str):
     """問「誰是 X」時，知識庫內容裡有 X（2–4 個中文字）就回傳 (處室, X)；否則 None。"""
     if not _PERSON_QUESTION_RE.search(query or ""):
         return None
-    names = [r for r in _GROUNDING_BREAK_RE.split(query) if 2 <= len(r) <= 4]
+    # 只比對像人名的詞（2–3 字、常見姓氏開頭）：「現任行政副校長是誰？學歷？」拆開後只剩「學歷」，
+    # 不能拿來找人（2026-10-08 幻覺檢查發現會比對到研發長頁面）
+    names = [r for r in _GROUNDING_BREAK_RE.split(query) if 2 <= len(r) <= 3 and r[0] in _SURNAMES]
     for name in sorted(names, key=len, reverse=True):
         depts = Counter()
+        identity_depts = set()
         for content, dept, weight in _grounding_contents():
             if name in content:
                 depts[dept] += weight
+                if weight >= 1000:
+                    identity_depts.add(dept)
+        if len(identity_depts) >= 2:
+            # 不只一個單位寫明這個人的身分（例如陳宥杉：曾任主任秘書、現任學術副校長）：不指定處室，跨單位查詢
+            return None, name
         if depts:
             return depts.most_common(1)[0][0], name
     return None
@@ -3673,7 +3685,8 @@ def ground_scope_in_data(scope, raw_query: str):
     if not found:
         return scope
     office, term = found
-    return ScopeDecision("IN_SCOPE", office, 0.8, f"知識庫有標題含「{term}」的{DEPT_NAMES[office]}文件。")
+    where = f"{DEPT_NAMES[office]}文件" if office else "多個單位的文件（跨單位查詢）"
+    return ScopeDecision("IN_SCOPE", office, 0.8, f"知識庫有含「{term}」的{where}。")
 
 
 SCOPE_REVOTES = 2  # 模型判 OUT_OF_SCOPE 時再問幾次（取多數決）
@@ -3699,7 +3712,8 @@ def decide_scope(standalone_query: str, context: dict, raw_query: str):
     if person and not any(detect_service_entity_conflict(q) or detect_explicit_unsupported_intent(q)
                           for q in (raw_query, standalone_query)):
         office, name = person
-        return ScopeDecision("IN_SCOPE", office, 0.85, f"知識庫有寫明「{name}」身分的{DEPT_NAMES[office]}文件。")
+        where = f"{DEPT_NAMES[office]}文件" if office else "多個單位的文件（跨單位查詢）"
+        return ScopeDecision("IN_SCOPE", office, 0.85, f"知識庫有寫明「{name}」身分的{where}。")
     if scope.status != "OUT_OF_SCOPE" or SCOPE_REVOTES <= 0:
         return scope
     if any(detect_service_entity_conflict(q) or detect_explicit_unsupported_intent(q)
