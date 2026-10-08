@@ -3,6 +3,7 @@ import { ReadRepository } from "../db/read-repository";
 import { assertRegistryValid, SOURCES } from "../ingestion/source-registry";
 import { systemClock, type Clock } from "../shared/clock";
 import { AnnouncementService } from "./announcement-service";
+import { AttachmentService } from "./attachment-service";
 import { FaqService, RegulationService } from "./manual-service";
 import { PageService } from "./page-service";
 import { TOOL_REGISTRY } from "./tool-registry";
@@ -68,6 +69,7 @@ export function createHandler(clock: Clock = systemClock) {
         pages: new PageService(repo),
         regulations: new RegulationService(repo),
         faqs: new FaqService(repo),
+        attachments: new AttachmentService(repo),
       };
 
       if (pathname === "/mcp") return handleMcp(request, services);

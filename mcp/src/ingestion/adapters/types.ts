@@ -1,3 +1,4 @@
+import type { VisionModel } from "../extract/ocr";
 import type { SourceDefinition, SourceRequest } from "../types";
 
 /** adapter 正規化並通過 schema 驗證後的一筆資料。id 是來源給的編號（同一來源內唯一）。 */
@@ -35,6 +36,8 @@ export interface StepContext {
   reverifyBefore?: string;
   /** 依來源編號查已知紀錄。 */
   known(ids: string[]): Promise<Map<string, KnownRecord>>;
+  /** Workers AI（看圖模型）；只有附件來源會用到。 */
+  ai?: VisionModel;
   activeCount(): Promise<number>;
 }
 
@@ -61,8 +64,27 @@ export interface Step {
   handle(bytes: Uint8Array, ctx: StepContext): Promise<StepOutcome>;
 }
 
+/** 動態產生步驟時可以查的資料（附件清單來自已收錄的公告）。 */
+export interface PlanStore {
+  announcementAttachments(): Promise<
+    { unit: string; announcementId: string; title: string; publishedAt: string | null; attachments: string }[]
+  >;
+  handledKeys(sourceId: string, entityType: string): Promise<Set<string>>;
+  recentlyFailedTargets(sourceId: string, sinceIso: string): Promise<Set<string>>;
+}
+
+export interface Plan {
+  steps: Step[];
+  /** 仍存在、這次沒處理的資料（不算消失）。 */
+  seen: { id: string; unit: string }[];
+  /** 這次處理不完、留到下一次的數量。 */
+  deferred: number;
+}
+
 export interface Adapter {
   start(source: SourceDefinition, nowIso: string): Step[];
+  /** 需要查資料庫才知道要抓什麼的來源（例如公告附件）；有 plan 時改用 plan。 */
+  plan?(source: SourceDefinition, nowIso: string, store: PlanStore): Promise<Plan>;
 }
 
 export function decodeUtf8(bytes: Uint8Array): string {

@@ -8,8 +8,14 @@ import { assertRegistryValid, getSource } from "./source-registry";
 export interface IngestEnv {
   DB: D1Database;
   RAW: R2Bucket;
+  /** Workers AI：公告附件圖片 OCR。 */
+  AI?: Ai;
   ENVIRONMENT: string;
 }
+
+/** 專門處理公告附件的排程（與每 10 分鐘挑來源的排程錯開 5 分鐘），讓第一次補齊不必和其他來源搶時間。 */
+export const ATTACHMENT_CRON = "5-59/10 * * * *";
+export const ATTACHMENT_SOURCE_ID = "announcement-attachments";
 
 assertRegistryValid();
 
@@ -30,6 +36,7 @@ export default {
       fetch: (request: Request) => fetch(request),
       clock: systemClock,
       environment: env.ENVIRONMENT,
+      ai: env.AI,
     };
     ctx.waitUntil(
       (async () => {
@@ -42,7 +49,12 @@ export default {
           console.error(JSON.stringify({ type: "ingestion_error", reason: "reverify needs an ISO time" }));
           return;
         }
-        const requested = mode === "source" || mode === "reverify" ? getSource(id ?? "") : undefined;
+        const requested =
+          controller.cron === ATTACHMENT_CRON
+            ? getSource(ATTACHMENT_SOURCE_ID)
+            : mode === "source" || mode === "reverify"
+              ? getSource(id ?? "")
+              : undefined;
         const source = requested ?? (await pickDueSource(deps.store, systemClock.nowIso()));
         if (!source) {
           console.log(JSON.stringify({ type: "ingestion_idle", reason: "no source due" }));

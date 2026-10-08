@@ -22,7 +22,7 @@ export interface SourceStatusRow {
   quarantined: number;
 }
 
-export type ReadEntityType = "announcement" | "page" | "regulation" | "faq";
+export type ReadEntityType = "announcement" | "page" | "regulation" | "faq" | "attachment";
 
 export interface AnnouncementQuery {
   /** announcement（公告）、page（內容頁）、regulation（法規）或 faq（常見問答）。 */

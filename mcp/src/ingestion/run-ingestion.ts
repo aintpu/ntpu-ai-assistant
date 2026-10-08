@@ -5,6 +5,7 @@ import { contentHash } from "../shared/hash";
 import { newId } from "../shared/ids";
 import { adapterFor } from "./adapters";
 import type { KnownRecord, Step, StepContext } from "./adapters/types";
+import type { VisionModel } from "./extract/ocr";
 import { fetchSource } from "./fetch-source";
 import { enabledSources, getSource } from "./source-registry";
 import type { FetchLike, ManualInbox, RawArchive, SourceDefinition } from "./types";
@@ -29,6 +30,8 @@ export interface IngestionDeps {
   manual?: ManualInbox;
   /** 請求之間的等待；測試可換成不等待。 */
   sleep?: (ms: number) => Promise<void>;
+  /** Workers AI（附件圖片 OCR）。 */
+  ai?: VisionModel;
 }
 
 export interface IngestionRunOptions {
@@ -105,6 +108,7 @@ async function ingestSource(
     nowIso: clock.nowIso(),
     reverifyBefore,
     activeCount: () => store.countActive(source.id),
+    ai: deps.ai,
     async known(ids) {
       const map = new Map<string, KnownRecord>();
       const stored = await store.knownRecords(source.entityType, ids.map((id) => recordKey(source, id)));
@@ -120,8 +124,26 @@ async function ingestSource(
     },
   };
 
-  const queue: Step[] = adapterFor(source).start(source, clock.nowIso());
+  const adapter = adapterFor(source);
   let listComplete = false;
+  let queue: Step[];
+  if (adapter.plan) {
+    // 要抓什麼由資料庫決定（例如公告附件）：沒輪到的仍存在、不算消失；全部處理完才算列表完整。
+    const plan = await adapter.plan(source, clock.nowIso(), store);
+    queue = plan.steps;
+    result.deferred += plan.deferred;
+    listComplete = plan.deferred === 0;
+    if (plan.seen.length) {
+      await store.markSeen(
+        source.id,
+        source.entityType,
+        plan.seen.map((r) => ({ stableKey: recordKey(source, r.id, r.unit), sourceKey: `${r.unit}:${r.id}` })),
+        runId,
+      );
+    }
+  } else {
+    queue = adapter.start(source, clock.nowIso());
+  }
   let fatalFailure = false;
   let failedSteps = 0;
   let requests = 0;
@@ -316,6 +338,8 @@ export async function pickDueSource(
   const nowMs = Date.parse(now);
   let best: { source: SourceDefinition; rank: number; at: number } | null = null;
   for (const source of enabledSources()) {
+    // 公告附件由專用排程處理（index.ts 的 ATTACHMENT_CRON），一般排程不挑，避免兩邊同時處理同一批。
+    if (source.adapter.kind === "attachments") continue;
     const row = rows.get(source.id);
     const at = row?.last_started_at ? Date.parse(row.last_started_at) : Number.NEGATIVE_INFINITY;
     const pending = (row?.pending_count ?? 0) > 0;

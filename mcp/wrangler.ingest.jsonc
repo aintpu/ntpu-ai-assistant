@@ -25,7 +25,9 @@
     "staging": {
       "name": "ntpu-aia-ingest-staging",
       // Cron 以 UTC 解讀：每天 18:00 UTC＝台灣時間 02:00。
-      "triggers": { "crons": ["*/10 * * * *"] },
+      "triggers": { "crons": ["*/10 * * * *", "5-59/10 * * * *"] },
+      "ai": { "binding": "AI" },
+      "limits": { "cpu_ms": 120000 },
       "vars": { "ENVIRONMENT": "staging" },
       "d1_databases": [
         {
@@ -39,7 +41,9 @@
     },
     "production": {
       "name": "ntpu-aia-ingest",
-      "triggers": { "crons": ["*/10 * * * *"] },
+      "triggers": { "crons": ["*/10 * * * *", "5-59/10 * * * *"] },
+      "ai": { "binding": "AI" },
+      "limits": { "cpu_ms": 120000 },
       "vars": { "ENVIRONMENT": "production" },
       "d1_databases": [
         {
