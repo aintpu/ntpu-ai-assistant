@@ -324,6 +324,20 @@ class GroundedScopeTests(unittest.TestCase):
             self.assertEqual(core.known_person_office("林道通是誰"), ("pres", "林道通"))
             self.assertIsNone(core.known_person_office("誰是宋明謙？"))
             self.assertIsNone(core.known_person_office("林道通的研究領域"))  # 不是問人名的句型
+            # 問職位不是問人名：拆開後的「學歷」不是姓名，不能拿來比對
+            self.assertIsNone(core.known_person_office("現任行政副校長是誰？學歷？"))
+        # 兩個單位都寫明身分（曾任主任秘書、現任學術副校長）：不指定處室，跨單位查詢
+        docs2 = [Document(page_content="現任：陳宥杉", metadata={"title": "歷屆主任秘書有哪些人？現任是誰？", "dept": "os"}),
+                 Document(page_content="A: 陳宥杉", metadata={"title": "現任學術副校長是誰？", "dept": "vpa"})]
+        with patch.object(core.INDEX, "docs_zh", docs2):
+            core._content_index = None
+            self.assertEqual(core.known_person_office("誰是陳宥杉"), (None, "陳宥杉"))
+            # 不指定處室時，範圍判斷不能因為查處室名稱而出錯（曾造成 KeyError: None）
+            core._title_index = None
+            scope = core.ground_scope_in_data(self._out(), "誰是陳宥杉")
+            self.assertEqual((scope.status, scope.office_hint), ("IN_SCOPE", None))
+        core._content_index = None
+        core._title_index = None
         core._content_index = None
 
     def test_in_scope_decisions_are_untouched(self):
