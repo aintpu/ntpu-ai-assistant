@@ -1752,6 +1752,18 @@ def _record_search_terms(keywords: str) -> list:
 def _record_document(kind: str, item: dict, detail: dict, dept: str) -> Document:
     prov = item.get("provenance") or {}
     source_name = item.get("sourceName") or ""
+    if kind == "attachment":
+        # 附件全文可能很長：優先取命中關鍵字的段落（search 回傳的 snippet），再補全文開頭
+        text = (detail or {}).get("text") or ""
+        snippet = item.get("snippet", "")
+        body = (snippet + "\n" + text[:2500]) if snippet and snippet.strip("…") not in text[:2500] else (text[:3000] or snippet)
+        method = {"pdf": "PDF", "office": "文件", "ocr": "圖片辨識，可能有錯字", "none": "未讀取內容"}.get(item.get("method"), "")
+        return Document(page_content=unquote(body), metadata={
+            "title": f"{item.get('name', '')}（{item.get('announcementTitle', '')} 的附件）", "url": item.get("url") or "",
+            "type": "attachment", "category": f"公告附件（{method}）", "dept": dept,
+            "date": _taipei_date(item.get("publishedAt") or ""),
+            "source_id": f"mcp:attachment:{item.get('unit')}:{item.get('id')}",
+        })
     if kind == "page":
         body = (detail or {}).get("bodyText") or item.get("snippet", "")
         return Document(page_content=unquote(body[:3000]), metadata={
@@ -1807,7 +1819,9 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
     page_unit = mcp_client.DEPT_TO_MCP_PAGE_UNIT.get(dept)  # 處室官網內容頁（組別業務、各專區、招生資訊）
     targets = [(k, tool, u) for k, tool, u in (
         ("faq", "search_faqs", faq_unit), ("regulation", "search_regulations", reg_unit),
-        ("announcement", "search_announcements", news_unit), ("page", "search_pages", page_unit)) if u]
+        ("announcement", "search_announcements", news_unit), ("page", "search_pages", page_unit),
+        # 公告附件內容（招生簡章、活動簡章、作業說明等）；附件依刊登處室分，與公告同一組處室
+        ("attachment", "search_attachments", news_unit)) if u]
 
     from concurrent.futures import ThreadPoolExecutor
 
@@ -1850,7 +1864,8 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
     def full(entry):
         _, kind, item = entry
         tool, field = {"faq": ("get_faq", "faq"), "regulation": ("get_regulation", "regulation"),
-                       "announcement": ("get_announcement", "announcement"), "page": ("get_page", "page")}[kind]
+                       "announcement": ("get_announcement", "announcement"), "page": ("get_page", "page"),
+                       "attachment": ("get_attachment", "attachment")}[kind]
         args = {"id": item["id"], "unit": item["unit"]} if kind == "announcement" else {"id": item["id"]}
         try:
             return mcp_client.call_tool(tool, args).get(field)
@@ -1870,7 +1885,7 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
     _note_data_updated_at(mcp_client.sync_time(freshness))
     return (
         "請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。"
-        "這些是各處室提供的人工整理資料、官網頁面或公告；公告請一併說明公告日期，較舊的公告內容可能已變動。"
+        "這些是各處室提供的人工整理資料、官網頁面、公告或公告附件；附件為抽取或圖片辨識的文字，表格可能錯位，請附上附件連結；公告請一併說明公告日期，較舊的公告內容可能已變動。"
         "【來源網址】空白時只以文件類型括號內的來源名稱文字標示來源，不要自行產生連結：\n\n"
         + build_context_snippets(docs)
     )
