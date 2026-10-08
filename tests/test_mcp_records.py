@@ -151,6 +151,31 @@ class McpRecordTests(unittest.TestCase):
         self.assertIn("官網頁面", out)
         self.assertIn(("search_pages", {"keyword": "宿舍", "unit": "osa", "limit": 20}), fake.calls)
 
+    def test_also_searches_announcement_attachments(self):
+        # 資管所考科只寫在招生簡章 PDF 附件裡
+        att = {"id": "a" * 32, "unit": "oaa", "postedBy": ["oaa"], "name": "115學年度碩士班一般入學簡章本.pdf",
+               "url": "https://cms-carrier.ntpu.edu.tw/uploads/V2_115.pdf", "fileType": "pdf",
+               "announcementId": "x", "announcementTitle": "本校115學年度碩士班一般入學考試簡章",
+               "publishedAt": "2025-10-29T16:00:00.000Z", "method": "pdf", "extracted": True, "note": None,
+               "pages": 90, "snippet": "…系所別 資訊管理研究所 二科任選考一科：一、計算機概論 二、管理資訊系統",
+               "provenance": {"sourceUrl": "https://cms-carrier.ntpu.edu.tw/uploads/V2_115.pdf"}}
+        fake = FakeMcp({("search_attachments", "資訊管理研究所"): [att]})
+        orig = fake.__call__
+
+        def call(name, args, **kw):
+            if name == "get_attachment":
+                fake.calls.append((name, dict(args)))
+                return {"attachment": {"text": "【第 1 頁】\n國立臺北大學115學年度碩士班一般入學招生考試簡章"}}
+            return orig(name, args, **kw)
+
+        with patch.object(mcp_client, "call_tool", side_effect=call):
+            out = core.tool_search_database("資訊管理研究所考試科目", dept="oaa", keywords="資訊管理研究所")
+        self.assertIn("計算機概論", out)
+        self.assertIn("115學年度碩士班一般入學簡章本.pdf", out)
+        self.assertIn("公告附件（PDF）", out)
+        self.assertIn("https://cms-carrier.ntpu.edu.tw/uploads/V2_115.pdf", out)
+        self.assertIn(("get_attachment", {"id": "a" * 32}), fake.calls)
+
     def test_one_failing_tool_does_not_discard_the_others(self):
         # 正式 MCP 尚未登記某處室頁面時 search_pages 會回錯誤；法規結果仍要照常使用
         fake = FakeMcp({("search_regulations", "請假"): [_reg(1, "學生請假辦法")]})
