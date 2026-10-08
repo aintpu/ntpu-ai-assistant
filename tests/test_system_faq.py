@@ -141,3 +141,23 @@ class SystemFAQTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AnswerLanguageTests(unittest.TestCase):
+    """回答語言依問題：以前聊天、串流、語音三個入口都寫死繁體中文，英文問題也用中文回答。"""
+
+    def test_english_questions_get_english_answers(self):
+        from system_faq import answer_language
+        for q in ("the president of NTPU?", "who is 林道通", "How do I apply for 交換生?", "eduroam password"):
+            self.assertEqual(answer_language(q), "en", q)
+
+    def test_chinese_questions_with_an_acronym_stay_chinese(self):
+        from system_faq import answer_language
+        for q in ("NTPU 圖書館開放時間", "VPN 怎麼設定", "校長是誰", ""):
+            self.assertEqual(answer_language(q), "zh-TW", q)
+
+    def test_chat_endpoints_no_longer_hardcode_chinese(self):
+        import pathlib
+        src = (pathlib.Path(__file__).resolve().parents[1] / "agentic_v2_5_4high.py").read_text(encoding="utf-8")
+        self.assertNotIn('q, "zh-TW", req.history', src)
+        self.assertNotIn('transcribed, "zh-TW", req.history', src)

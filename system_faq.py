@@ -134,6 +134,18 @@ def detect_language(query: str) -> str:
     return "zh-TW" if re.search(r"[\u4e00-\u9fff]", query or "") else "en"
 
 
+def answer_language(query: str) -> str:
+    """回答要用的語言：英文單字為主就用英文（例如「who is 林道通」），中文為主或夾一兩個英文縮寫
+    （例如「NTPU 圖書館開放時間」）用繁體中文。"""
+    text = query or ""
+    cjk = len(re.findall(r"[\u4e00-\u9fff]", text))
+    words = re.findall(r"[A-Za-z]+", text)
+    if not cjk:
+        return "en" if words else "zh-TW"
+    letters = sum(len(w) for w in words)
+    return "en" if len(words) >= 2 and letters > cjk else "zh-TW"
+
+
 def _has_any(text: str, phrases: tuple[str, ...]) -> bool:
     lowered = str(text or "").lower()
     return any(phrase in lowered for phrase in phrases)
