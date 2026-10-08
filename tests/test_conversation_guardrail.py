@@ -281,6 +281,13 @@ class ConversationGuardrailTests(unittest.TestCase):
         self.assertEqual(detect_service_entity_conflict("請問輔仁大學的學費"), "輔仁大學")
         self.assertEqual(detect_service_entity_conflict("國立臺灣大學的宿舍"), "國立臺灣大學")
 
+    def test_english_university_names_match_as_whole_words(self):
+        # 2026-10-08：比對前去掉空白，英文名稱的單字邊界永遠不成立；本校英文全名被當成外校、NTU 卻沒被擋
+        self.assertIsNone(detect_service_entity_conflict("Who is the president of National Taipei University?"))
+        self.assertIsNone(detect_service_entity_conflict("NTPU library hours"))
+        self.assertEqual(detect_service_entity_conflict("NTU library hours"), "NTU")
+        self.assertEqual(detect_service_entity_conflict("National Taiwan University dorm rules"), "National Taiwan University")
+
     def test_low_confidence_semantic_scope_remains_blocked(self):
         cases = (
             {"status": "IN_SCOPE", "office_hint": "hr", "confidence": 0.60, "reason": "低信心"},

@@ -142,6 +142,8 @@ RESOLVER_FOLLOWUP_CONFIDENCE = 0.80
 # same mechanism can be reused by another corpus by replacing these aliases.
 DEFAULT_SERVICE_ENTITY_ALIASES = (
     "國立臺北大學", "國立台北大學", "臺北大學", "台北大學", "NTPU", "北大",
+    # 改寫後的完整問句常把 NTPU 展開成英文全名（2026-10-08 英文問校長被當成外校擋下）
+    "National Taipei University",
 )
 # Short aliases cannot be recognized reliably from a suffix pattern alone.
 # Keep only high-precision competing aliases here; full organization names are
@@ -416,6 +418,12 @@ def _normalize_entity_text(value: Any) -> str:
 
 
 def _contains_entity_alias(text: str, alias: str) -> bool:
+    # 英文名稱（可含空白，例如 National Taipei University）保留空白、以單字邊界比對；
+    # 先去掉空白再比對時「...of national...」前面接著字母，單字邊界永遠不成立（2026-10-08）。
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 .&'-]*", (alias or "").strip()):
+        spaced_text = re.sub(r"\s+", " ", (text or "").lower())
+        spaced_alias = re.sub(r"\s+", " ", alias.strip().lower())
+        return bool(re.search(rf"(?<![a-z0-9]){re.escape(spaced_alias)}(?![a-z0-9])", spaced_text))
     normalized_text = _normalize_entity_text(text)
     normalized_alias = _normalize_entity_text(alias)
     if not normalized_text or not normalized_alias:

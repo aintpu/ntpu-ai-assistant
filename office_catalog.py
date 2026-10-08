@@ -15,7 +15,7 @@ FAQ_OFFICES = {
     "vpa": ("學術副校長室", "Office of the Vice President for Academic Affairs", ("學術副校長",)),
     "vpad": ("行政副校長室", "Office of the Vice President for Administrative Affairs", ("行政副校長",)),
     "vpf": ("財務暨永續發展副校長室", "Office of the Vice President for Finance and Sustainable Development", ("財務暨永續發展副校長", "財務副校長",)),
-    "pres": ("校長室", "Office of the President", ("校長室", "校長", "現任校長", "校長學歷", "校長的研究",)),
+    "pres": ("校長室", "Office of the President", ("校長室", "校長", "現任校長", "校長學歷", "校長的研究", "president")),
 }
 
 # Offices whose retrieval also covers other offices' FAQ.  A question about

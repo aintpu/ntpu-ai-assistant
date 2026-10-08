@@ -1884,7 +1884,7 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
     _collect_source_docs(docs)
     _note_data_updated_at(mcp_client.sync_time(freshness))
     return (
-        "請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。"
+        "請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。資料裡沒有寫的人名、職稱對應、數字、日期一律不得說出，也不得用常識或印象補上；問題問的事實若文件沒有直接寫明，要明說查不到。"
         "這些是各處室提供的人工整理資料、官網頁面、公告或公告附件；附件為抽取或圖片辨識的文字，表格可能錯位，請附上附件連結；公告請一併說明公告日期，較舊的公告內容可能已變動。"
         "【來源網址】空白時只以文件類型括號內的來源名稱文字標示來源，不要自行產生連結：\n\n"
         + build_context_snippets(docs)
@@ -1943,7 +1943,7 @@ def tool_search_database(search_query: str, dept: str = None,
             "不得自行猜測；請向使用者說明目前官方資料不足，或請使用者補充更具體的條件。"
         )
     if hits:
-        return "請根據以下文件內容回答，優先使用原文重點，不要自行擴寫：\n\n" + build_context_snippets(hits)
+        return "請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。資料裡沒有寫的人名、職稱對應、數字、日期一律不得說出，也不得用常識或印象補上；問題問的事實若文件沒有直接寫明，要明說查不到。\n\n" + build_context_snippets(hits)
     return "目前沒有檢索到高度相關的文件內容。"
 
 def tool_record_correction(original_query: str, correction_info: str, dept: str = None) -> str:
@@ -3585,7 +3585,16 @@ def prepare_conversation_turn(
 # 這類本校資料裡就有的名詞誤判成外部機構。模型判 OUT_OF_SCOPE 時，若知識庫有文件標題含問題裡
 # 連續 3 字以上的內容詞，就改判 IN_SCOPE、交給該文件的處室。外校名稱與天氣、餐廳等無關意圖由規則
 # 先擋下，不會被這裡放行。
-_GROUNDING_BREAK_RE = re.compile(r"[^\u4e00-\u9fffA-Za-z0-9]|[什麼哪些怎誰嗎呢是有可以的了在我你您他她請幫問找去到給從和與跟或吧呀啊喔哦能該想]")
+# 只用中文詞比對：英文單字（例如 NTPU、president）常出現在各處室文件的英文標題裡，
+# 2026-10-08 「the president of NTPU?」因此被分到學務處、查不到校長而讓模型編出人名。
+_GROUNDING_BREAK_RE = re.compile(r"[^\u4e00-\u9fff]|[什麼哪些怎誰嗎呢是有可以的了在我你您他她請幫問找去到給從和與跟或吧呀啊喔哦能該想]")
+# 問人名的句型：名字通常只出現在 FAQ 回答內容（例如「現任校長是誰？A: 林道通」），標題沒有
+_PERSON_QUESTION_RE = re.compile(r"誰是|是誰|是哪位|who\s+is|who's", re.I)
+_content_index = None
+# 寫明身分的文件（例如校長室 FAQ「現任校長是誰？」）優先於只是順帶提到名字的文件（例如運動會新聞）
+_IDENTITY_TITLE_RE = re.compile(r"首長|校長|副校長|處長|主任|館長|執行長|主任秘書|研發長|教務長|學務長|總務長")
+# 標題就是在問「這個人是誰」（例如「現任校長是誰？」）：權重最高，勝過只是標題提到職稱的新聞
+_WHO_TITLE_RE = re.compile(r"現任|是誰")
 _GROUNDING_MIN_CHARS = 3
 _title_index = None
 
@@ -3601,8 +3610,40 @@ def _grounding_titles():
     return _title_index or []
 
 
+def _grounding_contents():
+    global _content_index
+    if _content_index is None and INDEX.docs_zh:
+        _content_index = [
+            (str(d.page_content or ""), d.metadata.get("dept"),
+             1000 if _WHO_TITLE_RE.search(str(d.metadata.get("title") or ""))
+             else 100 if _IDENTITY_TITLE_RE.search(str(d.metadata.get("title") or "")) else 1)
+            for d in INDEX.docs_zh
+            if d.metadata.get("dept") in DEPT_NAMES
+        ]
+    return _content_index or []
+
+
+def known_person_office(query: str):
+    """問「誰是 X」時，知識庫內容裡有 X（2–4 個中文字）就回傳 (處室, X)；否則 None。"""
+    if not _PERSON_QUESTION_RE.search(query or ""):
+        return None
+    names = [r for r in _GROUNDING_BREAK_RE.split(query) if 2 <= len(r) <= 4]
+    for name in sorted(names, key=len, reverse=True):
+        depts = Counter()
+        for content, dept, weight in _grounding_contents():
+            if name in content:
+                depts[dept] += weight
+        if depts:
+            return depts.most_common(1)[0][0], name
+    return None
+
+
 def known_topic_office(query: str):
-    """知識庫有文件標題含 query 裡最長的內容詞（≥3 字）時，回傳 (處室, 該詞)；否則 None。"""
+    """知識庫有文件標題含 query 裡最長的中文內容詞（≥3 字）時，回傳 (處室, 該詞)；
+    問人名時再比對文件內容。都沒有就回 None。"""
+    person = known_person_office(query)
+    if person:
+        return person
     titles = _grounding_titles()
     if not titles:
         return None
@@ -3651,6 +3692,13 @@ def decide_scope(standalone_query: str, context: dict, raw_query: str):
         return ground_scope_in_data(decision, raw_query)
 
     scope = once()
+    # 問人名：以資料裡寫明這個人身分的文件決定處室，蓋過模型的猜測（模型曾把「林道通是誰」分到體育室，
+    # 因為運動會新聞提到校長致詞）。外校與已知無關意圖仍照規則擋。
+    person = known_person_office(raw_query)
+    if person and not any(detect_service_entity_conflict(q) or detect_explicit_unsupported_intent(q)
+                          for q in (raw_query, standalone_query)):
+        office, name = person
+        return ScopeDecision("IN_SCOPE", office, 0.85, f"知識庫有寫明「{name}」身分的{DEPT_NAMES[office]}文件。")
     if scope.status != "OUT_OF_SCOPE" or SCOPE_REVOTES <= 0:
         return scope
     if any(detect_service_entity_conflict(q) or detect_explicit_unsupported_intent(q)

@@ -304,6 +304,28 @@ class GroundedScopeTests(unittest.TestCase):
         for q in ("什麼是量子力學", "會館在哪", "幫我寫一首詩"):
             self.assertEqual(core.ground_scope_in_data(self._out(), q).status, "OUT_OF_SCOPE", q)
 
+    def test_english_words_are_not_used_for_grounding(self):
+        # 「the president of NTPU?」曾因英文標題含 NTPU 被分到學務處
+        from langchain_core.documents import Document
+        with patch.object(core.INDEX, "docs_zh", [Document(page_content="x", metadata={"title": "NTPU Student Handbook", "dept": "osa"})]):
+            core._title_index = None
+            self.assertIsNone(core.known_topic_office("the president of NTPU?"))
+        core._title_index = None
+
+    def test_person_questions_use_the_document_that_states_who_they_are(self):
+        from langchain_core.documents import Document
+        docs = [Document(page_content="林道通校長致詞", metadata={"title": "北鼎聯賽圓滿落幕", "dept": "ope"})] * 7 + [
+            Document(page_content="林道通校長授旗", metadata={"title": "校長授旗勉勵代表隊", "dept": "ope"}),
+            Document(page_content="Q: 現任校長是誰？ A: 林道通", metadata={"title": "現任校長是誰？", "dept": "pres"}),
+        ]
+        with patch.object(core.INDEX, "docs_zh", docs):
+            core._content_index = None
+            self.assertEqual(core.known_person_office("who is 林道通"), ("pres", "林道通"))
+            self.assertEqual(core.known_person_office("林道通是誰"), ("pres", "林道通"))
+            self.assertIsNone(core.known_person_office("誰是宋明謙？"))
+            self.assertIsNone(core.known_person_office("林道通的研究領域"))  # 不是問人名的句型
+        core._content_index = None
+
     def test_in_scope_decisions_are_untouched(self):
         from conversation_guardrail import ScopeDecision
         scope = ScopeDecision("IN_SCOPE", "lib", 0.9, "")
