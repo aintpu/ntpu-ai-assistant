@@ -115,6 +115,38 @@ export const FaqSchema = z
 
 export type Faq = z.infer<typeof FaqSchema>;
 
+/**
+ * 現任主管。姓名、職務、任期來自人工核對的對照表，每次抓取都確認中文姓名仍載明在官方主管介紹頁上。
+ * 英文姓名只採用官網英文頁寫明的寫法；英文頁待補或未更新時為 null，不自行以拼音補上。
+ * 任期只在頁面寫明時才有值。
+ */
+export const OfficialSchema = z
+  .object({
+    id: RecordIdSchema,
+    unit: UnitSchema,
+    title: z.string().min(1).max(100),
+    /** 官網沒有中文姓名時為 null（例如國際長）。 */
+    name: z.string().min(1).max(50).nullable(),
+    /** 統一寫法（名-名 姓），方便比對。 */
+    nameEn: z.string().min(1).max(100).nullable(),
+    /** 官網英文頁原本的寫法，例如 DR. DALTON DAW-TUNG, LIN。 */
+    nameEnOfficial: z.string().min(1).max(100).nullable(),
+    /** 英文職稱的常見說法，只供比對英文提問，不是官方頭銜。 */
+    titleEnSearch: z.array(z.string().min(1).max(100)).max(10),
+    term: z.string().max(50).nullable(),
+    /** 任期的出處原文。 */
+    termSource: z.string().max(200).nullable(),
+    note: z.string().max(200).nullable(),
+    path: z.string().regex(/^\/[a-z0-9][a-z0-9/-]{0,100}$/),
+    pageTitle: z.string().max(500),
+    /** 官方頁面最後修改時間（學校 API 的 updatedAt）。 */
+    pageUpdatedAt: z.string().datetime(),
+    sourceUrl: z.string().url().max(2000),
+  })
+  .strict();
+
+export type Official = z.infer<typeof OfficialSchema>;
+
 export const ProvenanceSchema = z
   .object({
     sourceId: z.string(),

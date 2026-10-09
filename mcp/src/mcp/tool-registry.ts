@@ -50,6 +50,7 @@ export const TOOL_REGISTRY: readonly ToolRegistryEntry[] = [
   entry("get_faq", MANUAL),
   entry("search_attachments", OFFICIAL),
   entry("get_attachment", OFFICIAL),
+  { ...entry("get_current_officials", OFFICIAL), reviewedAt: "2026-10-09" },
 ];
 
 /** 公開 v1 政策（規格 07 §10）：登記過、R0、L0、唯讀、不需要 scope → 允許。 */

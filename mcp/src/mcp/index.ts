@@ -4,6 +4,7 @@ import { assertRegistryValid, SOURCES } from "../ingestion/source-registry";
 import { systemClock, type Clock } from "../shared/clock";
 import { AnnouncementService } from "./announcement-service";
 import { AttachmentService } from "./attachment-service";
+import { OfficialService } from "./official-service";
 import { FaqService, RegulationService } from "./manual-service";
 import { PageService } from "./page-service";
 import { TOOL_REGISTRY } from "./tool-registry";
@@ -70,13 +71,14 @@ export function createHandler(clock: Clock = systemClock) {
         regulations: new RegulationService(repo),
         faqs: new FaqService(repo),
         attachments: new AttachmentService(repo),
+        officials: new OfficialService(repo),
       };
 
       if (pathname === "/mcp") return handleMcp(request, services);
 
       if (pathname === "/health") {
         const sources = await Promise.all(
-          (["announcement", "page", "regulation", "faq"] as const).map((t) => service.freshness(undefined, t)),
+          (["announcement", "page", "regulation", "faq", "official"] as const).map((t) => service.freshness(undefined, t)),
         )
           .then((groups) => groups.flat())
           .catch(() => null);
