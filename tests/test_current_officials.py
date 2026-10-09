@@ -70,6 +70,7 @@ class CurrentOfficialsTests(unittest.TestCase):
         self.assertIn("中文姓名：林道通", doc.page_content)
         self.assertIn("DR. DALTON DAW-TUNG, LIN", doc.page_content)
         self.assertIn("任期：2025至今", doc.page_content)
+        self.assertIn("以英文回答時，姓名一律寫作：Dalton Daw-Tung Lin", doc.page_content)
         self.assertIn("最後確認時間", doc.page_content)
         self.assertEqual(doc.metadata["url"], "https://new.ntpu.edu.tw/president")
         self.assertEqual(doc.metadata["dept"], "pres")
