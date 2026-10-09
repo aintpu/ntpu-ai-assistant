@@ -3435,7 +3435,7 @@ def prepare_conversation_turn(
         current_query=raw_query,
         history=history,
         state=state,
-        complete_fn=llm_adapter.complete,
+        complete_fn=llm_adapter.classify_complete,
         retries=1,
     )
     _record_timing("conversation_resolution", time.time() - t0)
@@ -3701,7 +3701,7 @@ def decide_scope(standalone_query: str, context: dict, raw_query: str):
     def once():
         decision = run_scope_guardrail(
             standalone_query=standalone_query, context=context,
-            complete_fn=llm_adapter.complete, retries=1,
+            complete_fn=llm_adapter.classify_complete, retries=1,
         )
         return ground_scope_in_data(decision, raw_query)
 
@@ -3730,7 +3730,7 @@ def classify_department(query: str, history: list = None) -> str:
     """Backward-compatible adapter; new endpoints use prepare_conversation_turn."""
     state = ConversationState.from_value({})
     resolution = resolve_conversation(
-        query, history or [], state, llm_adapter.complete, retries=1
+        query, history or [], state, llm_adapter.classify_complete, retries=1
     )
     system_match = _best_system_match(query, resolution.standalone_query)
     if should_route_system(query, system_match, threshold=SYSTEM_PRIMARY_THRESHOLD):

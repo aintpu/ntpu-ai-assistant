@@ -945,6 +945,8 @@ def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[s
         "（例如接受上一輪提議『我要』、補充身分或年資），請依 standalone_query 判斷；"
         "但若原始本輪問題本身明確轉向無關主題，仍應回 OUT_OF_SCOPE。"
         "只有完整語意確認與所有支援服務無關時才回 OUT_OF_SCOPE。"
+        "confidence 表示你對 status 與 office_hint 的把握：確定是本校業務且知道處室時給 0.9 以上，"
+        "只確定是本校業務、不確定處室時給 0.85 左右並將 office_hint 設為 null。reason 用 20 字以內。"
         "只輸出 JSON：{status:'IN_SCOPE|OUT_OF_SCOPE|AMBIGUOUS', office_hint:string|null, "
         "confidence:number, reason:string, entity_conflict:boolean, entity_hint:string|null}。"
     )
@@ -1115,7 +1117,8 @@ def run_scope_guardrail(
             _complete_json(
                 complete_fn,
                 _scope_prompt(classifier_query, classifier_context),
-                max_tokens=220,
+                # 不同模型寫的理由長短不一（Sonnet 5.5 的中文理由常超過 220 token 而被截斷、JSON 解析失敗）
+                max_tokens=500,
                 retries=retries,
             )
         )
