@@ -1913,21 +1913,30 @@ def _record_document(kind: str, item: dict, detail: dict, dept: str) -> Document
     })
 
 
+_ALL_UNITS = "*"  # 不指定處室
+
+
 def _records_from_mcp(search_query: str, keywords: str, dept: str):
     """從 MCP 查法規與常見問答（人工整理檔，有版本紀錄）。
 
     MCP 是關鍵字比對：先用全部關鍵字一起查，查不到再逐一用單一關鍵字查，
     以符合的關鍵字數排序。查不到、證據不足或處室不在對應表時回 None，改用本機索引。
+    dept=None 表示查全校已收錄資料（不指定處室）。
     """
-    units = mcp_client.DEPT_TO_MCP_RECORD_UNITS.get(dept) if dept else None
     terms = _record_search_terms(keywords)
+    if dept is None:
+        units = (_ALL_UNITS, _ALL_UNITS)
+    else:
+        units = mcp_client.DEPT_TO_MCP_RECORD_UNITS.get(dept)
     if not units or not terms:
         return None
     reg_unit, faq_unit = units
     # 也查該處室公告：「怎麼申請」「在哪裡」這類長期有效的說明有時只寫在公告裡
     # （例如教務處〈成績單及證明文件申請管道說明〉寫了成績單自動列印機台的位置）。
-    news_unit = mcp_client.DEPT_TO_MCP_UNIT.get(dept) if mcp_client.announcements_enabled() else None
-    page_unit = mcp_client.DEPT_TO_MCP_PAGE_UNIT.get(dept)  # 處室官網內容頁（組別業務、各專區、招生資訊）
+    news_unit = (_ALL_UNITS if dept is None else mcp_client.DEPT_TO_MCP_UNIT.get(dept)) \
+        if mcp_client.announcements_enabled() else None
+    # 處室官網內容頁（組別業務、各專區、招生資訊）
+    page_unit = _ALL_UNITS if dept is None else mcp_client.DEPT_TO_MCP_PAGE_UNIT.get(dept)
     targets = [(k, tool, u) for k, tool, u in (
         ("faq", "search_faqs", faq_unit), ("regulation", "search_regulations", reg_unit),
         ("announcement", "search_announcements", news_unit), ("page", "search_pages", page_unit),
@@ -1941,7 +1950,10 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
     def search(job):
         (kind, tool, unit), attempt = job
         try:
-            res = mcp_client.call_tool(tool, {"keyword": " ".join(attempt)[:100], "unit": unit, "limit": MCP_RECORD_SEARCH_LIMIT})
+            args = {"keyword": " ".join(attempt)[:100], "limit": MCP_RECORD_SEARCH_LIMIT}
+            if unit != _ALL_UNITS:
+                args["unit"] = unit
+            res = mcp_client.call_tool(tool, args)
         except mcp_client.McpUnavailable as exc:
             # 單一工具失敗（例如 MCP 還沒登記這個處室的頁面）不影響其他工具的結果
             failures.append(f"{tool}:{exc}")
@@ -1986,7 +1998,8 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
     head = ranked[:MCP_RECORD_FULL_TEXT]
     with ThreadPoolExecutor(max_workers=len(head)) as pool:
         details = list(pool.map(full, head)) + [None] * (len(ranked) - len(head))
-    docs = [_record_document(kind, item, detail, dept) for (_, kind, item), detail in zip(ranked, details)]
+    docs = [_record_document(kind, item, detail, dept or mcp_client.MCP_UNIT_TO_DEPT.get(item.get("unit"), ""))
+            for (_, kind, item), detail in zip(ranked, details)]
 
     evidence = check_evidence_sufficiency(search_query, docs)
     if not evidence.sufficient:
@@ -2002,22 +2015,18 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
     )
 
 
-def tool_search_database(search_query: str, dept: str = None,
-                         previous_source_docs: List[Document] = None, keywords: str = "",
-                         user_queries=()) -> str:
-    """工具3：通用知識與法規檢索（偏文件摘錄）
+_ANSWER_RULE = ("請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。資料裡沒有寫的人名、職稱對應、數字、日期一律不得說出，"
+                "也不得用常識或印象補上；問題問的事實若文件沒有直接寫明，要明說查不到。\n\n")
 
-    MCP_REGULATIONS 開啟且處室在對應表時先查 MCP；關閉、連不上、查無資料或證據不足時用本機索引。
-    """
-    official_docs = current_official_docs(search_query, user_queries)
-    official_text = (OFFICIALS_INSTRUCTION + build_context_snippets(official_docs) + "\n\n---\n\n") if official_docs else ""
-    if official_docs:
-        _collect_source_docs(official_docs)
-    if keywords and mcp_records_available(dept):
+
+def _search_in(search_query: str, dept, previous_source_docs, keywords: str):
+    """在一個處室（dept=None 為全校已收錄資料）查詢。回傳 (給模型的內容, 證據是否足夠)。"""
+    mcp_ok = mcp_client.records_enabled() if dept is None else mcp_records_available(dept)
+    if keywords and mcp_ok:
         try:
             from_mcp = _records_from_mcp(search_query, keywords, dept)
             if from_mcp:
-                return official_text + from_mcp
+                return from_mcp, True
         except mcp_client.McpUnavailable as exc:
             print(f"[MCP] 法規／常見問答查詢失敗，改用本機資料：{exc}")
     if dept in OFFICE_SEARCH_GROUPS and "副校長" in (search_query or ""):
@@ -2050,19 +2059,47 @@ def tool_search_database(search_query: str, dept: str = None,
             seen.add(source_id)
             unique_hits.append(d)
     hits = unique_hits
-    _collect_source_docs(hits)
     evidence = check_evidence_sufficiency(search_query, hits)
     _record_evidence(evidence.to_dict())
-    if official_docs and (not evidence.sufficient or not hits):
+    if not hits or not evidence.sufficient:
+        return "", False
+    _collect_source_docs(hits)
+    return _ANSWER_RULE + build_context_snippets(hits), True
+
+
+def _is_person_query(*queries) -> bool:
+    """問某個人（「誰是 X」「X 是誰」或問題裡有現任主管的姓名）。"""
+    return any(q and (_PERSON_QUESTION_RE.search(q) or official_name_in(q)) for q in queries)
+
+
+def tool_search_database(search_query: str, dept: str = None,
+                         previous_source_docs: List[Document] = None, keywords: str = "",
+                         user_queries=()) -> str:
+    """工具3：通用知識與法規檢索（偏文件摘錄）
+
+    MCP_REGULATIONS 開啟且處室在對應表時先查 MCP；關閉、連不上、查無資料或證據不足時用本機索引。
+    老師建議 一-2：指定處室證據不足時補查全校已收錄資料；問人時不只查指定處室（例如校長室、副校長室 FAQ）。
+    """
+    official_docs = current_official_docs(search_query, user_queries)
+    official_text = (OFFICIALS_INSTRUCTION + build_context_snippets(official_docs) + "\n\n---\n\n") if official_docs else ""
+    if official_docs:
+        _collect_source_docs(official_docs)
+    text, ok = _search_in(search_query, dept, previous_source_docs, keywords)
+    if dept and (not ok or _is_person_query(search_query, *user_queries)):
+        global_text, global_ok = _search_in(search_query, None, None, keywords)
+        if global_ok and ok:
+            text += "\n\n---\n\n【全校其他單位的相關資料】\n" + global_text
+        elif global_ok:
+            print(f"[檢索] {DEPT_NAMES.get(dept, dept)}證據不足，改用全校已收錄資料")
+            text, ok = f"（{DEPT_NAMES.get(dept, dept)}的資料沒有足夠證據，以下為全校已收錄資料的查詢結果）\n" + global_text, True
+    if official_docs and not ok:
         return official_text + "請根據以上【現任主管資料】回答；資料沒有寫的學歷、經歷等不得自行補上，要明說查不到。"
-    if not evidence.sufficient:
+    if not ok:
         return (
-            "【Evidence Check】目前檢索到的資料不足以直接支持這個完整問題。"
+            "【Evidence Check】目前檢索到的資料（含全校已收錄資料）不足以直接支持這個完整問題。"
             "不得自行猜測；請向使用者說明目前官方資料不足，或請使用者補充更具體的條件。"
         )
-    if hits:
-        return official_text + "請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。資料裡沒有寫的人名、職稱對應、數字、日期一律不得說出，也不得用常識或印象補上；問題問的事實若文件沒有直接寫明，要明說查不到。\n\n" + build_context_snippets(hits)
-    return "目前沒有檢索到高度相關的文件內容。"
+    return official_text + text
 
 def tool_record_correction(original_query: str, correction_info: str, dept: str = None) -> str:
     """
