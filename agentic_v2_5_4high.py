@@ -3522,7 +3522,10 @@ def prepare_conversation_turn(
             "domain": "OTHER",
         }
 
-    if scope.status == "AMBIGUOUS" or resolution.ambiguity:
+    # 問人名且知識庫有寫明這個人身分的文件：資料足以回答，不因改寫模型覺得「資訊不足」而反問
+    # （2026-10-09 改用 Jev 後「誰是陳宥杉」穩定被反問「請補充檢定、身分、學制」）
+    known_person = scope.status == "IN_SCOPE" and known_person_office(raw_query) is not None
+    if scope.status == "AMBIGUOUS" or (resolution.ambiguity and not known_person):
         clarification_state = build_updated_state(
             state,
             conversation_id=state.conversation_id,

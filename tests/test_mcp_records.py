@@ -381,3 +381,11 @@ class ScopeMajorityVoteTests(unittest.TestCase):
         for query in ("台大的宿舍怎麼申請", "今天台北天氣如何"):
             scope, calls = self._run(["OUT_OF_SCOPE"], query=query)
             self.assertEqual((scope.status, len(calls)), ("OUT_OF_SCOPE", 1), query)
+
+
+@unittest.skipIf(_IMPORT_ERROR, f"backend dependencies unavailable: {_IMPORT_ERROR}")
+class KnownPersonNoClarificationTests(unittest.TestCase):
+    def test_known_person_question_is_not_sent_back_for_clarification(self):
+        import pathlib
+        src = (pathlib.Path(__file__).resolve().parents[1] / "agentic_v2_5_4high.py").read_text(encoding="utf-8")
+        self.assertIn("resolution.ambiguity and not known_person", src)
