@@ -1784,6 +1784,7 @@ def _official_document(o: dict) -> Document:
     lines = [f"職務：{o.get('title', '')}", f"中文姓名：{o.get('name') or '（官網未載明中文姓名）'}"]
     if o.get("nameEn"):
         lines.append(f"官方英文姓名：{o['nameEn']}（官網英文頁寫法：{o.get('nameEnOfficial') or o['nameEn']}）")
+        lines.append(f"以英文回答時，姓名一律寫作：{o['nameEn']}（不得改寫順序或改用其他拼音）")
     else:
         lines.append("官方英文姓名：官網未提供（不得自行以拼音補上）")
     lines.append(f"任期：{o['term']}（出處：{o.get('termSource') or '官方介紹頁'}）" if o.get("term") else "任期：官網未寫明")
@@ -1803,13 +1804,9 @@ def _official_document(o: dict) -> Document:
 OFFICIALS_MAX_DOCS = 4  # 比對到太多筆（例如只問「主任是誰」）就不當成明確答案
 
 
-def current_official_docs(search_query: str, user_queries=()) -> List[Document]:
-    """問現任職務或人名時，查現任主管資料；沒有對到或不是這類問題時回空清單。
-
-    user_queries 是改寫後與原始的使用者問題：工具參數常是關鍵字（例如「NTPU president 校長室」），
-    看不出是在問人，所以先用使用者問題判斷（改寫後的問題已補上追問省略的職稱）。
-    """
-    query = next((q for q in (*user_queries, search_query) if q and is_position_question(q)), "")
+def current_officials_for(*queries) -> list:
+    """第一個像在問人或現任職務的問題，查現任主管資料；沒有、太多筆（不明確）或查詢失敗時回空清單。"""
+    query = next((q for q in queries if q and is_position_question(q)), "")
     if not query:
         return []
     try:
@@ -1818,9 +1815,19 @@ def current_official_docs(search_query: str, user_queries=()) -> List[Document]:
         print(f"[MCP] 現任主管資料查詢失敗，改用其他資料：{exc}")
         return []
     items = res.get("items") or []
-    if not items or len(items) > OFFICIALS_MAX_DOCS:
+    if len(items) > OFFICIALS_MAX_DOCS:
         return []
     _note_data_updated_at(mcp_client.sync_time(res.get("freshness")))
+    return items
+
+
+def current_official_docs(search_query: str, user_queries=()) -> List[Document]:
+    """問現任職務或人名時，查現任主管資料；沒有對到或不是這類問題時回空清單。
+
+    user_queries 是改寫後與原始的使用者問題：工具參數常是關鍵字（例如「NTPU president 校長室」），
+    看不出是在問人，所以先用使用者問題判斷（改寫後的問題已補上追問省略的職稱）。
+    """
+    items = current_officials_for(*user_queries, search_query)
     return [_official_document(o) for o in items]
 
 
@@ -1828,6 +1835,8 @@ OFFICIALS_INSTRUCTION = (
     "【現任主管資料】是各主管官方介紹頁的結構化資料，排程會確認姓名仍在官方頁面上；問現任職務或某人現任什麼職務時以它為準。"
     "其他文件（舊公告、公文的「校長核定」或簽名欄、過去的經歷）不得用來推定現任職務；與它不一致時以【現任主管資料】為準，"
     "可說明其他文件記載的是過去的職務。英文姓名只能用資料裡的官方英文姓名，官網未提供時不得自行音譯。"
+    "以英文回答時，答案主句的姓名必須逐字使用「以英文回答時，姓名一律寫作」那一行（例如林道通寫作 Dalton Daw-Tung Lin，"
+    "不可寫成 Lin Dao-Tung、Lin Tao-Tung 等自行音譯的拼法）。"
     "回答時附上官方介紹頁連結。\n\n"
 )
 
@@ -3634,6 +3643,16 @@ def prepare_conversation_turn(
     # 問人名且知識庫有寫明這個人身分的文件：資料足以回答，不因改寫模型覺得「資訊不足」而反問
     # （2026-10-09 改用 Jev 後「誰是陳宥杉」穩定被反問「請補充檢定、身分、學制」）
     known_person = scope.status == "IN_SCOPE" and known_person_office(raw_query) is not None
+    # 問現任職務且現任主管資料對得到（例如「Who is the vice president for academic affairs?」）：
+    # 以官方介紹頁所屬單位為準，不反問、不交給模型猜處室（模型曾把學術副校長分到校長室並反問）
+    if scope.status in ("IN_SCOPE", "AMBIGUOUS"):
+        officials = current_officials_for(resolution.standalone_query, raw_query)
+        depts = {mcp_client.MCP_UNIT_TO_DEPT.get(o.get("unit")) for o in officials}
+        if officials and len(depts) == 1 and depts <= set(DEPT_NAMES):
+            office = depts.pop()
+            scope = ScopeDecision("IN_SCOPE", office, max(scope.confidence or 0, 0.85),
+                                  f"現任主管資料寫明「{officials[0].get('title')}」屬{DEPT_NAMES[office]}。")
+            known_person = True
     if scope.status == "AMBIGUOUS" or (resolution.ambiguity and not known_person):
         clarification_state = build_updated_state(
             state,
