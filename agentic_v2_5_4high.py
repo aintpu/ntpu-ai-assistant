@@ -1731,6 +1731,107 @@ def _incumbent_docs(dept: str) -> List[Document]:
     ]
 
 
+# ── 現任主管（老師建議 二-1）：MCP get_current_officials，每次排程抓取都確認姓名仍在官方介紹頁上 ──
+OFFICIALS_CACHE_SECONDS = 600
+_officials_cache = {"at": 0.0, "items": []}
+# 問「誰」或現任職務的句型；英文提問只寫職稱時（例如「the president of NTPU?」）另以職稱比對
+_POSITION_QUESTION_RE = re.compile(r"誰|哪位|現任|目前|姓名|名字|who\b|who's|current|name", re.I)
+_POSITION_FILLER_RE = re.compile(r"國立臺北大學|國立台北大學|臺北大學|台北大學|北大|ntpu|national taipei university|\b(the|of|at|is|in)\b|[^\w\u4e00-\u9fff]|的", re.I)
+
+
+def current_officials_roster() -> list:
+    """全部現任主管（快取 10 分鐘）；MCP 關閉或連不上時回空清單，不影響原本流程。"""
+    if not mcp_client.records_enabled():
+        return []
+    now = time.time()
+    if now - _officials_cache["at"] < OFFICIALS_CACHE_SECONDS:
+        return _officials_cache["items"]
+    try:
+        items = mcp_client.call_tool("get_current_officials", {}).get("items") or []
+    except mcp_client.McpUnavailable as exc:
+        print(f"[MCP] 現任主管資料查詢失敗：{exc}")
+        items = _officials_cache["items"]  # 沿用上一份；1 分鐘後再試
+        _officials_cache["at"] = now - OFFICIALS_CACHE_SECONDS + 60
+        return items
+    _officials_cache.update(at=now, items=items)
+    return items
+
+
+def official_name_in(query: str):
+    """問題裡有現任主管的中文姓名時回傳該筆清單（同一人兼任時有多筆）。"""
+    q = query or ""
+    hits = [o for o in current_officials_roster() if o.get("name") and o["name"] in q]
+    longest = max((len(o["name"]) for o in hits), default=0)
+    return [o for o in hits if len(o["name"]) == longest]
+
+
+def is_position_question(query: str) -> bool:
+    """是否在問某個人或某個職務的現任者。"""
+    q = query or ""
+    if _POSITION_QUESTION_RE.search(q) or official_name_in(q):
+        return True
+    # 只寫職稱的問法：去掉校名與虛詞後只剩職稱（「the president of NTPU?」「教務長？」）
+    core = _POSITION_FILLER_RE.sub(" ", q).strip().lower()
+    core = re.sub(r"\s+", " ", core)
+    for o in current_officials_roster():
+        if core and core in [o.get("title", "").lower()] + [t.lower() for t in o.get("titleEnSearch") or []]:
+            return True
+    return False
+
+
+def _official_document(o: dict) -> Document:
+    prov = o.get("provenance") or {}
+    lines = [f"職務：{o.get('title', '')}", f"中文姓名：{o.get('name') or '（官網未載明中文姓名）'}"]
+    if o.get("nameEn"):
+        lines.append(f"官方英文姓名：{o['nameEn']}（官網英文頁寫法：{o.get('nameEnOfficial') or o['nameEn']}）")
+    else:
+        lines.append("官方英文姓名：官網未提供（不得自行以拼音補上）")
+    lines.append(f"任期：{o['term']}（出處：{o.get('termSource') or '官方介紹頁'}）" if o.get("term") else "任期：官網未寫明")
+    if o.get("note"):
+        lines.append(f"備註：{o['note']}")
+    lines.append(f"官方頁面最後修改：{_taipei_date(o.get('pageUpdatedAt') or '')}")
+    lines.append(f"最後確認時間（排程確認姓名仍在官方頁面上）：{_taipei_date(prov.get('verifiedAt') or '')}")
+    return Document(page_content="\n".join(lines), metadata={
+        "title": f"現任{o.get('title', '')}（{o.get('pageTitle') or '官方介紹頁'}）", "url": o.get("sourceUrl") or "",
+        "type": "official", "category": "現任主管資料（官方介紹頁）",
+        "dept": mcp_client.MCP_UNIT_TO_DEPT.get(o.get("unit"), ""),
+        "date": _taipei_date(o.get("pageUpdatedAt") or ""),
+        "source_id": f"mcp:official:{o.get('unit')}:{o.get('id')}",
+    })
+
+
+OFFICIALS_MAX_DOCS = 4  # 比對到太多筆（例如只問「主任是誰」）就不當成明確答案
+
+
+def current_official_docs(search_query: str, user_queries=()) -> List[Document]:
+    """問現任職務或人名時，查現任主管資料；沒有對到或不是這類問題時回空清單。
+
+    user_queries 是改寫後與原始的使用者問題：工具參數常是關鍵字（例如「NTPU president 校長室」），
+    看不出是在問人，所以先用使用者問題判斷（改寫後的問題已補上追問省略的職稱）。
+    """
+    query = next((q for q in (*user_queries, search_query) if q and is_position_question(q)), "")
+    if not query:
+        return []
+    try:
+        res = mcp_client.call_tool("get_current_officials", {"keyword": query.strip()[:100]})
+    except mcp_client.McpUnavailable as exc:
+        print(f"[MCP] 現任主管資料查詢失敗，改用其他資料：{exc}")
+        return []
+    items = res.get("items") or []
+    if not items or len(items) > OFFICIALS_MAX_DOCS:
+        return []
+    _note_data_updated_at(mcp_client.sync_time(res.get("freshness")))
+    return [_official_document(o) for o in items]
+
+
+OFFICIALS_INSTRUCTION = (
+    "【現任主管資料】是各主管官方介紹頁的結構化資料，排程會確認姓名仍在官方頁面上；問現任職務或某人現任什麼職務時以它為準。"
+    "其他文件（舊公告、公文的「校長核定」或簽名欄、過去的經歷）不得用來推定現任職務；與它不一致時以【現任主管資料】為準，"
+    "可說明其他文件記載的是過去的職務。英文姓名只能用資料裡的官方英文姓名，官網未提供時不得自行音譯。"
+    "回答時附上官方介紹頁連結。\n\n"
+)
+
+
 MCP_RECORD_LIMIT = 6
 MCP_RECORD_SEARCH_LIMIT = 20  # 每次搜尋多抓一些，排序後再取前 MCP_RECORD_LIMIT 筆
 MCP_RECORD_FULL_TEXT = 3  # 前幾筆另外取全文（search 只回摘要）
@@ -1893,16 +1994,21 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
 
 
 def tool_search_database(search_query: str, dept: str = None,
-                         previous_source_docs: List[Document] = None, keywords: str = "") -> str:
+                         previous_source_docs: List[Document] = None, keywords: str = "",
+                         user_queries=()) -> str:
     """工具3：通用知識與法規檢索（偏文件摘錄）
 
     MCP_REGULATIONS 開啟且處室在對應表時先查 MCP；關閉、連不上、查無資料或證據不足時用本機索引。
     """
+    official_docs = current_official_docs(search_query, user_queries)
+    official_text = (OFFICIALS_INSTRUCTION + build_context_snippets(official_docs) + "\n\n---\n\n") if official_docs else ""
+    if official_docs:
+        _collect_source_docs(official_docs)
     if keywords and mcp_records_available(dept):
         try:
             from_mcp = _records_from_mcp(search_query, keywords, dept)
             if from_mcp:
-                return from_mcp
+                return official_text + from_mcp
         except mcp_client.McpUnavailable as exc:
             print(f"[MCP] 法規／常見問答查詢失敗，改用本機資料：{exc}")
     if dept in OFFICE_SEARCH_GROUPS and "副校長" in (search_query or ""):
@@ -1938,13 +2044,15 @@ def tool_search_database(search_query: str, dept: str = None,
     _collect_source_docs(hits)
     evidence = check_evidence_sufficiency(search_query, hits)
     _record_evidence(evidence.to_dict())
+    if official_docs and (not evidence.sufficient or not hits):
+        return official_text + "請根據以上【現任主管資料】回答；資料沒有寫的學歷、經歷等不得自行補上，要明說查不到。"
     if not evidence.sufficient:
         return (
             "【Evidence Check】目前檢索到的資料不足以直接支持這個完整問題。"
             "不得自行猜測；請向使用者說明目前官方資料不足，或請使用者補充更具體的條件。"
         )
     if hits:
-        return "請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。資料裡沒有寫的人名、職稱對應、數字、日期一律不得說出，也不得用常識或印象補上；問題問的事實若文件沒有直接寫明，要明說查不到。\n\n" + build_context_snippets(hits)
+        return official_text + "請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。資料裡沒有寫的人名、職稱對應、數字、日期一律不得說出，也不得用常識或印象補上；問題問的事實若文件沒有直接寫明，要明說查不到。\n\n" + build_context_snippets(hits)
     return "目前沒有檢索到高度相關的文件內容。"
 
 def tool_record_correction(original_query: str, correction_info: str, dept: str = None) -> str:
@@ -2640,6 +2748,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
                         dept=dept,
                         previous_source_docs=previous_source_docs,
                         keywords=str(args.get("keywords") or "").strip(),
+                        user_queries=(standalone_query, q_norm),
                     )
                 elif function_name == "get_competition_records":
                     ctx = tool_get_competition_records(
@@ -3635,6 +3744,12 @@ def known_person_office(query: str):
     """問「誰是 X」時，知識庫內容裡有 X（2–4 個中文字）就回傳 (處室, X)；否則 None。"""
     if not _PERSON_QUESTION_RE.search(query or ""):
         return None
+    # 現任主管資料有這個人：以官方介紹頁的單位為準（同一人兼任多個單位時跨單位查）
+    roster = official_name_in(query)
+    if roster:
+        depts = {mcp_client.MCP_UNIT_TO_DEPT.get(o.get("unit")) for o in roster}
+        dept = depts.pop() if len(depts) == 1 else None
+        return (dept if dept in DEPT_NAMES else None), roster[0]["name"]
     # 只比對像人名的詞（2–3 字、常見姓氏開頭）：「現任行政副校長是誰？學歷？」拆開後只剩「學歷」，
     # 不能拿來找人（2026-10-08 幻覺檢查發現會比對到研發長頁面）
     names = [r for r in _GROUNDING_BREAK_RE.split(query) if 2 <= len(r) <= 3 and r[0] in _SURNAMES]

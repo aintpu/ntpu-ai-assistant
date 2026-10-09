@@ -86,6 +86,10 @@ DEPT_TO_MCP_PAGE_UNIT = {
 }
 
 
+# MCP 單位代碼 → AIA 處室（現任主管資料的 unit 換回 AIA 處室，用來決定查哪個處室）
+MCP_UNIT_TO_DEPT = {unit: dept for dept, unit in DEPT_TO_MCP_PAGE_UNIT.items()}
+
+
 class McpUnavailable(Exception):
     """MCP 關閉、連不上、逾時或回傳錯誤。"""
 

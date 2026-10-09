@@ -1,5 +1,5 @@
 {
-  "revision": "2026-10-09.2",
+  "revision": "2026-10-09.3",
   "note": "老師「NTPU AIA 問題與改善建議」五-2：截圖案例回歸測試。每個 case 依序送出 turns（多輪時帶上前面的對話與 conversation_state）。檢查最後一輪：must_include 每一組至少出現一個；must_exclude 一個都不能出現；status 與 language 若有指定須相符。prior_answer 用來模擬上一輪的錯誤回答（測試主動更正）。；expect 為期望行為，由評分模型判斷是否符合（含引用是否支持結論），規則與評分都通過才算通過。",
   "cases": [
     {
@@ -29,9 +29,7 @@
       "must_include": [
         [
           "林道通",
-          "Lin Tao-Tung",
-          "Lin Tao Tung",
-          "Tao-Tung Lin"
+          "Daw-Tung"
         ]
       ],
       "must_exclude": [
@@ -39,7 +37,7 @@
       ],
       "status": "ok",
       "language": "en",
-      "expect": "以英文回答現任校長是林道通（Lin Tao-Tung），並引用校長室資料；不得出現其他人名作為校長。"
+      "expect": "以英文回答現任校長是林道通，英文姓名須用官網寫法 Dalton Daw-Tung Lin（不得自行音譯成其他拼法），並附官方介紹頁或校長室資料；不得出現其他人名作為校長。"
     },
     {
       "id": "P03",
@@ -50,8 +48,7 @@
       "must_include": [
         [
           "林道通",
-          "Lin Tao-Tung",
-          "Tao-Tung Lin"
+          "Daw-Tung"
         ]
       ],
       "must_exclude": [
@@ -59,7 +56,7 @@
       ],
       "status": "ok",
       "language": "en",
-      "expect": "以英文回答現任校長是林道通，並引用校長室資料。"
+      "expect": "以英文回答現任校長是林道通，英文姓名須用官網寫法 Dalton Daw-Tung Lin（不得自行音譯成其他拼法），並附官方介紹頁或校長室資料；不得出現其他人名作為校長。"
     },
     {
       "id": "P04",
@@ -135,12 +132,12 @@
       "must_include": [
         [
           "陳宥杉",
-          "Chen"
+          "Yu-Shan Chen"
         ]
       ],
       "status": "ok",
       "language": "en",
-      "expect": "以英文回答學術副校長是陳宥杉，引用學術副校長室資料。"
+      "expect": "以英文回答學術副校長是陳宥杉（官方英文姓名 Yu-Shan Chen），並附官方介紹頁或學術副校長室資料。"
     },
     {
       "id": "P09",
