@@ -22,7 +22,7 @@ export interface SourceStatusRow {
   quarantined: number;
 }
 
-export type ReadEntityType = "announcement" | "page" | "regulation" | "faq" | "attachment";
+export type ReadEntityType = "announcement" | "page" | "regulation" | "faq" | "attachment" | "official";
 
 export interface AnnouncementQuery {
   /** announcement（公告）、page（內容頁）、regulation（法規）或 faq（常見問答）。 */
@@ -74,6 +74,18 @@ export class ReadRepository {
       .prepare(sql)
       .bind(...params)
       .all<AnnouncementRow>();
+    return results;
+  }
+
+  /** 某類資料的全部有效紀錄（資料量小的類別用，例如現任主管）。 */
+  async listActive(entityType: ReadEntityType, unit?: string, limit = 200): Promise<AnnouncementRow[]> {
+    const unitFilter = unit ? "AND e.source_unit = ?2" : "";
+    const stmt = this.db.prepare(
+      `SELECT ${ROW_COLUMNS} FROM entities e JOIN sources s ON s.id = e.source_id
+       WHERE e.entity_type = ?1 AND e.status = 'active' ${unitFilter}
+       ORDER BY e.stable_key ASC LIMIT ${Math.min(Math.max(1, Math.floor(limit)), 500)}`,
+    );
+    const { results } = await (unit ? stmt.bind(entityType, unit) : stmt.bind(entityType)).all<AnnouncementRow>();
     return results;
   }
 

@@ -560,6 +560,345 @@ found=false 表示資料庫沒有這個附件。",
       "openWorldHint": false,
       "readOnlyHint": true,
     },
+    "description": "查詢國立臺北大學現任主管（校長、副校長、一級行政單位主管）的姓名、職務、任期與官方英文姓名。
+問「現任某職務是誰」或「某人是誰／現任什麼職務」時請優先使用這個工具；不可從公文的「校長核定」、簽名欄或舊公告推定任何人的職務。
+資料來自各主管的官方介紹頁：每次排程抓取都確認姓名仍載明在頁面上，provenance.verifiedAt 是最後確認時間，pageUpdatedAt 是官方頁面最後修改時間。
+nameEn 與 nameEnOfficial 只採用官網英文頁寫明的姓名；為 null 表示官網沒有（或英文頁未更新），請不要自行以拼音補上。
+term 只在頁面寫明任期時才有值；note 說明英文姓名留空等原因。回答時請附 sourceUrl。
+查無資料時 noResult=true：表示這份清單沒有收錄，不代表此人不存在，請改用 search_pages 查詢，仍查不到就如實告知，不要推測。",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "keyword": {
+          "description": "姓名或職務，中英文皆可，例如「陳宥杉」「教務長」「Yu-Shan Chen」「dean of academic affairs」；不給則列出全部",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string",
+        },
+        "unit": {
+          "description": "單位代碼：alumni（校友服務中心）、cge（通識教育中心）、cic（資訊中心）、edusp（高教深耕計畫辦公室）、eec（進修暨推廣部）、library（圖書館）、oa（主計室）、oaa（教務處）、oga（總務處）、oia（國際事務處）、ope（體育室）、ord（研究發展處）、os（秘書室）、osa（學生事務處）、president（校長室）、vice-president-academic（學術副校長室）、vice-president-administration（行政副校長室）、vice-president-financial（財務暨永續發展副校長室）",
+          "enum": [
+            "alumni",
+            "cge",
+            "cic",
+            "edusp",
+            "eec",
+            "library",
+            "oa",
+            "oaa",
+            "oga",
+            "oia",
+            "ope",
+            "ord",
+            "os",
+            "osa",
+            "president",
+            "vice-president-academic",
+            "vice-president-administration",
+            "vice-president-financial",
+          ],
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "outputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "freshness": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "lastAttemptAt": {
+                "type": [
+                  "string",
+                  "null",
+                ],
+              },
+              "lastRunStatus": {
+                "type": [
+                  "string",
+                  "null",
+                ],
+              },
+              "lastSuccessAt": {
+                "type": [
+                  "string",
+                  "null",
+                ],
+              },
+              "quarantinedCount": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer",
+              },
+              "sourceId": {
+                "type": "string",
+              },
+              "state": {
+                "enum": [
+                  "fresh",
+                  "stale",
+                  "never_ingested",
+                ],
+                "type": "string",
+              },
+              "unit": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "sourceId",
+              "unit",
+              "state",
+              "lastSuccessAt",
+              "lastAttemptAt",
+              "lastRunStatus",
+              "quarantinedCount",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "items": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "pattern": "^[A-Za-z0-9]{8,64}$",
+                "type": "string",
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "type": "string",
+                  },
+                  {
+                    "type": "null",
+                  },
+                ],
+              },
+              "nameEn": {
+                "anyOf": [
+                  {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string",
+                  },
+                  {
+                    "type": "null",
+                  },
+                ],
+              },
+              "nameEnOfficial": {
+                "anyOf": [
+                  {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string",
+                  },
+                  {
+                    "type": "null",
+                  },
+                ],
+              },
+              "note": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "type": "string",
+                  },
+                  {
+                    "type": "null",
+                  },
+                ],
+              },
+              "pageTitle": {
+                "maxLength": 500,
+                "type": "string",
+              },
+              "pageUpdatedAt": {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                "type": "string",
+              },
+              "path": {
+                "pattern": "^\\/[a-z0-9][a-z0-9/-]{0,100}$",
+                "type": "string",
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "contentHash": {
+                    "pattern": "^[0-9a-f]{64}$",
+                    "type": "string",
+                  },
+                  "publishedAt": {
+                    "type": [
+                      "string",
+                      "null",
+                    ],
+                  },
+                  "sourceId": {
+                    "type": "string",
+                  },
+                  "sourceType": {
+                    "type": "string",
+                  },
+                  "sourceUnit": {
+                    "type": "string",
+                  },
+                  "sourceUrl": {
+                    "anyOf": [
+                      {
+                        "format": "uri",
+                        "type": "string",
+                      },
+                      {
+                        "type": "null",
+                      },
+                    ],
+                  },
+                  "trustLevel": {
+                    "type": "string",
+                  },
+                  "verifiedAt": {
+                    "type": "string",
+                  },
+                  "version": {
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991,
+                    "type": "integer",
+                  },
+                },
+                "required": [
+                  "sourceId",
+                  "sourceUnit",
+                  "sourceUrl",
+                  "sourceType",
+                  "trustLevel",
+                  "version",
+                  "publishedAt",
+                  "verifiedAt",
+                  "contentHash",
+                ],
+                "type": "object",
+              },
+              "sourceUrl": {
+                "format": "uri",
+                "maxLength": 2000,
+                "type": "string",
+              },
+              "term": {
+                "anyOf": [
+                  {
+                    "maxLength": 50,
+                    "type": "string",
+                  },
+                  {
+                    "type": "null",
+                  },
+                ],
+              },
+              "termSource": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "type": "string",
+                  },
+                  {
+                    "type": "null",
+                  },
+                ],
+              },
+              "title": {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string",
+              },
+              "titleEnSearch": {
+                "items": {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string",
+                },
+                "maxItems": 10,
+                "type": "array",
+              },
+              "unit": {
+                "pattern": "^[a-z][a-z0-9-]{1,30}$",
+                "type": "string",
+              },
+            },
+            "required": [
+              "id",
+              "unit",
+              "title",
+              "name",
+              "nameEn",
+              "nameEnOfficial",
+              "titleEnSearch",
+              "term",
+              "termSource",
+              "note",
+              "path",
+              "pageTitle",
+              "pageUpdatedAt",
+              "sourceUrl",
+              "provenance",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "noResult": {
+          "type": "boolean",
+        },
+        "warnings": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "items",
+        "count",
+        "noResult",
+        "freshness",
+        "warnings",
+      ],
+      "type": "object",
+    },
+    "registry": {
+      "dataOwner": "盧信廷（內容由各處室官網發布）",
+      "maximumDataClass": "L0",
+      "name": "get_current_officials",
+      "owner": "盧信廷",
+      "readOnly": true,
+      "requiredScopes": [],
+      "reviewedAt": "2026-10-09",
+      "riskLevel": "R0",
+      "version": "1.0.0",
+    },
+    "title": "查詢現任主管",
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
     "description": "依 FAQ ID 取得完整回答與承辦組別、聯絡窗口等欄位。先用 search_faqs 找到 id。
 資料是人工整理檔（provenance.sourceType=manual_verified、trustLevel=verified），不是排程即時抓取官網的結果；
 回答時請說明這一點。標示來源時：provenance.sourceUrl 有值就附上這個官方連結；

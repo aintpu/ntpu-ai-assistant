@@ -1,5 +1,6 @@
 import { validateSourceDefinition } from "./url-policy";
 import { ATTACHMENT_HOST, ATTACHMENT_PATH } from "./adapters/attachments";
+import { OFFICIALS } from "./officials";
 import type { FetchPolicy, PersonalDataGuard, SourceDefinition } from "./types";
 
 const USER_AGENT = "NTPU-AIA-Ingestion/0.1 (+https://aia.ntpu.ai/about)";
@@ -159,6 +160,7 @@ export const UNIT_NAMES: Record<string, string> = {
   academic: "學術單位（學院、研究中心等）",
   regulations: "全校法規彙編",
   faq: "各處室常見問答",
+  officials: "現任主管（各單位主管介紹頁）",
 };
 
 /**
@@ -307,6 +309,24 @@ const WEB_SOURCES: SourceDefinition[] = [
       freshness: DAILY,
     }),
   ),
+  {
+    // 現任主管（老師建議 二-1）：姓名、職務、任期與官方英文姓名來自人工核對的對照表，
+    // 每次執行都重新抓主管介紹頁確認姓名仍在頁面上；不在了就不再提供，需要人工重新核對。
+    id: "current-officials",
+    sourceUnit: "officials",
+    sourceType: "official_api",
+    trustLevel: "official",
+    homepageUrl: "https://new.ntpu.edu.tw",
+    newsUrlBase: "https://new.ntpu.edu.tw",
+    ...strapiOrigin,
+    parser: "strapi-officials",
+    adapter: { kind: "strapi-officials" },
+    entityType: "official",
+    recordUnits: [...new Set(OFFICIALS.map((o) => o.unit))],
+    enabled: true,
+    fetch: STRAPI_FETCH,
+    freshness: DAILY,
+  },
   {
     // 公告附件的內容（PDF、ODF、DOCX 抽文字；圖片以 Workers AI 看圖模型辨識）。
     // 附件清單來自已收錄的公告，每次處理一小批；含個人資料的附件只記入隔離區，內容不公開。

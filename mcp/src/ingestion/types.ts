@@ -96,6 +96,11 @@ export interface ManualFaqConfig {
   files: { file: string; unit: string }[];
 }
 
+/** 現任主管：逐一抓主管介紹頁（strapi sections），確認對照表的姓名仍載明在頁面上（見 officials.ts）。 */
+export interface StrapiOfficialsConfig {
+  kind: "strapi-officials";
+}
+
 export type ManualAdapterConfig = ManualRegulationsConfig | ManualRegulationCatalogConfig | ManualFaqConfig;
 
 export type AdapterConfig =
@@ -103,6 +108,7 @@ export type AdapterConfig =
   | StrapiSectionsConfig
   | HtmlNewsConfig
   | AttachmentsConfig
+  | StrapiOfficialsConfig
   | ManualAdapterConfig;
 
 export const MANUAL_ADAPTER_KINDS: readonly ManualAdapterConfig["kind"][] = [
@@ -188,7 +194,7 @@ export interface RawArchive {
 
 export type FetchLike = (input: Request) => Promise<Response>;
 
-export type EntityType = "announcement" | "page" | "regulation" | "faq" | "attachment";
+export type EntityType = "announcement" | "page" | "regulation" | "faq" | "attachment" | "official";
 
 /** 人工整理檔的存放處（R2 的 manual/ 前綴）。只能讀，key 必須是來源登記的 entrypoint。 */
 export interface ManualInbox {

@@ -1,10 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { sourceUnits, UNIT_NAMES } from "../ingestion/source-registry";
-import { AttachmentSchema, ProvenanceSchema } from "../shared/schemas";
+import { AttachmentSchema, OfficialSchema, ProvenanceSchema } from "../shared/schemas";
 import { SEARCH_LIMIT_MAX, warningsOf, type AnnouncementService } from "./announcement-service";
 import type { AttachmentService } from "./attachment-service";
 import type { FaqService, RegulationService } from "./manual-service";
+import type { OfficialService } from "./official-service";
 import type { PageService } from "./page-service";
 import { isAllowedPublicTool } from "./tool-registry";
 
@@ -14,6 +15,7 @@ export interface McpServices {
   regulations: RegulationService;
   faqs: FaqService;
   attachments: AttachmentService;
+  officials: OfficialService;
 }
 
 export const SERVICE_NAME = "ntpu-aia-mcp";
@@ -278,6 +280,36 @@ ${ATTACHMENT_NOTE}
 const ATTACHMENT_GET_DESCRIPTION = `依附件 ID 取得附件的完整文字（超過 ${30_000} 字時截斷，truncated=true）與原檔連結。先用 search_attachments 找到 id。
 ${ATTACHMENT_NOTE}
 found=false 表示資料庫沒有這個附件。`;
+
+const OFFICIAL_UNITS = sourceUnits("official") as [string, ...string[]];
+
+export const GetCurrentOfficialsInput = z
+  .object({
+    keyword: z
+      .string()
+      .trim()
+      .min(1)
+      .max(100)
+      .optional()
+      .describe("姓名或職務，中英文皆可，例如「陳宥杉」「教務長」「Yu-Shan Chen」「dean of academic affairs」；不給則列出全部"),
+    unit: z.enum(OFFICIAL_UNITS).optional().describe(`單位代碼：${listOf(OFFICIAL_UNITS)}`),
+  })
+  .strict();
+
+export const GetCurrentOfficialsOutput = z.object({
+  items: z.array(OfficialSchema.extend({ provenance: ProvenanceSchema })),
+  count: z.number().int().nonnegative(),
+  noResult: z.boolean(),
+  freshness: z.array(FreshnessSchema),
+  warnings: z.array(z.string()),
+});
+
+const OFFICIALS_DESCRIPTION = `查詢國立臺北大學現任主管（校長、副校長、一級行政單位主管）的姓名、職務、任期與官方英文姓名。
+問「現任某職務是誰」或「某人是誰／現任什麼職務」時請優先使用這個工具；不可從公文的「校長核定」、簽名欄或舊公告推定任何人的職務。
+資料來自各主管的官方介紹頁：每次排程抓取都確認姓名仍載明在頁面上，provenance.verifiedAt 是最後確認時間，pageUpdatedAt 是官方頁面最後修改時間。
+nameEn 與 nameEnOfficial 只採用官網英文頁寫明的姓名；為 null 表示官網沒有（或英文頁未更新），請不要自行以拼音補上。
+term 只在頁面寫明任期時才有值；note 說明英文姓名留空等原因。回答時請附 sourceUrl。
+查無資料時 noResult=true：表示這份清單沒有收錄，不代表此人不存在，請改用 search_pages 查詢，仍查不到就如實告知，不要推測。`;
 
 const MANUAL_NOTE = `資料是人工整理檔（provenance.sourceType=manual_verified、trustLevel=verified），不是排程即時抓取官網的結果；
 回答時請說明這一點。標示來源時：provenance.sourceUrl 有值就附上這個官方連結；
@@ -644,6 +676,39 @@ export function createMcpServer(services: McpServices, traceId: string): McpServ
         return { structuredContent: output, content: [{ type: "text", text: JSON.stringify(output) }] };
       } catch (err) {
         audit("get_attachment", traceId, false, 0, startedAt);
+        return toolError(err);
+      }
+    },
+  );
+
+  server.registerTool(
+    reviewed("get_current_officials"),
+    {
+      title: "查詢現任主管",
+      description: OFFICIALS_DESCRIPTION,
+      inputSchema: GetCurrentOfficialsInput,
+      outputSchema: GetCurrentOfficialsOutput,
+      annotations: { readOnlyHint: true, openWorldHint: false, idempotentHint: true, destructiveHint: false },
+    },
+    async (args) => {
+      const startedAt = Date.now();
+      try {
+        const input = GetCurrentOfficialsInput.parse(args);
+        const [items, freshness] = await Promise.all([
+          services.officials.list(input),
+          service.freshness(undefined, "official"),
+        ]);
+        const output = GetCurrentOfficialsOutput.parse({
+          items,
+          count: items.length,
+          noResult: items.length === 0,
+          freshness,
+          warnings: warningsOf(freshness),
+        });
+        audit("get_current_officials", traceId, true, items.length, startedAt);
+        return { structuredContent: output, content: [{ type: "text", text: JSON.stringify(output) }] };
+      } catch (err) {
+        audit("get_current_officials", traceId, false, 0, startedAt);
         return toolError(err);
       }
     },

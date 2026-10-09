@@ -75,6 +75,7 @@ describe("MCP endpoint", () => {
     expect(tools.map((t: any) => t.name).sort()).toEqual([
       "get_announcement",
       "get_attachment",
+      "get_current_officials",
       "get_faq",
       "get_page",
       "get_regulation",
