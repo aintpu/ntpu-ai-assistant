@@ -36,6 +36,20 @@ SHOULD_ANSWER = [
     "who is 林道通", "林道通是誰", "the president of NTPU?", "Who is the president of National Taipei University?",
     "who is the vice president of NTPU",
 ]
+# 中英文同義問法：兩種問法應判到同一個處室（老師建議 一-1：中英文查詢意圖一致）
+SAME_INTENT = [
+    ("現任校長是誰", "Who is the president of NTPU?"),
+    ("圖書館開放時間", "What are the library opening hours?"),
+    ("怎麼申請宿舍", "How do I apply for a dormitory?"),
+    ("學分抵免怎麼申請", "How do I apply for credit transfer?"),
+    ("交換學生怎麼申請", "How can I apply to be an exchange student?"),
+    ("校園網路連不上", "The campus Wi-Fi is not working"),
+    ("事假可以請幾天", "How many days of personal leave can staff take?"),
+    ("校友證怎麼辦", "How do I get an alumni card?"),
+    ("學術副校長是誰", "Who is the vice president for academic affairs?"),
+    ("研究倫理審查怎麼申請", "How do I apply for research ethics review?"),
+]
+
 SHOULD_BLOCK = [
     "台大的宿舍怎麼申請", "淡江大學的學費多少", "今天台北天氣如何", "推薦附近好吃的餐廳",
     "幫我寫一首詩", "比特幣會漲嗎", "台北市長是誰", "什麼是量子力學", "美國總統是誰",
@@ -47,11 +61,17 @@ def main():
     import agentic_v2_5_4high as core  # 載入 config.txt 與知識庫索引（用快取）
 
     repeat = int(sys.argv[sys.argv.index("--repeat") + 1]) if "--repeat" in sys.argv else 1
+    if "--classifier-off" in sys.argv:
+        # 比較用：不用 CLASSIFIER_MODEL（例如 Sonnet 5.5），改回 MODEL_SMALL
+        import llm_adapter
+        llm_adapter.classifier_client = None
+    import llm_adapter as _la
+    print(f"分類模型：{_la.CLASSIFIER_MODEL if _la.classifier_client else _la.MODEL_SMALL}")
 
     def judge(q):
         return q, core.decide_scope(q, {"raw_query": q}, q)
 
-    questions = SHOULD_ANSWER + SHOULD_BLOCK
+    questions = SHOULD_ANSWER + SHOULD_BLOCK + [q for pair in SAME_INTENT for q in pair]
     runs = []
     with ThreadPoolExecutor(max_workers=8) as pool:
         for _ in range(repeat):
@@ -68,7 +88,15 @@ def main():
         d = results[q]
         mark = "✗" if q in wrong_block or q in wrong_pass else " "
         print(f"{mark} {d.status:<12} {str(d.office_hint):<6} {d.confidence:.2f} {q}　{d.reason[:40]}")
-    print(f"\n應回答卻被擋：{len(wrong_block)}/{len(SHOULD_ANSWER)}")
+    mismatched = [(a, b) for a, b in SAME_INTENT
+                  if (results[a].status, results[a].office_hint) != (results[b].status, results[b].office_hint)]
+    print("\n中英文同義問法：")
+    for a, b in SAME_INTENT:
+        ra, rb = results[a], results[b]
+        mark = "✗" if (a, b) in mismatched else " "
+        print(f"{mark} {a}（{ra.status}/{ra.office_hint}） ↔ {b}（{rb.status}/{rb.office_hint}）")
+    print(f"\n中英文判斷不一致：{len(mismatched)}/{len(SAME_INTENT)}")
+    print(f"應回答卻被擋：{len(wrong_block)}/{len(SHOULD_ANSWER)}")
     print(f"應擋卻放行：{len(wrong_pass)}/{len(SHOULD_BLOCK)}")
 
 

@@ -22,6 +22,24 @@ except ModuleNotFoundError as exc:
     _IMPORT_ERROR = str(exc)
 
 
+_classifier_patch = None
+
+
+def setUpModule():
+    # config.txt 有 OPENROUTER_API_KEY 時，處室判斷會改走真的分類模型（連網路）；
+    # 測試一律關掉，讓判斷走下面各測試換掉的 llm_adapter.complete。
+    global _classifier_patch
+    if core is not None:
+        from unittest.mock import patch as _patch
+        _classifier_patch = _patch.object(core.llm_adapter, "classifier_client", None)
+        _classifier_patch.start()
+
+
+def tearDownModule():
+    if _classifier_patch is not None:
+        _classifier_patch.stop()
+
+
 @unittest.skipIf(_IMPORT_ERROR, f"backend dependencies unavailable: {_IMPORT_ERROR}")
 class ChatEndpointFlowTests(unittest.TestCase):
     def test_structured_logs_redact_sensitive_query_values(self):
