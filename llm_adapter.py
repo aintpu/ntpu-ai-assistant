@@ -59,7 +59,17 @@ else:
     SUPPORTS_STREAMING = True
     SUPPORTS_REASONING = True
 
-print(f"[LLM adapter] provider={PROVIDER}, big={MODEL_BIG}, small={MODEL_SMALL}")
+# 意圖與範圍分類（問題改寫、處室判斷）可改用另一個模型，透過 OpenRouter 呼叫，例如
+# CLASSIFIER_MODEL=anthropic/claude-sonnet-5.5、OPENROUTER_API_KEY=...。沒設定時沿用 MODEL_SMALL。
+CLASSIFIER_MODEL = os.getenv("CLASSIFIER_MODEL", "").strip()
+_openrouter_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+classifier_client = (
+    OpenAI(api_key=_openrouter_key, base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"))
+    if CLASSIFIER_MODEL and _openrouter_key else None
+)
+
+print(f"[LLM adapter] provider={PROVIDER}, big={MODEL_BIG}, small={MODEL_SMALL}, "
+      f"classifier={CLASSIFIER_MODEL if classifier_client else MODEL_SMALL}")
 
 
 def _build_kwargs(messages, model, tools, tool_choice, temperature,
@@ -118,6 +128,35 @@ def complete(messages, model=None, temperature=0, max_tokens=None,
                   temperature=temperature, max_tokens=max_tokens,
                   response_format=response_format)
     return (rsp.choices[0].message.content or "").strip()
+
+
+def classify_complete(messages, temperature=0, max_tokens=None, response_format=None, **_ignored) -> str:
+    """意圖與範圍分類用。設定了 CLASSIFIER_MODEL 與 OPENROUTER_API_KEY 時改用該模型；
+    呼叫失敗（網路、額度、模型不支援某參數）就退回 MODEL_SMALL，不讓分類中斷整個問答。"""
+    if classifier_client is None:
+        return complete(messages, temperature=temperature, max_tokens=max_tokens, response_format=response_format)
+    if isinstance(messages, str):
+        messages = [{"role": "user", "content": messages}]
+    kwargs = {"model": CLASSIFIER_MODEL, "messages": messages, "temperature": temperature}
+    if max_tokens:
+        kwargs["max_tokens"] = max_tokens
+    if response_format:
+        kwargs["response_format"] = response_format
+    try:
+        try:
+            rsp = classifier_client.chat.completions.create(**kwargs)
+        except Exception as e:
+            if "response_format" not in str(e) or "response_format" not in kwargs:
+                raise
+            kwargs.pop("response_format")
+            rsp = classifier_client.chat.completions.create(**kwargs)
+        text = (rsp.choices[0].message.content or "").strip()
+        if text:
+            return text
+        raise ValueError("empty classifier response")
+    except Exception as e:
+        print(f"[LLM adapter] classifier {CLASSIFIER_MODEL} failed, falling back to {MODEL_SMALL}: {type(e).__name__}")
+        return complete(messages, temperature=temperature, max_tokens=max_tokens, response_format=response_format)
 
 
 def _msg_to_dict(m) -> dict:

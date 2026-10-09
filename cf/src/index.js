@@ -120,6 +120,10 @@ export class NtpuAiaBackend extends Container {
       // 法規、常見問答改查 MCP：預設關閉，評估通過後後台設 MCP_REGULATIONS=1 再重新部署。
       MCP_REGULATIONS: env.MCP_REGULATIONS ?? "0",
       MCP_URL: env.MCP_URL ?? "https://aia.mcp.ntpu.ai/mcp",
+      // 意圖與範圍分類模型（問題改寫、處室判斷），透過 OpenRouter 呼叫；兩者都設定才啟用，
+      // 否則或呼叫失敗時沿用 gpt-4o-mini。以 Worker secret 設定（一般變數會在部署時被清掉）。
+      CLASSIFIER_MODEL: env.CLASSIFIER_MODEL ?? "",
+      OPENROUTER_API_KEY: env.OPENROUTER_API_KEY ?? "",
       // 讓後端知道自己在容器平台上：跳過寫 chat_logs.csv 與 events.jsonl
       // （容器檔案系統是暫時的），改由 stdout 的結構化日誌保存。
       K_SERVICE: "ntpu-aia-api",
