@@ -68,14 +68,15 @@ class AddedOfficeBackendTests(unittest.TestCase):
             self.assertNotIn('林道通', context)
             retrieve.reset_mock()
             context = core.tool_search_database('校長和副校長是誰', dept='pres')
+            # 問人：各副校長室之後也查全校已收錄資料（老師建議 一-2-(2)，不只查校長室、副校長室 FAQ）
             self.assertEqual([c.kwargs['dept'] for c in retrieve.call_args_list],
-                             ['pres', 'vpa', 'vpad', 'vpf'])
+                             ['pres', 'vpa', 'vpad', 'vpf', None])
             for name in ('林道通', '陳宥杉', '張玉山', '朱炫璉'):
                 self.assertIn(name, context)
             # 只問校長：檢索沒撈到「現任校長是誰」時仍固定帶入。
             retrieve.reset_mock()
             context = core.tool_search_database('北大校長是誰', dept='pres')
-            self.assertEqual([c.kwargs['dept'] for c in retrieve.call_args_list], ['pres'])
+            self.assertEqual([c.kwargs['dept'] for c in retrieve.call_args_list], ['pres', None])
             self.assertIn('林道通', context)
             self.assertNotIn('陳宥杉', context)
 

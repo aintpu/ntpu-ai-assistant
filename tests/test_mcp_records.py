@@ -224,28 +224,54 @@ class McpRecordTests(unittest.TestCase):
         self.assertIn("來源：圖書館常見問答", out)
 
     def test_falls_back_to_local_when_mcp_finds_nothing_or_is_down(self):
+        # 圖書館本機也查不到時，再查全校已收錄資料（老師建議 一-2-(1)）
         with patch.object(mcp_client, "call_tool", side_effect=FakeMcp({})):
             core.tool_search_database("續借", dept="lib", keywords="續借")
-        self.local_mock.assert_called_once()
+        self.assertEqual(self._local_depts(), ["lib", None])
         self.local_mock.reset_mock()
         with patch.object(mcp_client, "call_tool", side_effect=mcp_client.McpUnavailable("down")):
             core.tool_search_database("續借", dept="lib", keywords="續借")
-        self.local_mock.assert_called_once()
+        self.assertEqual(self._local_depts(), ["lib", None])
         self.assertIsNone(core.get_last_data_updated_at())
 
     def test_falls_back_when_mcp_evidence_does_not_match_the_question(self):
         fake = FakeMcp({("search_faqs", "停車"): [_faq(1, "校園無線網路設定", "eduroam")]})
         with patch.object(mcp_client, "call_tool", side_effect=fake):
             core.tool_search_database("汽車停車證怎麼申請", dept="lib", keywords="停車")
-        self.local_mock.assert_called_once()
+        self.assertEqual(self._local_depts(), ["lib", None])
         self.assertIsNone(core.get_last_data_updated_at())
+
+    def test_global_fallback_only_when_the_office_lacks_evidence(self):
+        """老師建議 一-2-(1)：指定處室有足夠證據就不補查；不足時補查全校並註明。"""
+        from langchain_core.documents import Document
+        doc = Document(page_content="宿舍申請說明", metadata={"title": "宿舍申請", "dept": "osa"})
+        ok = type("E", (), {"sufficient": True, "to_dict": lambda self: {}})()
+        bad = type("E", (), {"sufficient": False, "to_dict": lambda self: {}})()
+        self.local_mock.return_value = [doc]
+        with patch.object(mcp_client, "call_tool", side_effect=FakeMcp({})), \
+                patch.object(core, "check_evidence_sufficiency", return_value=ok):
+            out = core.tool_search_database("宿舍申請", dept="osa", keywords="")
+        self.assertEqual(self._local_depts(), ["osa"])
+        self.assertNotIn("全校已收錄資料", out)
+        self.local_mock.reset_mock()
+        with patch.object(mcp_client, "call_tool", side_effect=FakeMcp({})), \
+                patch.object(core, "check_evidence_sufficiency", side_effect=[bad, ok]):
+            out = core.tool_search_database("宿舍申請", dept="oaa", keywords="")
+        self.assertEqual(self._local_depts(), ["oaa", None])
+        self.assertIn("教務處的資料沒有足夠證據，以下為全校已收錄資料的查詢結果", out)
+        self.assertIn("宿舍申請說明", out)
+
+    def _local_depts(self):
+        return [c.kwargs.get("dept") for c in self.local_mock.call_args_list]
 
     def test_offices_not_fully_covered_by_mcp_stay_local(self):
         for dept in ("ope", "ge", "lc", "pres", None):
             self.assertFalse(core.mcp_records_available(dept), dept)
-        with patch.object(mcp_client, "call_tool") as tool:
+        with patch.object(mcp_client, "call_tool", side_effect=FakeMcp({})) as tool:
             core.tool_search_database("選課", dept="ge", keywords="選課")
-        tool.assert_not_called()
+        # 通識中心本身不查 MCP；本機證據不足時補查全校，那時才不指定處室查 MCP
+        self.assertFalse([c for c in tool.call_args_list if "unit" in c.args[1]])
+        self.assertEqual(self._local_depts(), ["ge", None])
 
     def test_missing_keywords_or_switch_off_never_calls_mcp(self):
         with patch.object(mcp_client, "call_tool") as tool:
