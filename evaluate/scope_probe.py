@@ -66,6 +66,9 @@ def main():
         import llm_adapter
         llm_adapter.classifier_client = None
     import llm_adapter as _la
+    if "--classifier-model" in sys.argv:
+        # 比較用：改用指定的 OpenRouter 模型（例如 typesafe/jev-router）
+        _la.CLASSIFIER_MODEL = sys.argv[sys.argv.index("--classifier-model") + 1]
     print(f"分類模型：{_la.CLASSIFIER_MODEL if _la.classifier_client else _la.MODEL_SMALL}")
 
     def judge(q):
