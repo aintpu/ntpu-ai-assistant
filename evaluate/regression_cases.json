@@ -1,0 +1,263 @@
+{
+  "revision": "2026-10-09.2",
+  "note": "老師「NTPU AIA 問題與改善建議」五-2：截圖案例回歸測試。每個 case 依序送出 turns（多輪時帶上前面的對話與 conversation_state）。檢查最後一輪：must_include 每一組至少出現一個；must_exclude 一個都不能出現；status 與 language 若有指定須相符。prior_answer 用來模擬上一輪的錯誤回答（測試主動更正）。；expect 為期望行為，由評分模型判斷是否符合（含引用是否支持結論），規則與評分都通過才算通過。",
+  "cases": [
+    {
+      "id": "P01",
+      "group": "中英文一致",
+      "turns": [
+        "現任校長是誰"
+      ],
+      "must_include": [
+        [
+          "林道通"
+        ]
+      ],
+      "must_exclude": [
+        "宋明翰"
+      ],
+      "status": "ok",
+      "language": "zh",
+      "expect": "回答現任校長是林道通，並引用校長室資料。"
+    },
+    {
+      "id": "P02",
+      "group": "中英文一致",
+      "turns": [
+        "Who is the president of NTPU?"
+      ],
+      "must_include": [
+        [
+          "林道通",
+          "Lin Tao-Tung",
+          "Lin Tao Tung",
+          "Tao-Tung Lin"
+        ]
+      ],
+      "must_exclude": [
+        "宋明翰"
+      ],
+      "status": "ok",
+      "language": "en",
+      "expect": "以英文回答現任校長是林道通（Lin Tao-Tung），並引用校長室資料；不得出現其他人名作為校長。"
+    },
+    {
+      "id": "P03",
+      "group": "中英文一致",
+      "turns": [
+        "the president of NTPU?"
+      ],
+      "must_include": [
+        [
+          "林道通",
+          "Lin Tao-Tung",
+          "Tao-Tung Lin"
+        ]
+      ],
+      "must_exclude": [
+        "宋明翰"
+      ],
+      "status": "ok",
+      "language": "en",
+      "expect": "以英文回答現任校長是林道通，並引用校長室資料。"
+    },
+    {
+      "id": "P04",
+      "group": "人物查詢",
+      "turns": [
+        "who is 林道通"
+      ],
+      "must_include": [
+        [
+          "校長",
+          "President",
+          "president"
+        ]
+      ],
+      "must_exclude": [
+        "宋明翰"
+      ],
+      "status": "ok",
+      "expect": "說明林道通是國立臺北大學現任校長，引用校長室資料。"
+    },
+    {
+      "id": "P05",
+      "group": "人物查詢",
+      "turns": [
+        "林道通是誰"
+      ],
+      "must_include": [
+        [
+          "校長"
+        ]
+      ],
+      "status": "ok",
+      "language": "zh",
+      "expect": "說明林道通是國立臺北大學現任校長，引用校長室資料。"
+    },
+    {
+      "id": "P06",
+      "group": "人物查詢",
+      "turns": [
+        "誰是陳宥杉"
+      ],
+      "must_include": [
+        [
+          "學術副校長"
+        ]
+      ],
+      "status": "ok",
+      "expect": "說明陳宥杉是現任學術副校長；若提到曾任主任秘書，須清楚區分現任與曾任。"
+    },
+    {
+      "id": "P07",
+      "group": "人物查詢",
+      "turns": [
+        "現任行政副校長是誰？學歷？"
+      ],
+      "must_include": [
+        [
+          "張玉山"
+        ]
+      ],
+      "must_exclude": [
+        "陳裕賢"
+      ],
+      "status": "ok",
+      "expect": "回答現任行政副校長是張玉山並列出學歷，引用行政副校長室資料；不得以研發長資料作答。"
+    },
+    {
+      "id": "P08",
+      "group": "人物查詢",
+      "turns": [
+        "Who is the vice president for academic affairs at NTPU?"
+      ],
+      "must_include": [
+        [
+          "陳宥杉",
+          "Chen"
+        ]
+      ],
+      "status": "ok",
+      "language": "en",
+      "expect": "以英文回答學術副校長是陳宥杉，引用學術副校長室資料。"
+    },
+    {
+      "id": "P09",
+      "group": "未知人物",
+      "turns": [
+        "誰是宋明謙？"
+      ],
+      "must_exclude": [
+        "宋明謙是國立臺北大學",
+        "宋明謙是校長",
+        "宋明謙為校長"
+      ],
+      "expect": "明確表示查不到宋明謙這個人或無法確認；不得把宋明謙說成任何已知人物，不得猜測。"
+    },
+    {
+      "id": "P10",
+      "group": "未知人物",
+      "turns": [
+        "who is 宋明翰"
+      ],
+      "must_exclude": [
+        "宋明翰 is the president",
+        "宋明翰是校長",
+        "宋明翰是國立臺北大學"
+      ],
+      "expect": "明確表示查不到宋明翰或無法確認；不得說宋明翰是校長或任何職務。"
+    },
+    {
+      "id": "P11",
+      "group": "多輪追問",
+      "turns": [
+        "the president of NTPU?",
+        "誰是宋明謙？"
+      ],
+      "must_exclude": [
+        "林道通",
+        "Lin Tao",
+        "Song Ming-Qian"
+      ],
+      "note": "截圖：上一輪問校長，這一輪問未知人物，不可改答校長",
+      "expect": "這一輪問的是宋明謙，不是校長：要明確表示查不到宋明謙或無法確認，不得改答現任校長，不得把宋明謙說成林道通或任何已知人物。"
+    },
+    {
+      "id": "P12",
+      "group": "多輪追問",
+      "turns": [
+        "現任校長是誰",
+        "那學術副校長呢？"
+      ],
+      "must_include": [
+        [
+          "陳宥杉"
+        ]
+      ],
+      "status": "ok",
+      "expect": "理解為追問學術副校長，回答陳宥杉並引用資料。"
+    },
+    {
+      "id": "P13",
+      "group": "錯誤更正",
+      "turns": [
+        "the president of NTPU?",
+        "國立臺北大學的校長目前是？"
+      ],
+      "prior_answer": "國立臺北大學的校長目前是宋明翰。",
+      "must_include": [
+        [
+          "林道通"
+        ]
+      ],
+      "must_exclude": [
+        "校長是宋明翰",
+        "校長目前是宋明翰"
+      ],
+      "status": "ok",
+      "soft_include": [
+        [
+          "更正",
+          "先前",
+          "之前",
+          "上一則",
+          "前面"
+        ]
+      ],
+      "note": "截圖：前一輪錯答宋明翰；這一輪要給有證據的正確答案，最好主動指出先前錯誤（soft_include 只記錄不判失敗）",
+      "expect": "回答現任校長是林道通並引用資料；上一輪曾錯答宋明翰，理想上要主動指出先前回答有誤並更正。"
+    },
+    {
+      "id": "P14",
+      "group": "外校",
+      "turns": [
+        "台大的校長是誰"
+      ],
+      "status": "blocked",
+      "expect": "拒答，說明只提供國立臺北大學資料。"
+    },
+    {
+      "id": "P15",
+      "group": "外校",
+      "turns": [
+        "NTU library hours"
+      ],
+      "status": "blocked",
+      "expect": "拒答，說明只提供國立臺北大學資料。"
+    },
+    {
+      "id": "P16",
+      "group": "不得推定",
+      "turns": [
+        "教務長是誰"
+      ],
+      "must_exclude": [
+        "教務長是校長",
+        "校長核定"
+      ],
+      "note": "不可從「校長核定」或簽名欄推定人物",
+      "expect": "若回答人名，必須來自寫明職務的資料（例如教務長介紹頁）並附來源；不得從「校長核定」或簽名欄推定。"
+    }
+  ]
+}
