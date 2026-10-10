@@ -74,6 +74,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from urllib.parse import unquote
 
+import answer_evidence
+
 # 每隔幾天自動重新爬蟲 + 重建索引
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -1178,6 +1180,7 @@ _source_ctx = threading.local()
 def _reset_source_collector():
     _source_ctx.candidates = []
     _source_ctx.last_sources = []
+    _source_ctx.last_evidence = []
     _source_ctx.last_source_ids = []
     _source_ctx.data_updated_at = None
 
@@ -1241,8 +1244,9 @@ def _collect_source_docs(docs: List[Document]):
             "url": d.metadata.get("url", ""),
             "type": d.metadata.get("type", ""),
             "source_id": _source_id_for_doc(d),
+            "content": str(d.page_content or "")[:6000],  # 比對引文、回答後檢查證據用，不對外輸出
         }
-        if entry not in cands:
+        if not any(c["source_id"] == entry["source_id"] and c["title"] == entry["title"] for c in cands):
             cands.append(entry)
 
 _NO_ANSWER_HINTS = (
@@ -1250,41 +1254,54 @@ _NO_ANSWER_HINTS = (
     "資料不足", "不足以直接支持", "不先猜測",
 )
 
-def _finalize_sources(answer: str):
-    """參考資料只當「補位」：答案內文已附連結的文件不重複列，
-    只列內文有引用但沒給連結的文件；兩者皆無時退回 rerank 前 2 筆。"""
+def _finalize_sources(answer: str, quotes=()):
+    """答案引用的每個來源都列成卡片（老師建議 二-2-(3)，使用者 2026-10-10 選定內文已有連結的也列），
+    並附上確認過的原文片段（模型標出、程式確認逐字出現在該來源裡）。
+    引用的判斷：答案含該來源的連結或標題，或模型標出的引文出自該來源；
+    完全沒有引用線索時退回 rerank 前 2 筆（查無資料的回覆不補）。"""
     candidates = getattr(_source_ctx, "candidates", [])
-    inline_linked = False  # 內文已含引用文件的連結
-    extra = []             # 內文點名但沒附連結 → 需要補位顯示
-    selected_ids = []
+    matched = answer_evidence.match_quotes(list(quotes or []), candidates)
+    cards, cited, selected_ids = [], [], []
+
+    def add(s, quote=""):
+        item = {"title": s.get("title", ""), "url": s.get("url", "")}
+        if quote:
+            item["quote"] = quote
+        if not any(c["title"] == item["title"] and c["url"] == item["url"] for c in cards):
+            cards.append(item)
+            cited.append({**s, "quote": quote})
+        if s.get("source_id"):
+            selected_ids.append(s["source_id"])
+
+    url_only = []  # 只因連結出現在答案而算引用的來源（同一頁的多題 FAQ 共用連結）
     for s in candidates:
         t, u = s.get("title", ""), s.get("url", "")
-        source_id = s.get("source_id", "")
+        sid = s.get("source_id") or u or t
         # 比對時忽略「1.」等編號前綴與副檔名（答案引用時通常不會帶這些）
         t_norm = re.sub(r"^[\d\.、\s]+", "", t)
         t_norm = re.sub(r"\.(docx?|pdf|odt|ods|xlsx?)$", "", t_norm, flags=re.I)
-        if u and u in answer:
-            inline_linked = True  # 連結已在對話框裡，不再重複列
-            if source_id:
-                selected_ids.append(source_id)
-        elif t_norm and len(t_norm) >= 4 and t_norm in answer:
-            item = {"title": t, "url": u}
-            if item not in extra:
-                extra.append(item)
-            if source_id:
-                selected_ids.append(source_id)
-    # 完全沒有引用線索時，退而列出 rerank 排序最前的 2 筆候選；
-    # 查無資料的軟化回覆、或內文已有連結時則不補
-    if not extra and not inline_linked and candidates \
-            and not any(h in answer for h in _NO_ANSWER_HINTS):
+        if sid in matched or (t_norm and len(t_norm) >= 4 and t_norm in answer):
+            add(s, matched.get(sid, ""))
+        elif u and u in answer:
+            url_only.append(s)
+    # 同一個連結只列一張卡片：已有卡片用到這個連結就不再列
+    for s in url_only:
+        if not any(c["url"] == s.get("url") for c in cards):
+            add(s)
+    if not cards and candidates and not any(h in answer for h in _NO_ANSWER_HINTS):
         for s in candidates[:2]:
-            item = {"title": s.get("title", ""), "url": s.get("url", "")}
-            if item not in extra:
-                extra.append(item)
-            if s.get("source_id"):
-                selected_ids.append(s["source_id"])
-    _source_ctx.last_sources = extra
+            add(s)
+    _source_ctx.last_sources = cards
     _source_ctx.last_source_ids = list(dict.fromkeys(selected_ids))
+    # 查核時先給引用的來源，再補上其他檢索到的文件（答案可能用到沒被列為引用的文件）
+    cited_ids = {c.get("source_id") for c in cited}
+    _source_ctx.last_evidence = cited + [c for c in candidates if c.get("source_id") not in cited_ids][:10 - len(cited)]
+
+
+def get_last_evidence() -> list:
+    """本輪回答引用的來源（含內容與原文片段），供回答後檢查證據。"""
+    return list(getattr(_source_ctx, "last_evidence", []))
+
 
 def get_last_sources() -> list:
     """回傳最近一次 synthesize_agentic_answer 實際引用的文件清單 [{title, url}]"""
@@ -2605,6 +2622,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
         f"（請以此為基準判斷哪一份資料是「最新」，優先採用 {_academic_year} 學年度或最接近今日的公告）"
     )
     dynamic_system_prompt = SYSTEM_STYLE + _date_ctx + f"\n\n【⚠️ 強制輸出語系指示】\n系統偵測到目前應使用的回覆語系為：「{target_lang_str}」。請你【務必】以此語言生成最終回答，不可擅自切換語言。"
+    dynamic_system_prompt += answer_evidence.QUOTE_INSTRUCTION  # 老師建議 二-2：標出支持答案的原文
 
     if resolution_obj:
         dynamic_system_prompt += (
@@ -2723,6 +2741,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
             streamed_parts = []
             first_token_dt = None
             msg_out = None
+            quote_filter = answer_evidence.QuoteStreamFilter()  # 引文段落不送到前端
             for kind, payload in llm_adapter.chat_events(
                     messages, model=MODEL_AGENT, tools=cc_tools,
                     tool_choice=("none" if final_round else "auto"),
@@ -2732,9 +2751,14 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
                         first_token_dt = time.time() - t0
                     streamed_parts.append(payload)
                     if live_stream:
-                        yield ("delta", payload)
+                        visible = quote_filter.feed(payload)
+                        if visible:
+                            yield ("delta", visible)
                 elif kind == "final":
                     msg_out = payload
+                    rest = quote_filter.flush()
+                    if live_stream and rest:
+                        yield ("delta", rest)
             _record_timing(f"llm第{iteration+1}輪", time.time() - t0)
             if first_token_dt is not None:
                 _record_timing(f"首字第{iteration+1}輪", first_token_dt)
@@ -2890,6 +2914,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
     # 🔄 改動區塊結束
     # =========================================================
 
+    answer, model_quotes = answer_evidence.split_quotes(answer)
     if language == "en" and is_cjk(answer):
         answer = safe_translate_bulk(answer, direction="zh2en")
 
@@ -2906,7 +2931,44 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
             "場地或申請項目。"
         )
     answer = soften_empty_answer(answer)
-    _finalize_sources(answer)
+    _finalize_sources(answer, model_quotes)
+    # 老師建議 二-2：回答後檢查證據；不足或衝突時停止斷言、說明無法確認
+    answer_check = None
+    evidence_for_check = get_last_evidence()
+    if answer_evidence.needs_check(answer, evidence_for_check, _NO_ANSWER_HINTS):
+        t_check = time.time()
+        answer_check = answer_evidence.check_answer(standalone_query, answer, evidence_for_check,
+                                                    llm_adapter.classify_complete)
+        if (not answer_check["supported"] or answer_check["conflict"]) and messages:
+            # 先讓回答模型依查核意見修正一次（例如英文姓名沒用官方寫法），修正後再檢查；仍不通過才改成無法確認
+            try:
+                fix_msgs = messages + [
+                    {"role": "assistant", "content": answer},
+                    {"role": "user", "content": (
+                        f"查核發現上面的回答有問題：{answer_check['reason']}。請只根據前面工具提供的文件重新作答，"
+                        "刪除或改正沒有文件直接支持的內容；文件不足以回答時明說無法確認。不要提到查核。"
+                        "引文標註規則同前。")},
+                ]
+                fixed, fixed_quotes = answer_evidence.split_quotes(
+                    llm_adapter.complete(fix_msgs, model=MODEL_AGENT) or "")
+                if fixed.strip():
+                    if language == "en" and is_cjk(fixed):
+                        fixed = safe_translate_bulk(fixed, direction="zh2en")
+                    _finalize_sources(fixed, fixed_quotes)
+                    recheck = answer_evidence.check_answer(standalone_query, fixed, get_last_evidence(),
+                                                           llm_adapter.classify_complete)
+                    recheck["first_check"] = answer_check
+                    answer_check = recheck
+                    if recheck["supported"] and not recheck["conflict"]:
+                        print(f"[證據檢查] 依查核意見修正後通過：{recheck['first_check'].get('reason')}")
+                        answer = fixed
+            except Exception as exc:  # noqa: BLE001 - 修正失敗就照原本流程改成無法確認
+                print(f"[證據檢查] 依查核意見修正失敗：{type(exc).__name__}")
+        _record_timing("answer_check", time.time() - t_check)
+        if not answer_check["supported"] or answer_check["conflict"]:
+            print(f"[證據檢查] 不通過，改為無法確認：{answer_check}")
+            answer_check["original_answer"] = answer[:2000]
+            answer = answer_evidence.unconfirmed_answer(answer_check["reason"], answer_check["conflict"], language)
 
     if resolution_obj and scope_obj:
         source_ids = get_last_source_ids()
@@ -3002,6 +3064,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
             previous_source_ids=retrieval_trace.get("previous_source_ids", []),
             reranked_top_ids=retrieval_trace.get("reranked_top_ids", []),
             evidence_checks=evidence_checks,
+            answer_check=answer_check,
             evidence_sufficient=(
                 any(bool(check.get("sufficient")) for check in evidence_checks
                     if isinstance(check, dict))

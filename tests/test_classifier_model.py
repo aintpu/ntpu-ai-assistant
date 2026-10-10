@@ -56,7 +56,8 @@ class ClassifierModelTests(unittest.TestCase):
         import pathlib
         src = (pathlib.Path(__file__).resolve().parents[1] / "agentic_v2_5_4high.py").read_text(encoding="utf-8")
         self.assertNotIn("complete_fn=llm_adapter.complete", src)
-        self.assertEqual(src.count("llm_adapter.classify_complete"), 3)
+        # 改寫、範圍判斷、處室分類，加上回答後檢查證據與修正後再檢查（老師建議 二-2）
+        self.assertEqual(src.count("llm_adapter.classify_complete"), 5)
 
 
 if __name__ == "__main__":

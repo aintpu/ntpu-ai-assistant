@@ -546,13 +546,19 @@ function MessageBubble({ msg, lang, T, sessionId }) {
               <div className="font-medium mb-1">
                 {msg.sources.every((source) => source.type === "system") ? labels.systemSources : labels.sources}：
               </div>
-              <ul className="space-y-0.5">
+              <ul className="space-y-1">
                 {msg.sources.map((s, i) => (
                   <li key={i}>
                     {s.url ? (
                       <a href={s.url} target="_blank" rel="noopener noreferrer" className={T.sourceLink}>{s.title}</a>
                     ) : (
                       <span className={T.sourceText}>{s.title}</span>
+                    )}
+                    {/* 支持答案的原文片段（老師建議 二-2-(3)）：後端確認逐字出現在該來源裡才會有 */}
+                    {s.quote && (
+                      <blockquote className={`mt-0.5 ml-2 pl-2 border-l-2 border-current/30 italic ${T.sourceText}`}>
+                        「{s.quote}」
+                      </blockquote>
                     )}
                   </li>
                 ))}
@@ -671,6 +677,7 @@ function sanitizeStoredMessages(value) {
             url: typeof source.url === "string" ? source.url.slice(0, 1200) : "",
             type: typeof source.type === "string" ? source.type.slice(0, 40) : undefined,
             faq_id: typeof source.faq_id === "string" ? source.faq_id.slice(0, 120) : undefined,
+            quote: typeof source.quote === "string" ? source.quote.slice(0, 300) : undefined,
           }];
         })
       : [];
