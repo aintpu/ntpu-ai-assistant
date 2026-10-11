@@ -14,7 +14,10 @@ const LABELS = {
     disclaimer: "📌 回答由 AI 整理，最新資訊請以各單位官方公告為準。",
     sources: "參考來源",
     systemSources: "系統說明",
-    dataUpdatedAt: "資料更新時間",
+    dataUpdatedAt: "系統最後抓取時間（不代表內容已人工確認）",
+    revisedAt: "來源修訂",
+    fetchedAt: "系統抓取",
+    confirmedAt: "最後確認",
     langLabel: "語言",
     welcome: "有什麼我能幫你的？",
     welcomeSub: "支援 21 個單位：體育室・通識教育中心・語言中心・教務處・學務處・人事室・總務處・研究發展處・主計室・圖書館・資訊中心・國際事務處・進修暨推廣部・校友中心・永續辦公室・高等教育深耕計畫辦公室・秘書室・學術副校長室・行政副校長室・財務暨永續發展副校長室・校長室。回答範圍以已匯入資料為限。",
@@ -55,7 +58,10 @@ const LABELS = {
     disclaimer: "📌 AI-generated answers. Please refer to official announcements for the latest information.",
     sources: "Sources",
     systemSources: "About this system",
-    dataUpdatedAt: "Data last synced",
+    dataUpdatedAt: "Last fetched by the system (not a manual verification)",
+    revisedAt: "Source revised",
+    fetchedAt: "Fetched",
+    confirmedAt: "Last confirmed",
     langLabel: "Language",
     welcome: "How can I help you?",
     welcomeSub:
@@ -555,6 +561,15 @@ function MessageBubble({ msg, lang, T, sessionId }) {
                       <span className={T.sourceText}>{s.title}</span>
                     )}
                     {/* 支持答案的原文片段（老師建議 二-2-(3)）：後端確認逐字出現在該來源裡才會有 */}
+                    {/* 老師建議 四-2：來源修訂、系統抓取、最後確認分開顯示 */}
+                    {(s.revised_at || s.fetched_at || s.confirmed_at) && (
+                      <div className={`ml-2 ${T.sourceText} opacity-80`}>
+                        {[
+                          s.revised_at && `${labels.revisedAt} ${s.revised_at}`,
+                          s.confirmed_at ? `${labels.confirmedAt} ${s.confirmed_at}` : s.fetched_at && `${labels.fetchedAt} ${s.fetched_at}`,
+                        ].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
                     {s.quote && (
                       <blockquote className={`mt-0.5 ml-2 pl-2 border-l-2 border-current/30 italic ${T.sourceText}`}>
                         「{s.quote}」
@@ -678,6 +693,9 @@ function sanitizeStoredMessages(value) {
             type: typeof source.type === "string" ? source.type.slice(0, 40) : undefined,
             faq_id: typeof source.faq_id === "string" ? source.faq_id.slice(0, 120) : undefined,
             quote: typeof source.quote === "string" ? source.quote.slice(0, 300) : undefined,
+            revised_at: typeof source.revised_at === "string" ? source.revised_at.slice(0, 10) : undefined,
+            fetched_at: typeof source.fetched_at === "string" ? source.fetched_at.slice(0, 10) : undefined,
+            confirmed_at: typeof source.confirmed_at === "string" ? source.confirmed_at.slice(0, 10) : undefined,
           }];
         })
       : [];

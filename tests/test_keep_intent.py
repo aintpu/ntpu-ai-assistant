@@ -83,5 +83,18 @@ class OfficialNameFixTests(unittest.TestCase):
             self.assertEqual(fix("No Chinese name here, Lin Dao-Tung."), "No Chinese name here, Lin Dao-Tung.")
 
 
+@unittest.skipIf(core is None, f"後端相依套件未安裝：{_IMPORT_ERROR}")
+class TranslationTermTests(unittest.TestCase):
+    def test_official_names_and_titles_survive_translation(self):
+        roster = [{"name": "林道通", "nameEn": "Dalton Daw-Tung Lin", "title": "校長", "titleEnSearch": ["president"]},
+                  {"name": "陳宥杉", "nameEn": "Yu-Shan Chen", "title": "學術副校長",
+                   "titleEnSearch": ["vice president for academic affairs"]}]
+        with patch.object(core, "current_officials_roster", return_value=roster):
+            out = core.official_terms_for_translation("現任校長是林道通，學術副校長是陳宥杉。校長室電話")
+        self.assertIn("President是Dalton Daw-Tung Lin (林道通)", out)
+        self.assertIn("Vice president for academic affairs是Yu-Shan Chen (陳宥杉)", out)
+        self.assertIn("校長室電話", out)
+
+
 if __name__ == "__main__":
     unittest.main()
