@@ -1985,8 +1985,40 @@ def _record_search_terms(keywords: str) -> list:
     return terms[:5]
 
 
-def _record_document(kind: str, item: dict, detail: dict, dept: str) -> Document:
+PAGE_PASSAGE_CHARS = 3000
+
+
+def focused_passages(body: str, focus, limit: int = PAGE_PASSAGE_CHARS) -> str:
+    """長頁面只給開頭會漏掉寫在後段的規定（〈選課專區〉的跨領域學習規定在中段）：
+    取開頭一段，再補上查詢詞附近的段落；同時命中越多不同詞的段落越優先，總長不超過 limit。
+    查詢詞也用前兩個字比對（「畢業門檻」→「畢業」），原文常換說法（「新增畢業規定」「資訊科技素養」）。"""
+    if len(body) <= limit or not focus:
+        return body[:limit]
+    words = {t for t in focus if t}
+    words |= {t[:2] for t in focus if len(t) >= 4}
+    windows = []
+    for start in range(600, len(body), 400):
+        piece = body[start:start + 800]
+        hits = {w for w in words if w in piece}
+        if hits:
+            windows.append((len(hits), start))
+    if not windows:
+        return body[:limit]
+    picked, used = [], 600
+    for _, start in sorted(windows, key=lambda w: (-w[0], w[1])):
+        if used + 800 > limit:
+            break
+        if any(abs(start - p) < 800 for p in picked):
+            continue
+        picked.append(start)
+        used += 800
+    return "\n".join([body[:600]] + ["…" + body[p:p + 800] for p in sorted(picked)])
+
+
+def _record_document(kind: str, item: dict, detail: dict, dept: str, focus=()) -> Document:
     """MCP 紀錄轉成檢索文件；另記系統最後抓取時間（老師建議 四-2：與來源修訂日期分開）。"""
+    if kind == "page" and detail and detail.get("bodyText"):
+        detail = {**detail, "bodyText": focused_passages(detail["bodyText"], list(focus))}
     doc = _record_document_body(kind, item, detail, dept)
     doc.metadata["fetched_at"] = _taipei_date((item.get("provenance") or {}).get("verifiedAt") or "")
     return doc
@@ -2047,8 +2079,42 @@ def _record_document_body(kind: str, item: dict, detail: dict, dept: str) -> Doc
 
 _ALL_UNITS = "*"  # 不指定處室
 
+# 總覽題（「畢業門檻有哪些？」）：只用問題裡的詞查，標題剛好含該詞的公告會擠掉真正寫明各項規定的辦法與專區頁面
+# （2026-10-11 漏掉〈選課專區〉的跨領域學習規定與〈外語能力指標檢核辦法〉）。
+_OVERVIEW_RE = re.compile(r"有哪些|哪幾|有什麼|列出|包括哪|包含哪|總共|全部|what are|which .* are|list", re.I)
+OVERVIEW_RECORD_LIMIT = 10
+OVERVIEW_MAX_TERMS = 5
+# 總覽題排序時，辦法、專區頁面、FAQ 排在公告前面（公告多半只是提醒或活動）
+_OVERVIEW_KIND_BONUS = {"regulation": 3, "page": 3, "faq": 2, "attachment": 0, "announcement": 0}
 
-def _records_from_mcp(search_query: str, keywords: str, dept: str):
+
+def is_overview_question(*queries) -> bool:
+    return any(q and _OVERVIEW_RE.search(q) for q in queries)
+
+
+def overview_terms(question: str, terms: list) -> list:
+    """請分類模型列出完整回答這題要查的子主題（學校規定的用語），分別去查；失敗就不擴充。"""
+    try:
+        raw = llm_adapter.classify_complete([
+            {"role": "system", "content": (
+                "使用者問的是國立臺北大學某類規定的總覽（例如「畢業門檻有哪些」）。列出要完整回答需要分別查詢的子主題，"
+                "用學校規定與網頁上會出現的中文詞（例如 外語能力、資訊素養、跨領域學習、學則、應修學分），每個 2–8 字，最多 5 個；"
+                "只列與問題直接相關的，不要猜數字或規定內容。只輸出 JSON：{\"terms\": [\"…\"]}")},
+            {"role": "user", "content": question[:300]},
+        ], temperature=0, max_tokens=150, response_format={"type": "json_object"})
+        found = json.loads(re.search(r"\{.*\}", raw or "", re.S).group(0)).get("terms") or []
+    except Exception as exc:  # noqa: BLE001 - 擴充失敗就照原本關鍵字查
+        print(f"[MCP] 總覽題子主題擴充失敗：{type(exc).__name__}")
+        return []
+    out = []
+    for t in found:
+        t = str(t).strip()
+        if 2 <= len(t) <= 8 and t not in terms and t not in out:
+            out.append(t)
+    return out[:OVERVIEW_MAX_TERMS]
+
+
+def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: bool = False):
     """從 MCP 查法規與常見問答（人工整理檔，有版本紀錄）。
 
     MCP 是關鍵字比對：先用全部關鍵字一起查，查不到再逐一用單一關鍵字查，
@@ -2094,7 +2160,12 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
 
     scored, freshness = {}, []
     attempts = [terms] + ([[t] for t in terms] if len(terms) > 1 else [])
-    for round_attempts in (attempts[:1], attempts[1:]):
+    overview = overview or is_overview_question(search_query, keywords)
+    extra = overview_terms(search_query, terms) if overview else []
+    if extra:
+        print(f"[MCP] 總覽題，另查子主題：{extra}")
+    rounds = [attempts[:1] + [[t] for t in extra], attempts[1:]]
+    for round_attempts in rounds:
         jobs = [(t, a) for a in round_attempts for t in targets]
         if not jobs:
             break
@@ -2107,6 +2178,9 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
                     # 關鍵字出現在標題／問題的排前面（內文只是順帶提到的排後面）
                     heading = item.get("question") or item.get("title") or ""
                     entry[0] += sum(2 for t in attempt if t.lower() in heading.lower())
+                    if overview and len(entry) == 3:
+                        entry[0] += _OVERVIEW_KIND_BONUS.get(kind, 0)
+                        entry.append(True)  # 類型加分每筆只加一次
         if scored:
             break
     if failures:
@@ -2114,10 +2188,10 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
     if not scored:
         return None
 
-    ranked = sorted(scored.values(), key=lambda e: -e[0])[:MCP_RECORD_LIMIT]
+    ranked = sorted(scored.values(), key=lambda e: -e[0])[:OVERVIEW_RECORD_LIMIT if overview else MCP_RECORD_LIMIT]
 
     def full(entry):
-        _, kind, item = entry
+        _, kind, item = entry[:3]
         tool, field = {"faq": ("get_faq", "faq"), "regulation": ("get_regulation", "regulation"),
                        "announcement": ("get_announcement", "announcement"), "page": ("get_page", "page"),
                        "attachment": ("get_attachment", "attachment")}[kind]
@@ -2127,11 +2201,12 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
         except mcp_client.McpUnavailable:
             return None
 
-    head = ranked[:MCP_RECORD_FULL_TEXT]
+    head = ranked if overview else ranked[:MCP_RECORD_FULL_TEXT]  # 總覽題每筆都取全文
     with ThreadPoolExecutor(max_workers=len(head)) as pool:
         details = list(pool.map(full, head)) + [None] * (len(ranked) - len(head))
-    docs = [_record_document(kind, item, detail, dept or mcp_client.MCP_UNIT_TO_DEPT.get(item.get("unit"), ""))
-            for (_, kind, item), detail in zip(ranked, details)]
+    docs = [_record_document(kind, item, detail, dept or mcp_client.MCP_UNIT_TO_DEPT.get(item.get("unit"), ""),
+                             focus=terms + extra)
+            for (_, kind, item, *_rest), detail in zip(ranked, details)]
 
     evidence = check_evidence_sufficiency(search_query, docs)
     if not evidence.sufficient:
@@ -2143,7 +2218,7 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
         "請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。資料裡沒有寫的人名、職稱對應、數字、日期一律不得說出，也不得用常識或印象補上；問題問的事實若文件沒有直接寫明，要明說查不到。"
         "這些是各處室提供的人工整理資料、官網頁面、公告或公告附件；附件為抽取或圖片辨識的文字，表格可能錯位，請附上附件連結；公告請一併說明公告日期，較舊的公告內容可能已變動。"
         "【來源網址】空白時只以文件類型括號內的來源名稱文字標示來源，不要自行產生連結：\n\n"
-        + build_context_snippets(docs)
+        + build_context_snippets(docs, max_chars=PAGE_PASSAGE_CHARS if overview else 1200)
     )
 
 
@@ -2153,12 +2228,12 @@ _ANSWER_RULE = ("請根據以下文件內容回答，優先使用原文重點，
                 "不可說成內容已確認正確。\n\n")
 
 
-def _search_in(search_query: str, dept, previous_source_docs, keywords: str):
+def _search_in(search_query: str, dept, previous_source_docs, keywords: str, overview: bool = False):
     """在一個處室（dept=None 為全校已收錄資料）查詢。回傳 (給模型的內容, 證據是否足夠)。"""
     mcp_ok = mcp_client.records_enabled() if dept is None else mcp_records_available(dept)
     if keywords and mcp_ok:
         try:
-            from_mcp = _records_from_mcp(search_query, keywords, dept)
+            from_mcp = _records_from_mcp(search_query, keywords, dept, overview)
             if from_mcp:
                 return from_mcp, True
         except mcp_client.McpUnavailable as exc:
@@ -2222,9 +2297,11 @@ def tool_search_database(search_query: str, dept: str = None,
     official_text = (OFFICIALS_INSTRUCTION + build_context_snippets(official_docs) + "\n\n---\n\n") if official_docs else ""
     if official_docs:
         _collect_source_docs(official_docs)
-    text, ok = _search_in(search_query, dept, previous_source_docs, keywords)
+    # 總覽題以使用者原話判斷（工具的查詢句常只剩關鍵字，例如「國立臺北大學 畢業門檻」）
+    overview = is_overview_question(*user_queries, search_query)
+    text, ok = _search_in(search_query, dept, previous_source_docs, keywords, overview)
     if dept and (not ok or _is_person_query(search_query, *user_queries)):
-        global_text, global_ok = _search_in(search_query, None, None, keywords)
+        global_text, global_ok = _search_in(search_query, None, None, keywords, overview)
         if global_ok and ok:
             text += "\n\n---\n\n【全校其他單位的相關資料】\n" + global_text
         elif global_ok:
@@ -2625,9 +2702,11 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
     input_time = _now_iso()
     # 前置處理：民國年→西元（僅中文）
     q_norm = roc_to_ad_year(user_query) if language == "zh-TW" else user_query
+    # 改寫只用在追問（補上前文省略的主題）；本身就完整的問題直接用使用者原話，
+    # 避免改寫改掉人物或職稱（老師建議 三-1-(2)；曾把「vice president for academic affairs」加註成教務長）
     standalone_query = (
         resolution_obj.standalone_query.strip()
-        if resolution_obj and resolution_obj.standalone_query.strip()
+        if resolution_obj and resolution_obj.is_followup and resolution_obj.standalone_query.strip()
         else q_norm
     )
     if language == "zh-TW":
@@ -4051,6 +4130,9 @@ def prepare_conversation_turn(
     # 問的是明確的人名（「誰是宋明謙？」）：反問沒有幫助，改成跨單位查詢；查不到就明說查不到（老師建議 三-1）
     if scope.status == "AMBIGUOUS" and asked_person(raw_query):
         scope = ScopeDecision("IN_SCOPE", None, 0.6, f"問人名「{asked_person(raw_query)}」，跨單位查詢。")
+        known_person = True
+    # 總覽題（「畢業門檻有哪些？」）本身就是完整的問題：範圍已判定時不因改寫模型覺得資訊不足而反問
+    if scope.status == "IN_SCOPE" and is_overview_question(raw_query, resolution.standalone_query):
         known_person = True
     if scope.status == "AMBIGUOUS" or (resolution.ambiguity and not known_person):
         clarification_state = build_updated_state(
