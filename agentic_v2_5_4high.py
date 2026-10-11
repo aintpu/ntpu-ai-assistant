@@ -2623,6 +2623,12 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
     )
     dynamic_system_prompt = SYSTEM_STYLE + _date_ctx + f"\n\n【⚠️ 強制輸出語系指示】\n系統偵測到目前應使用的回覆語系為：「{target_lang_str}」。請你【務必】以此語言生成最終回答，不可擅自切換語言。"
     dynamic_system_prompt += answer_evidence.QUOTE_INSTRUCTION  # 老師建議 二-2：標出支持答案的原文
+    # 老師建議 三-2：比對上一輪回答，錯了要先更正。改問另一個人（「誰是宋明謙？」）時不比對，提更正反而偏題
+    other_person = asked_person(user_query)
+    roster_fixes = []
+    if not (other_person and other_person not in previous_answer(history)):
+        roster_fixes = roster_corrections(history, standalone_query, user_query)
+        dynamic_system_prompt += correction_instruction(history, roster_fixes)
 
     if resolution_obj:
         dynamic_system_prompt += (
@@ -2931,6 +2937,9 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
             "場地或申請項目。"
         )
     answer = soften_empty_answer(answer)
+    if language == "en":
+        answer = fix_official_english_names(answer)  # 老師建議 一-1-(2)：英文姓名一律用官方寫法
+    answer = ensure_correction(answer, roster_fixes, language)  # 老師建議 三-2
     _finalize_sources(answer, model_quotes)
     # 老師建議 二-2：回答後檢查證據；不足或衝突時停止斷言、說明無法確認
     answer_check = None
@@ -3465,6 +3474,135 @@ _BLOCKED_MSG = (
 )
 _INJECT_MSG = "您的輸入包含不允許的內容，請重新提問。"
 
+# ── 老師建議 三-1：保留當前提問的人名與意圖 ──
+_ASKED_PERSON_ZH = (re.compile(r"誰是\s*([\u4e00-\u9fff]{2,4})"), re.compile(r"([\u4e00-\u9fff]{2,4})\s*(?:是誰|是哪位)"))
+_ASKED_PERSON_EN = re.compile(r"\bwho\s+is\s+(?!the\b|a\b|an\b|your\b|our\b)([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,3})")
+_ASKED_PERSON_CJK_AFTER_WHO = re.compile(r"\bwho\s+is\s+([\u4e00-\u9fff]{2,4})", re.I)
+
+
+_ROMANIZED_NAME = r"(?:Dr\.?\s*)?[A-Z][A-Za-z]+(?:[- ,]+[A-Z][A-Za-z]+){1,3}"
+
+
+def fix_official_english_names(answer: str) -> str:
+    """英文回答裡，現任主管的中文姓名旁若是自行音譯的拼法（例如「Lin Dao-Tung (林道通)」），換成官方英文姓名。
+    只處理緊鄰中文姓名的拼法，避免誤改其他英文字。"""
+    for o in current_officials_roster():
+        zh, en = o.get("name"), o.get("nameEn")
+        if not zh or not en or zh not in (answer or ""):
+            continue
+        z = re.escape(zh)
+        patterns = (rf"({_ROMANIZED_NAME})(\s*\*{{0,2}}\s*[（(]\s*\*{{0,2}}{z}\*{{0,2}}\s*[)）])",
+                    rf"({z}\*{{0,2}}\s*[（(]\s*\*{{0,2}})({_ROMANIZED_NAME})(\*{{0,2}}\s*[)）])")
+        answer = re.sub(patterns[0], lambda m: (m.group(1) if m.group(1).strip("* ").lower() == en.lower() else en) + m.group(2), answer)
+        answer = re.sub(patterns[1], lambda m: m.group(1) + (m.group(2) if m.group(2).strip("* ").lower() == en.lower() else en) + m.group(3), answer)
+    return answer
+
+
+def previous_answer(history: list) -> str:
+    """上一輪助理的回答（沒有就回空字串）。"""
+    for msg in reversed(history or []):
+        if msg.get("role") == "assistant" and isinstance(msg.get("content"), str) and msg["content"].strip():
+            return msg["content"].strip()
+    return ""
+
+
+def roster_corrections(history: list, *queries) -> list:
+    """上一輪回答提到某職務、卻沒說出現任主管資料寫明的人：回傳 [(職務, 現任者)]，表示上一輪說錯了要更正。"""
+    prev = previous_answer(history)
+    if not prev:
+        return []
+    out = []
+    for o in current_officials_for(*queries):
+        title, name = o.get("title") or "", o.get("name") or o.get("nameEn") or ""
+        names = [n for n in (o.get("name"), o.get("nameEn")) if n]
+        mentioned = title and (title in prev or any(t.lower() in prev.lower() for t in o.get("titleEnSearch") or []))
+        if mentioned and names and not any(n.lower() in prev.lower() for n in names):
+            out.append((title, name))
+    return out
+
+
+def correction_instruction(history: list, roster_fixes=()) -> str:
+    """主動更正先前錯答（老師建議 三-2）：給回答模型上一輪的回答，證據矛盾時先明確指出錯誤、提供有證據的修正，再回答本輪問題。"""
+    prev = previous_answer(history)
+    if not prev:
+        return ""
+    text = (
+        "\n\n【主動更正先前錯答】你上一輪的回答是：「" + prev[:600] + "」。"
+        "只有在本輪查到的證據直接寫出與上一輪回答不同的內容（人名、職務、日期、數字、規定不同）時，回答才必須依序："
+        "(1) 開頭先明確指出上一輪哪一句說錯了（例如「更正：上一則回答說……有誤」）；"
+        "(2) 提供有證據的正確內容並附來源；(3) 再回答本輪問題。上一輪沒有錯、或本輪問的是不同的人或主題時，不要提上一輪，也不要寫更正。"
+    )
+    if roster_fixes:
+        text += "已確認：" + "；".join(
+            f"現任主管資料寫明現任{t}是{n}，上一輪關於{t}的說法有誤，本輪開頭必須先明確更正" for t, n in roster_fixes) + "。"
+    return text
+
+
+def ensure_correction(answer: str, roster_fixes, language: str) -> str:
+    """已確認上一輪說錯、回答卻沒寫出更正時，在開頭補上更正句（不讓錯誤默默帶過）。"""
+    if not roster_fixes or re.search(r"更正|有誤|錯誤|correct|mistake|incorrect", answer or "", re.I):
+        return answer
+    if language == "en":
+        lead = " ".join(f"Correction: my previous answer about the {t} was wrong; according to the official profile, the current {t} is {n}."
+                        for t, n in roster_fixes)
+    else:
+        lead = "".join(f"更正：上一則回答關於{t}的說法有誤；依官方介紹頁，現任{t}是{n}。" for t, n in roster_fixes)
+    return lead + "\n\n" + answer
+
+
+def asked_person(query: str):
+    """問題在問的人名（「誰是 X」「X 是誰」「who is X」）；問職稱（「現任校長是誰」）不算，回傳 None。"""
+    q = query or ""
+    for rx in (*_ASKED_PERSON_ZH, _ASKED_PERSON_CJK_AFTER_WHO):
+        m = rx.search(q)
+        if m:
+            name = m.group(1)
+            # 中文姓名：常見姓氏開頭、不含職稱（「現任校長」「教務長」不是人名）
+            if name[0] in _SURNAMES and not _IDENTITY_TITLE_RE.search(name):
+                return name[:3] if len(name) == 4 and name[3] in "呢啊嗎" else name
+    m = _ASKED_PERSON_EN.search(q)
+    if m and m.group(1).lower() not in ("ntpu",):
+        return m.group(1).strip()
+    return None
+
+
+def keep_asked_person(raw_query: str, resolution):
+    """改寫後檢查人物與目的（老師建議 三-1-(2)）：
+    使用者問的人名在改寫後不見了（例如上一輪問校長，這一輪問「誰是宋明謙？」被改寫成問校長），
+    就改回原始問題；問的是明確的人名時也不必反問。回傳 (resolution, 是否修正)。"""
+    name = asked_person(raw_query)
+    if not name:
+        return resolution, False
+    standalone = resolution.standalone_query or ""
+    kept = name.lower() in standalone.lower()
+    if kept and not resolution.ambiguity:
+        return resolution, False
+    from dataclasses import replace as _replace
+    fixed = _replace(
+        resolution,
+        standalone_query=standalone if kept else raw_query,
+        topic=resolution.topic if kept else name,
+        topic_changed=resolution.topic_changed or not kept,
+        ambiguity=False,
+        ambiguity_reason=None,
+    )
+    if not kept:
+        print(f"[改寫檢查] 改寫後遺漏人名「{name}」，改用原始問題：{standalone[:60]} → {raw_query[:60]}")
+    return fixed, True
+
+
+def _blocked_message(raw_query: str) -> str:
+    """問明確人名卻被擋下（資料裡沒有這個人）：直接說查不到這個人，不只列服務範圍（老師建議 三-1-(1)）。"""
+    name = asked_person(raw_query)
+    if not name:
+        return _BLOCKED_MSG
+    if answer_language(raw_query) == "en":
+        return (f"I couldn't find anyone named \"{name}\" in the National Taipei University data I have, "
+                "so I can't confirm who this person is. If they are NTPU faculty or staff, "
+                "tell me their department and I'll search again.")
+    return (f"目前收錄的國立臺北大學資料裡查不到「{name}」，無法確認這位人士的身分，我不會猜測。"
+            "如果是本校教職員，可以告訴我所屬單位，我再幫您查。")
+
 
 def _external_entity_message(entity: str) -> str:
     return (
@@ -3657,6 +3795,7 @@ def prepare_conversation_turn(
         retries=1,
     )
     _record_timing("conversation_resolution", time.time() - t0)
+    resolution, _ = keep_asked_person(raw_query, resolution)
 
     system_match = _best_system_match(raw_query, resolution.standalone_query)
     if should_route_system(
@@ -3731,7 +3870,7 @@ def prepare_conversation_turn(
             "message": (
                 _external_entity_message(scope.entity_hint)
                 if scope.entity_conflict and scope.entity_hint
-                else _BLOCKED_MSG
+                else _blocked_message(raw_query)
             ),
             "state": blocked_state,
             "scope": scope,
@@ -3753,6 +3892,10 @@ def prepare_conversation_turn(
             scope = ScopeDecision("IN_SCOPE", office, max(scope.confidence or 0, 0.85),
                                   f"現任主管資料寫明「{officials[0].get('title')}」屬{DEPT_NAMES[office]}。")
             known_person = True
+    # 問的是明確的人名（「誰是宋明謙？」）：反問沒有幫助，改成跨單位查詢；查不到就明說查不到（老師建議 三-1）
+    if scope.status == "AMBIGUOUS" and asked_person(raw_query):
+        scope = ScopeDecision("IN_SCOPE", None, 0.6, f"問人名「{asked_person(raw_query)}」，跨單位查詢。")
+        known_person = True
     if scope.status == "AMBIGUOUS" or (resolution.ambiguity and not known_person):
         clarification_state = build_updated_state(
             state,
