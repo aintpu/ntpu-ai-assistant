@@ -79,5 +79,31 @@ class QueryTraceTests(unittest.TestCase):
         self.assertNotIn("confirmed_at", snip)
 
 
+@unittest.skipIf(core is None, f"後端相依套件未安裝：{_IMPORT_ERROR}")
+class QueryLogShippingTests(unittest.TestCase):
+    """查詢流程紀錄長期保存：設定了網址與 token 才送，送出帶 Bearer token。"""
+
+    def test_ships_only_when_configured(self):
+        sent = []
+
+        class NowThread:
+            def __init__(self, target, daemon):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+        with patch.object(core, "QUERY_LOG_URL", ""), patch.object(core.requests, "post") as post:
+            core._ship_query_log('{"event":"answer"}')
+            post.assert_not_called()
+        with patch.object(core, "QUERY_LOG_URL", "https://aia.ntpu.ai/api/internal/query-log"), \
+                patch.object(core, "QUERY_LOG_TOKEN", "tok"), patch.object(core.threading, "Thread", NowThread), \
+                patch.object(core.requests, "post", side_effect=lambda *a, **k: sent.append((a, k)) or
+                             type("R", (), {"status_code": 204})()):
+            core._ship_query_log('{"event":"answer"}')
+        self.assertEqual(sent[0][1]["headers"]["Authorization"], "Bearer tok")
+        self.assertEqual(sent[0][1]["data"], b'{"event":"answer"}')
+
+
 if __name__ == "__main__":
     unittest.main()
