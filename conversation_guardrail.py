@@ -156,6 +156,12 @@ DEFAULT_EXTERNAL_ENTITY_ALIASES = (
     "政大", "清大", "交大", "陽明交大", "成大", "師大", "台師大", "臺師大",
     "台科大", "臺科大", "北科大", "北醫", "輔大", "淡大", "世新", "銘傳", "東吳", "逢甲",
 )
+# 本校的學院與校內／跨校方案：名稱以「學院」結尾，但不是外校（2026-10-11 範例題「通識課夏季學院怎麼選課」
+# 與「電機資訊學院院長」都被當成外校擋下）。
+DEFAULT_INTERNAL_ENTITY_NAMES = (
+    "法律學院", "商學院", "公共事務學院", "社會科學學院", "人文學院", "電機資訊學院", "永續創新國際學院",
+    "夏季學院",
+)
 ENTITY_SUFFIXES = (
     "大學", "學院", "高中", "國中", "國小", "學校", "研究院",
     "公司", "銀行", "醫院", "市政府", "縣政府", "區公所",
@@ -531,6 +537,14 @@ def detect_service_entity_conflict(
     for candidate in _extract_entity_candidates(text):
         if any(_contains_entity_alias(candidate, alias) for alias in supported):
             continue
+        internal = next((n for n in DEFAULT_INTERNAL_ENTITY_NAMES if candidate.endswith(n)), None)
+        if internal:
+            # 本校學院或校內方案；但前面另有學校名稱（「清華大學電機資訊學院」）時，那所學校仍是外校
+            rest = candidate[: -len(internal)]
+            school = re.search(r"[\u4e00-\u9fff]{2,20}(?:大學|學校|研究院)$", rest)
+            if school and not any(_contains_entity_alias(school.group(0), a) for a in supported):
+                return school.group(0)
+            continue
         return candidate
     return None
 
@@ -548,7 +562,7 @@ def _is_grounded_external_entity(
         return False
     if not any(_contains_entity_alias(q or "", hint) for q in (raw_query, standalone_query)):
         return False
-    own_names = (*supported_aliases, *OFFICE_NAMES.values())
+    own_names = (*supported_aliases, *OFFICE_NAMES.values(), *DEFAULT_INTERNAL_ENTITY_NAMES)
     return not any(
         _contains_entity_alias(hint, name) or _contains_entity_alias(name, hint)
         for name in own_names if name
