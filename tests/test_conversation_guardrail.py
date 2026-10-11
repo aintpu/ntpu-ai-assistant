@@ -967,5 +967,20 @@ class ResolverTrustedFollowupTests(unittest.TestCase):
         self.assertEqual(scope.status, "AMBIGUOUS")
 
 
+class InternalCollegeNameTests(unittest.TestCase):
+    """本校學院與夏季學院不是外校（2026-10-11 範例題「通識課夏季學院怎麼選課」被擋下）。"""
+
+    def test_own_colleges_and_summer_school_are_not_external(self):
+        from conversation_guardrail import detect_service_entity_conflict as detect
+        for q in ("通識課夏季學院怎麼選課", "夏季學院怎麼選課", "電機資訊學院院長是誰", "法律學院在哪"):
+            self.assertIsNone(detect(q), q)
+
+    def test_other_schools_with_the_same_college_name_are_still_external(self):
+        from conversation_guardrail import detect_service_entity_conflict as detect
+        self.assertEqual(detect("清華大學電機資訊學院"), "清華大學")
+        self.assertEqual(detect("輔仁大學法律學院"), "輔仁大學")
+        self.assertEqual(detect("台大電機資訊學院"), "台大")
+
+
 if __name__ == "__main__":
     unittest.main()
