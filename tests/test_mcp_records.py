@@ -261,6 +261,15 @@ class McpRecordTests(unittest.TestCase):
         self.assertIn("教務處的資料沒有足夠證據，以下為全校已收錄資料的查詢結果", out)
         self.assertIn("宿舍申請說明", out)
 
+    def test_overview_finds_items_the_documents_list(self):
+        """總覽題：以使用者原話判斷；長頁面要給到查詢詞所在的段落（「畢業門檻有哪些」曾漏掉選課專區中段的跨領域規定）。"""
+        body = "選課專區開頭" + "其他說明" * 600 + "110學年度起入學學士班學生新增畢業規定：至少應修畢微學程、學分學程、輔系或雙主修任一資格。" + "結尾" * 300
+        passage = core.focused_passages(body, ["畢業規定"])
+        self.assertLessEqual(len(passage), core.PAGE_PASSAGE_CHARS + 10)
+        self.assertIn("微學程、學分學程、輔系或雙主修", passage)  # 寫在長頁面中段的規定也要給到
+        self.assertTrue(core.is_overview_question("學校畢業門檻有哪些？"))
+        self.assertFalse(core.is_overview_question("國立臺北大學 畢業門檻"))
+
     def _local_depts(self):
         return [c.kwargs.get("dept") for c in self.local_mock.call_args_list]
 
