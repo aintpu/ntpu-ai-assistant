@@ -1,7 +1,7 @@
 import { parse as parseHtml } from "node-html-parser";
 import { IngestionError, safeMessage } from "../../shared/errors";
 import { PageSchema } from "../../shared/schemas";
-import { htmlToText } from "../html-text";
+import { htmlToText, visibleHtml } from "../html-text";
 import type { SourceDefinition } from "../types";
 import type { Adapter, AdapterRecord, RejectedRecord, Step } from "./types";
 import { decodeUtf8 } from "./types";
@@ -73,7 +73,7 @@ export function normalizePage(row: StrapiSection, source: SourceDefinition): Ada
     title: text(row.title) || text(lastSegment),
     updatedAt: Number.isNaN(Date.parse(updatedRaw)) ? "" : new Date(updatedRaw).toISOString(),
     bodyText: htmlToText(html),
-    links: linksOf(html),
+    links: linksOf(visibleHtml(html)),
     sourceUrl: ANY_PAGE_PATH.test(path) ? new URL(path, SITE_ORIGIN).toString() : "",
   };
   const parsed = PageSchema.safeParse(candidate);
