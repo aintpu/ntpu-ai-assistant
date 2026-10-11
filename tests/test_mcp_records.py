@@ -270,6 +270,21 @@ class McpRecordTests(unittest.TestCase):
         self.assertTrue(core.is_overview_question("學校畢業門檻有哪些？"))
         self.assertFalse(core.is_overview_question("國立臺北大學 畢業門檻"))
 
+    def test_office_name_dropped_and_org_pages_searched(self):
+        """研發處「有哪些組」：關鍵字裡的處室名稱拿掉，另查〈簡介〉〈行政團隊〉等頁面。"""
+        calls = []
+
+        def fake(tool, args):
+            calls.append((tool, args.get("keyword")))
+            return {"items": [], "count": 0, "freshness": []}
+
+        with patch.object(mcp_client, "call_tool", side_effect=fake), patch.object(core, "overview_terms", return_value=[]):
+            core._records_from_mcp("研究發展處底下有哪些組", "研究發展處 組 組織架構", "ord", True)
+        keywords = {k for _, k in calls}
+        self.assertIn("組 組織架構", keywords)
+        self.assertFalse(any("研究發展處" in (k or "") for k in keywords))
+        self.assertTrue({"簡介", "行政團隊", "成員介紹"} <= keywords)
+
     def _local_depts(self):
         return [c.kwargs.get("dept") for c in self.local_mock.call_args_list]
 

@@ -2090,6 +2090,10 @@ OVERVIEW_MAX_TERMS = 5
 _OVERVIEW_KIND_BONUS = {"regulation": 3, "page": 3, "faq": 2, "attachment": 0, "announcement": 0}
 
 
+_ORG_QUESTION_RE = re.compile(r"哪些組|幾個組|下設|組別|組織|分組|單位|部門|分工|負責什麼|業務")
+ORG_PAGE_TERMS = ("簡介", "行政團隊", "成員介紹", "組織")
+
+
 def is_overview_question(*queries) -> bool:
     return any(q and _OVERVIEW_RE.search(q) for q in queries)
 
@@ -2124,6 +2128,10 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
     dept=None 表示查全校已收錄資料（不指定處室）。
     """
     terms = _record_search_terms(keywords)
+    if dept is not None:
+        # 已用處室篩選：處室名稱沒有篩選意義，處室自己的頁面也不一定寫到全名
+        # （「研究發展處 組 組織架構」要求三詞同時出現，查不到研發處〈本處簡介〉）
+        terms = [t for t in terms if t not in _OFFICE_NAME_WORDS] or terms
     if dept is None:
         units = (_ALL_UNITS, _ALL_UNITS)
     else:
@@ -2164,6 +2172,9 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
     attempts = [terms] + ([[t] for t in terms] if len(terms) > 1 else [])
     overview = overview or is_overview_question(search_query, keywords)
     extra = overview_terms(search_query, terms) if overview else []
+    if dept is not None and _ORG_QUESTION_RE.search(f"{search_query} {keywords}"):
+        # 問處室組織（有哪些組、下設哪些單位、負責什麼）：處室的〈簡介〉〈行政團隊〉〈成員介紹〉頁面寫得最完整
+        extra += [t for t in ORG_PAGE_TERMS if t not in extra and t not in terms]
     if extra:
         print(f"[MCP] 總覽題，另查子主題：{extra}")
     rounds = [attempts[:1] + [[t] for t in extra], attempts[1:]]
