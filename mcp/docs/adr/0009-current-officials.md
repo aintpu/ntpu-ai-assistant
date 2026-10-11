@@ -21,5 +21,5 @@ Status: Accepted（2026-10-09）
 ## Consequences
 - 換人時不會回答舊主管，但要等人工更新對照表才會有新主管的資料；隔離區紀錄與 `/health` 的 quarantinedCount 會提示。
 - 2026-10-11 使用者選定「程式抓候選姓名，人工確認後才上線」：`.github/workflows/officials-check.yml` 每天執行 `scripts/check-officials.mjs`，
-  姓名不在頁面上時從頁面抓候選姓名、寫進分支並開 issue；有人確認頁面後建立 PR 合併、部署 MCP 才生效（不直接改 main）。
+  姓名不在頁面上時從頁面抓候選姓名、寫進分支並開 PR（抓不到候選時開 issue）；有人確認頁面後合併、部署 MCP 才生效（不直接改 main）。
 - 對照表目前不含學院院長、系主任、組長；之後擴充只要在 `officials.ts` 加列。
