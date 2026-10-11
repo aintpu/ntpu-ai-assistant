@@ -2,8 +2,9 @@ name: 現任主管換人偵測
 
 # 使用者 2026-10-11 選定：程式抓候選姓名，人工確認後才上線。
 # 每天檢查 mcp/src/ingestion/officials.ts 的主管姓名是否仍在官方介紹頁上（學校公開 API）。
-# 有人不在頁面上時：把候選姓名寫進對照表推到分支，開 issue 附上官方頁面與建立 PR 的連結。
-# 不會直接修改 main、不會部署：要有人開頁面確認候選姓名，建立 PR 並合併，再部署 MCP 才生效。
+# 有人不在頁面上時：把候選姓名寫進對照表推到分支並開 PR（附官方頁面）；抓不到候選姓名時開 issue。
+# 不會直接修改 main、不會自動合併或部署：要有人開頁面確認候選姓名後合併 PR，再部署 MCP 才生效。
+# （2026-10-11 使用者同意開啟 repo 設定「允許 GitHub Actions 建立 PR」。）
 on:
   schedule:
     - cron: "0 1 * * *" # 每天 09:00（台北）
@@ -11,6 +12,7 @@ on:
 
 permissions:
   contents: write # 推送候選分支（不碰 main）
+  pull-requests: write
   issues: write
 
 concurrency:
@@ -42,7 +44,7 @@ jobs:
 
           today=$(date -u +%Y-%m-%d)
           branch="officials-update-$today"
-          compare=""
+          has_pr=""
           if ! git diff --quiet -- mcp/src/ingestion/officials.ts; then
             if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
               echo "分支 $branch 已存在，不重複推送"
@@ -54,12 +56,12 @@ jobs:
               git commit -m "chore(mcp): 現任主管候選姓名（$today 自動偵測，待人工確認）"
               git push origin "$branch"
             fi
-            compare="https://github.com/${GITHUB_REPOSITORY}/compare/main...${branch}?expand=1"
+            has_pr="1"
           fi
 
-          node - "$compare" > "$RUNNER_TEMP/body.md" <<'EOF'
+          node - "$has_pr" > "$RUNNER_TEMP/body.md" <<'EOF'
           const r = require(process.env.REPORT);
-          const compare = process.argv[2];
+          const hasPr = process.argv[2] === "1";
           const label = { changed: "姓名不在頁面上，有候選姓名", no_candidate: "姓名不在頁面上，抓不到候選姓名", missing_page: "頁面不存在" };
           const rows = r.results.filter((x) => x.status !== "ok").map((x) =>
             `| ${x.title} | ${x.oldName ?? "（無中文姓名）"} | ${x.candidates.join("、") || "—"} | ${label[x.status]} | [官方頁面](${x.url}) |`);
@@ -71,13 +73,23 @@ jobs:
 
           **確認步驟**
           1. 打開官方頁面，確認候選姓名確實是現任主管（程式是從頁面文字推測的，可能抓錯）。
-          2. ${compare ? `確認無誤：[建立 PR](${compare})（已把候選姓名寫進 \`mcp/src/ingestion/officials.ts\`，英文姓名與任期已清空）。若官網英文頁有新主管的英文姓名、頁面寫了任期，可在 PR 裡補上 \`nameEn\`／\`nameEnOfficial\`／\`term\`；候選姓名錯了就直接在 PR 修正。` : "沒有候選姓名可寫入，請手動更新 `mcp/src/ingestion/officials.ts`。"}
+          2. ${hasPr ? `確認無誤就合併這個 PR（候選姓名已寫進 \`mcp/src/ingestion/officials.ts\`，英文姓名與任期已清空）。若官網英文頁有新主管的英文姓名、頁面寫了任期，可在這個 PR 補上 \`nameEn\`／\`nameEnOfficial\`／\`term\`；候選姓名錯了就直接修正或關閉 PR。` : "沒有候選姓名可寫入，請手動更新 `mcp/src/ingestion/officials.ts`。"}
           3. 合併後部署 MCP：\`cd mcp && npx wrangler deploy --config wrangler.ingest.jsonc --env production\`。下一次排程抓取確認姓名在頁面上後，就會提供給 AIA。`);
           EOF
 
-          existing=$(gh issue list --state open --search "[現任主管] in:title" --json number -q '.[0].number // empty')
-          if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body-file "$RUNNER_TEMP/body.md"
+          title="[現任主管] $today 偵測到主管換人，候選姓名待確認"
+          if [ -n "$has_pr" ]; then
+            existing=$(gh pr list --state open --search "[現任主管] in:title" --json number -q '.[0].number // empty')
+            if [ -n "$existing" ]; then
+              gh pr comment "$existing" --body-file "$RUNNER_TEMP/body.md"
+            elif ! gh pr list --state open --head "$branch" --json number -q '.[0].number' | grep -q .; then
+              gh pr create --base main --head "$branch" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+            fi
           else
-            gh issue create --title "[現任主管] $today 偵測到主管頁面變動，候選姓名待確認" --body-file "$RUNNER_TEMP/body.md"
+            existing=$(gh issue list --state open --search "[現任主管] in:title" --json number -q '.[0].number // empty')
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --body-file "$RUNNER_TEMP/body.md"
+            else
+              gh issue create --title "$title" --body-file "$RUNNER_TEMP/body.md"
+            fi
           fi
