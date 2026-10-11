@@ -362,6 +362,12 @@ class GroundedScopeTests(unittest.TestCase):
             core._title_index = None
             scope = core.ground_scope_in_data(self._out(), "誰是陳宥杉")
             self.assertEqual((scope.status, scope.office_hint), ("IN_SCOPE", None))
+        # 只是順帶提到名字、沒有文件標題寫明身分（戴敏育：體育室球賽名單＋秘書室 FAQ）：跨單位查，不猜處室
+        docs3 = [Document(page_content="桌球 戴敏育 秘書室", metadata={"title": "校慶運動會分組名單", "dept": "ope"}),
+                 Document(page_content="A: 執行長 戴敏育副教授", metadata={"title": "USR 辦公室由誰負責？", "dept": "os"})]
+        with patch.object(core.INDEX, "docs_zh", docs3):
+            core._content_index = None
+            self.assertEqual(core.known_person_office("戴敏育是誰"), (None, "戴敏育"))
         core._content_index = None
         core._title_index = None
         core._content_index = None

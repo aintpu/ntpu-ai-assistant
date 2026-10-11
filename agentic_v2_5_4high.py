@@ -1930,7 +1930,7 @@ def current_officials_for(*queries) -> list:
 def current_official_docs(search_query: str, user_queries=()) -> List[Document]:
     """問現任職務或人名時，查現任主管資料；沒有對到或不是這類問題時回空清單。
 
-    user_queries 是改寫後與原始的使用者問題：工具參數常是關鍵字（例如「NTPU president 校長室」），
+    user_queries 是原始與改寫後的使用者問題（原話優先）：工具參數常是關鍵字（例如「NTPU president 校長室」），
     看不出是在問人，所以先用使用者問題判斷（改寫後的問題已補上追問省略的職稱）。
     """
     items = current_officials_for(*user_queries, search_query)
@@ -2196,6 +2196,10 @@ def tool_search_database(search_query: str, dept: str = None,
     MCP_REGULATIONS 開啟且處室在對應表時先查 MCP；關閉、連不上、查無資料或證據不足時用本機索引。
     老師建議 一-2：指定處室證據不足時補查全校已收錄資料；問人時不只查指定處室（例如校長室、副校長室 FAQ）。
     """
+    # 問人名時，工具參數常只有查詢句、沒有關鍵字，MCP（官網成員介紹、FAQ、公告）就完全沒查；以人名當關鍵字
+    person = next((asked_person(q) for q in (*user_queries, search_query) if q and asked_person(q)), None)
+    if person and not keywords:
+        keywords = person
     official_docs = current_official_docs(search_query, user_queries)
     official_text = (OFFICIALS_INSTRUCTION + build_context_snippets(official_docs) + "\n\n---\n\n") if official_docs else ""
     if official_docs:
@@ -2726,7 +2730,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
     other_person = asked_person(user_query)
     roster_fixes = []
     if not (other_person and other_person not in previous_answer(history)):
-        roster_fixes = roster_corrections(history, standalone_query, user_query)
+        roster_fixes = roster_corrections(history, user_query, standalone_query)
         dynamic_system_prompt += correction_instruction(history, roster_fixes)
 
     if resolution_obj:
@@ -2925,7 +2929,9 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
                         dept=dept,
                         previous_source_docs=previous_source_docs,
                         keywords=str(args.get("keywords") or "").strip(),
-                        user_queries=(standalone_query, q_norm),
+                        # 使用者原話優先：改寫可能譯錯職稱（「vice president for academic affairs」曾被改寫成教務長）；
+                        # 原話不是在問人或職務時（「那學術副校長呢？」）才用改寫後的問題
+                        user_queries=(q_norm, standalone_query),
                     )
                 elif function_name == "get_competition_records":
                     ctx = tool_get_competition_records(
@@ -4017,7 +4023,7 @@ def prepare_conversation_turn(
     # 問現任職務且現任主管資料對得到（例如「Who is the vice president for academic affairs?」）：
     # 以官方介紹頁所屬單位為準，不反問、不交給模型猜處室（模型曾把學術副校長分到校長室並反問）
     if scope.status in ("IN_SCOPE", "AMBIGUOUS"):
-        officials = current_officials_for(resolution.standalone_query, raw_query)
+        officials = current_officials_for(raw_query, resolution.standalone_query)
         depts = {mcp_client.MCP_UNIT_TO_DEPT.get(o.get("unit")) for o in officials}
         if officials and len(depts) == 1 and depts <= set(DEPT_NAMES):
             office = depts.pop()
@@ -4150,13 +4156,19 @@ def known_person_office(query: str):
     for name in sorted(names, key=len, reverse=True):
         depts = Counter()
         identity_depts = set()
+        best_weight = 0
         for content, dept, weight in _grounding_contents():
             if name in content:
                 depts[dept] += weight
+                best_weight = max(best_weight, weight)
                 if weight >= 1000:
                     identity_depts.add(dept)
         if len(identity_depts) >= 2:
             # 不只一個單位寫明這個人的身分（例如陳宥杉：曾任主任秘書、現任學術副校長）：不指定處室，跨單位查詢
+            return None, name
+        if len(depts) >= 2 and best_weight < 100:
+            # 只是順帶提到名字（例如戴敏育同時出現在體育室的球賽名單與秘書室 FAQ），沒有文件標題寫明身分：
+            # 不憑筆數猜處室，跨單位查詢（2026-10-11「戴敏育是誰」被分到體育室而查不到）
             return None, name
         if depts:
             return depts.most_common(1)[0][0], name
