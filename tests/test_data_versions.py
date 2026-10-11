@@ -61,6 +61,7 @@ class SourceTimeTests(unittest.TestCase):
         self.assertEqual(cards["https://u/fee"]["fetched_at"], "2026-10-11")
         self.assertNotIn("confirmed_at", cards["https://u/fee"])  # 一般頁面只是抓取，不算確認
         self.assertEqual(cards["https://new.ntpu.edu.tw/oaa/director"]["confirmed_at"], "2026-10-11")
+        self.assertEqual(cards["https://new.ntpu.edu.tw/oaa/director"]["unit"], "教務處")
 
 
 @unittest.skipIf(core is None, f"後端相依套件未安裝：{_IMPORT_ERROR}")

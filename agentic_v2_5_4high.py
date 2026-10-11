@@ -1307,6 +1307,8 @@ def _collect_source_docs(docs: List[Document]):
             "revised_at": str(d.metadata.get("date") or "")[:10],
             "fetched_at": str(d.metadata.get("fetched_at") or "")[:10],
             "confirmed_at": str(d.metadata.get("confirmed_at") or "")[:10],
+            # 來源所屬單位（卡片顯示「教務處｜選課專區」，只寫頁面標題看不出是哪個單位）
+            "unit": DEPT_NAMES.get(d.metadata.get("dept") or "", ""),
         }
         if not any(c["source_id"] == entry["source_id"] and c["title"] == entry["title"] for c in cands):
             cands.append(entry)
@@ -1329,7 +1331,7 @@ def _finalize_sources(answer: str, quotes=()):
         item = {"title": s.get("title", ""), "url": s.get("url", "")}
         if quote:
             item["quote"] = quote
-        for key in ("revised_at", "fetched_at", "confirmed_at"):
+        for key in ("unit", "revised_at", "fetched_at", "confirmed_at"):
             if s.get(key):
                 item[key] = s[key]
         if not any(c["title"] == item["title"] and c["url"] == item["url"] for c in cards):

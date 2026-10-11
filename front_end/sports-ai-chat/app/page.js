@@ -555,6 +555,10 @@ function MessageBubble({ msg, lang, T, sessionId }) {
               <ul className="space-y-1">
                 {msg.sources.map((s, i) => (
                   <li key={i}>
+                    {/* 所屬單位：標題本身沒寫單位時加在前面（例如「教務處｜選課專區」） */}
+                    {s.unit && !(s.title || "").includes(s.unit) && (
+                      <span className={T.sourceText}>{s.unit}｜</span>
+                    )}
                     {s.url ? (
                       <a href={s.url} target="_blank" rel="noopener noreferrer" className={T.sourceLink}>{s.title}</a>
                     ) : (
@@ -693,6 +697,7 @@ function sanitizeStoredMessages(value) {
             type: typeof source.type === "string" ? source.type.slice(0, 40) : undefined,
             faq_id: typeof source.faq_id === "string" ? source.faq_id.slice(0, 120) : undefined,
             quote: typeof source.quote === "string" ? source.quote.slice(0, 300) : undefined,
+            unit: typeof source.unit === "string" ? source.unit.slice(0, 40) : undefined,
             revised_at: typeof source.revised_at === "string" ? source.revised_at.slice(0, 10) : undefined,
             fetched_at: typeof source.fetched_at === "string" ? source.fetched_at.slice(0, 10) : undefined,
             confirmed_at: typeof source.confirmed_at === "string" ? source.confirmed_at.slice(0, 10) : undefined,
