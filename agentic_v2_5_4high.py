@@ -358,6 +358,21 @@ def parse_news_blocks(page_md: str) -> List[Dict[str, Any]]:
         })
     return blocks
 
+RETIRED_FAQS_PATH = os.path.join(BASE_DIR, "crawler_data", "retired_faqs.json")
+
+
+def _load_retired_faq_ids() -> set:
+    """停用的 FAQ 編號。各處室原始 FAQ 檔不修改（內容雜湊要與試算表匯入一致），停用清單另外維護。"""
+    try:
+        with open(RETIRED_FAQS_PATH, encoding="utf-8") as fh:
+            return set((json.load(fh).get("retired") or {}).keys())
+    except (OSError, ValueError):
+        return set()
+
+
+RETIRED_FAQ_IDS = _load_retired_faq_ids()
+
+
 def parse_faqs(page_md: str) -> List[Dict[str, Any]]:
     faqs = []
     lines = page_md.splitlines()
@@ -365,6 +380,9 @@ def parse_faqs(page_md: str) -> List[Dict[str, Any]]:
 
     def append_faq(question: str, answer_lines: List[str]) -> None:
         answer = "\n".join(answer_lines).strip()
+        faq_id = re.search(r"(?m)^FAQ 編號：\s*(\S+)", answer)
+        if faq_id and faq_id.group(1) in RETIRED_FAQ_IDS:
+            return  # 停用的 FAQ（crawler_data/retired_faqs.json）：內容已過期、待承辦單位確認
         source_match = re.search(r"(?m)^來源網址：\s*(https?://\S+)\s*$", answer)
         source_url = source_match.group(1) if source_match else ""
         if source_match:
@@ -723,7 +741,7 @@ def _sha256_file(path: str) -> str:
 
 def _data_fingerprint() -> str:
     import hashlib
-    paths = [FILE_PATH_ZH, REGULATIONS_PATH, CORRECTIONS_PATH,
+    paths = [FILE_PATH_ZH, REGULATIONS_PATH, CORRECTIONS_PATH, RETIRED_FAQS_PATH,
              REGULATION_XLSX, ADMIN_REGULATION_XLSX] + \
             [p for _, p in CRAWLER_SOURCES] + [p for _, p in REGULATION_SOURCES]
     parts = []
