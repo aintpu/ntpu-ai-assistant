@@ -30,6 +30,8 @@ class AddedOfficeTests(unittest.TestCase):
                      and node.name in {'split_pages', 'parse_news_blocks', 'parse_faqs', 'parse_all_content'}]
         namespace = dict(List=typing.List, Dict=typing.Dict, Any=typing.Any,
                          Tuple=typing.Tuple, re=re,
+                         # 這裡驗證解析本身不漏題，停用清單另由 test_added_office_backend 驗證
+                         RETIRED_FAQ_IDS=set(),
                          H1_RE=re.compile(r'^#\s+(.+?)\s*$', re.M),
                          H3_RE=re.compile(r'^###\s+(.+?)\s*$', re.M))
         exec(compile(ast.Module(body=functions, type_ignores=[]), '<parser>', 'exec'), namespace)

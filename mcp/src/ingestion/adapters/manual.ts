@@ -1,4 +1,5 @@
 import { IngestionError } from "../../shared/errors";
+import retiredFaqs from "../../../../crawler_data/retired_faqs.json";
 import { sha256Hex } from "../../shared/hash";
 import { FaqSchema, RegulationSchema, type Faq, type Regulation } from "../../shared/schemas";
 import {
@@ -222,6 +223,8 @@ const FAQ_ID = /^[A-Za-z0-9-]{3,64}$/;
  * 但只有全部檔案都讀到，才算完整走完（listComplete）——否則讀不到的處室的 FAQ 會被當成
  * 從檔案消失，連續幾次後被標為 inactive。
  */
+const RETIRED: Record<string, { retired_at?: string; reason?: string }> = retiredFaqs.retired;
+
 export const manualFaqAdapter: Adapter = {
   start(source) {
     const cfg = source.adapter;
@@ -241,6 +244,11 @@ export const manualFaqAdapter: Adapter = {
           const id = FAQ_ID.test(given) ? given : `${unit}-q-${(await shortId("faq", unit, entry.question)).slice(0, 12)}`;
           if (ids.has(id)) {
             rejected.push({ id, unit, reason: "duplicate FAQ id in file", countsTowardDrift: true });
+            continue;
+          }
+          // 停用的 FAQ（crawler_data/retired_faqs.json）：記入隔離區，之前收錄的那筆立即不再提供
+          if (id in RETIRED) {
+            rejected.push({ id, unit, reason: `retired: ${RETIRED[id]?.retired_at ?? ""}`, countsTowardDrift: false });
             continue;
           }
           ids.add(id);

@@ -33,9 +33,11 @@ class AddedOfficeBackendTests(unittest.TestCase):
         for code, spec in manifest.items():
             with self.subTest(code=code):
                 docs = [doc for doc in index.docs_zh if doc.metadata.get('dept') == code]
-                self.assertEqual(len(docs), spec['count'])
+                # 停用清單（crawler_data/retired_faqs.json）裡的題目不進索引
+                kept = [row for row in spec['records'] if row['id'] not in core.RETIRED_FAQ_IDS]
+                self.assertEqual(len(docs), len(kept))
                 self.assertEqual([(doc.metadata['title'], doc.metadata['url']) for doc in docs],
-                                 [(row['question'], row['url']) for row in spec['records']])
+                                 [(row['question'], row['url']) for row in kept])
                 self.assertTrue(all(doc.metadata['type'] == 'faq' for doc in docs))
                 self.assertIn(spec['name'], core.SYSTEM_STYLE)
                 self.assertEqual(core._parse_correction_dept(

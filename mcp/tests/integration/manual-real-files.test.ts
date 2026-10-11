@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import retiredFaqs from "../../../crawler_data/retired_faqs.json";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { CanonicalStore } from "../../src/db/canonical-store";
@@ -49,9 +50,12 @@ describe("real crawler_data files", () => {
     expect(new Set([...(MANUAL_MARKDOWN as string[]), CATALOG_PATH])).toEqual(registered);
   });
 
-  it("ingests every manual source completely with nothing quarantined", () => {
+  // 只有停用清單（crawler_data/retired_faqs.json）裡的 FAQ 會記入隔離區
+  const RETIRED = Object.keys(retiredFaqs.retired).length;
+
+  it("ingests every manual source completely; only retired FAQs are quarantined", () => {
     expect(summary.errors).toEqual([]);
-    expect(summary).toMatchObject({ status: "success", failed: 0, quarantined: 0, deferred: 0 });
+    expect(summary).toMatchObject({ status: "success", failed: 0, quarantined: RETIRED, deferred: 0 });
     const statuses = db.rows<{ id: string; last_run_status: string }>(
       `SELECT id, last_run_status FROM sources WHERE source_type = 'manual_verified' ORDER BY id`,
     );
@@ -71,7 +75,7 @@ describe("real crawler_data files", () => {
   });
 
   it("keeps every FAQ question", () => {
-    expect(count(`SELECT COUNT(*) n FROM entities WHERE entity_type='faq'`)).toBe(1038);
+    expect(count(`SELECT COUNT(*) n FROM entities WHERE entity_type='faq'`)).toBe(1038 - RETIRED);
     expect(count(`SELECT COUNT(DISTINCT source_unit) n FROM entities WHERE entity_type='faq'`)).toBe(16);
   });
 
@@ -100,7 +104,7 @@ describe("real crawler_data files", () => {
   });
 
   it("re-running the same files the next day changes nothing and creates no versions", () => {
-    expect(rerun).toMatchObject({ status: "success", published: 0, failed: 0, quarantined: 0 });
+    expect(rerun).toMatchObject({ status: "success", published: 0, failed: 0, quarantined: RETIRED });
     expect(rerun.unchanged).toBe(summary.published);
     expect(db.count("record_versions")).toBe(0);
   });
