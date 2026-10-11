@@ -1345,6 +1345,22 @@ def _finalize_sources(answer: str, quotes=()):
     _source_ctx.last_evidence = cited + [c for c in candidates if c.get("source_id") not in cited_ids][:10 - len(cited)]
 
 
+TRACE_SNIPPETS = 12  # 日誌最多記幾份檢索片段
+TRACE_SNIPPET_CHARS = 300
+
+
+def retrieval_snippets_for_trace() -> list:
+    """本輪檢索到的片段（老師建議 五-1）：來源編號、標題、網址、來源修訂與系統抓取時間、內容開頭。"""
+    out = []
+    for c in getattr(_source_ctx, "candidates", [])[:TRACE_SNIPPETS]:
+        out.append({k: v for k, v in {
+            "source_id": c.get("source_id"), "title": c.get("title"), "url": c.get("url"), "type": c.get("type"),
+            "revised_at": c.get("revised_at"), "fetched_at": c.get("fetched_at"), "confirmed_at": c.get("confirmed_at"),
+            "snippet": (c.get("content") or "")[:TRACE_SNIPPET_CHARS],
+        }.items() if v})
+    return out
+
+
 def get_last_evidence() -> list:
     """本輪回答引用的來源（含內容與原文片段），供回答後檢查證據。"""
     return list(getattr(_source_ctx, "last_evidence", []))
@@ -1480,7 +1496,7 @@ _ON_CLOUD_RUN = bool(os.getenv("K_SERVICE"))
 _events_lock = threading.Lock()
 _SENSITIVE_LOG_TEXT_FIELDS = {
     "raw_query", "user_query", "question", "query", "standalone_query",
-    "active_topic", "answer", "comment",
+    "active_topic", "answer", "comment", "fixed_query",
 }
 
 def _log_event(event: str, **fields):
@@ -2798,6 +2814,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
 
     answer = ""
     tool_msgs = []  # 給下面 CSV 用，格式維持 {"role":"tool","name":...,"content":...}
+    tool_trace = []  # 老師建議 五-1：記錄每次工具呼叫與參數
 
     MAX_ROUNDS = 4
     for iteration in range(MAX_ROUNDS):
@@ -2867,6 +2884,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
                 except Exception:  # 開源模型偶發輸出非法 JSON，寬容處理
                     args = {}
                 print(f"[Agentic] 工具: {function_name}, 參數: {args}")
+                tool_trace.append({"name": function_name, "args": {k: str(v)[:200] for k, v in args.items()}})
                 yield ("status", _TOOL_STATUS.get(function_name, "查詢資料中…"))
                 t_tool = time.time()
 
@@ -3137,6 +3155,10 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
             reranked_top_ids=retrieval_trace.get("reranked_top_ids", []),
             evidence_checks=evidence_checks,
             answer_check=answer_check,
+            # 老師建議 五-1：完整查詢流程（原始問題、改寫問題、處室路由、檢索片段、資料版本、最終引用）
+            scope_reason=scope_obj.reason if scope_obj else None,
+            tool_calls=tool_trace,
+            retrieved_snippets=retrieval_snippets_for_trace(),
             index_version=index_version(),
             mcp_synced_at=get_last_data_updated_at(),
             evidence_sufficient=(
@@ -3877,7 +3899,13 @@ def prepare_conversation_turn(
         retries=1,
     )
     _record_timing("conversation_resolution", time.time() - t0)
-    resolution, _ = keep_asked_person(raw_query, resolution)
+    original_standalone = resolution.standalone_query
+    resolution, rewrite_fixed = keep_asked_person(raw_query, resolution)
+    if rewrite_fixed:
+        # 老師建議 五-1：改寫檢查改回原始問題時留下紀錄
+        _log_event("rewrite_check", conversation_id=state.conversation_id, raw_query=raw_query[:1000],
+                   standalone_query=original_standalone[:1200], fixed_query=resolution.standalone_query[:1200],
+                   person=asked_person(raw_query))
 
     system_match = _best_system_match(raw_query, resolution.standalone_query)
     if should_route_system(
