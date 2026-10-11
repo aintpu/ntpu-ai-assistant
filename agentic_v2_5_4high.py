@@ -1499,6 +1499,27 @@ _SENSITIVE_LOG_TEXT_FIELDS = {
     "active_topic", "answer", "comment", "fixed_query",
 }
 
+QUERY_LOG_URL = os.getenv("QUERY_LOG_URL", "").strip()
+QUERY_LOG_TOKEN = os.getenv("QUERY_LOG_TOKEN", "").strip()
+
+
+def _ship_query_log(line: str):
+    """把結構化事件送到 Worker 寫入 D1 長期保存（老師建議 五-1）。背景執行緒送出，失敗只印警告，不影響回答。"""
+    if not (QUERY_LOG_URL and QUERY_LOG_TOKEN):
+        return
+
+    def send():
+        try:
+            resp = requests.post(QUERY_LOG_URL, data=line.encode("utf-8"), timeout=10, headers={
+                "Content-Type": "application/json", "Authorization": f"Bearer {QUERY_LOG_TOKEN}"})
+            if resp.status_code >= 300:
+                print(f"[警告] 查詢紀錄保存失敗：HTTP {resp.status_code}")
+        except requests.RequestException as exc:
+            print(f"[警告] 查詢紀錄保存失敗：{type(exc).__name__}")
+
+    threading.Thread(target=send, daemon=True).start()
+
+
 def _log_event(event: str, **fields):
     try:
         rec = {"event": event, "severity": "INFO", "ts": _now_iso()}
@@ -1515,6 +1536,7 @@ def _log_event(event: str, **fields):
         return
 
     print(line, flush=True)
+    _ship_query_log(line)
 
     if not _ON_CLOUD_RUN:
         try:

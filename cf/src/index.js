@@ -1,4 +1,5 @@
 import { Container, getContainer } from "@cloudflare/containers";
+import { QUERY_LOG_PATH, storeQueryLog } from "./query-log.js";
 import { SCRIPT_HASHES, STYLE_HASHES } from "./csp-hashes.generated.js";
 import {
   buildContentSecurityPolicy,
@@ -124,6 +125,10 @@ export class NtpuAiaBackend extends Container {
       // 否則或呼叫失敗時沿用 gpt-4o-mini。以 Worker secret 設定（一般變數會在部署時被清掉）。
       CLASSIFIER_MODEL: env.CLASSIFIER_MODEL ?? "",
       OPENROUTER_API_KEY: env.OPENROUTER_API_KEY ?? "",
+      // 查詢流程紀錄長期保存（老師建議 五-1）：後端把結構化事件 POST 到這個 Worker 的內部端點，寫入 D1。
+      // 兩者都有值才送；QUERY_LOG_TOKEN 是 Worker secret。
+      QUERY_LOG_URL: env.QUERY_LOG_TOKEN ? (env.QUERY_LOG_URL ?? "https://aia.ntpu.ai/api/internal/query-log") : "",
+      QUERY_LOG_TOKEN: env.QUERY_LOG_TOKEN ?? "",
       // 讓後端知道自己在容器平台上：跳過寫 chat_logs.csv 與 events.jsonl
       // （容器檔案系統是暫時的），改由 stdout 的結構化日誌保存。
       K_SERVICE: "ntpu-aia-api",
@@ -342,6 +347,11 @@ export default {
     // 以便統一加上 CSP、HSTS、X-Frame-Options 等安全標頭。
     if (!pathname.startsWith("/api/")) {
       return secure(await env.ASSETS.fetch(request));
+    }
+
+    // 後端送來的查詢流程紀錄：在 Worker 寫入 D1，不進容器。
+    if (pathname === QUERY_LOG_PATH) {
+      return secure(await storeQueryLog(request, env));
     }
 
     // 淺層健康檢查在 Worker 邊緣回應，不喚醒容器。

@@ -72,6 +72,17 @@
     }
   ],
 
+  // 查詢流程紀錄（老師建議 五-1，長期保存）：後端把每個結構化事件送到 /api/internal/query-log，
+  // 由 Worker 寫入這個 D1。查詢：npx wrangler d1 execute ntpu-aia-query-logs --remote --command "SELECT ..."
+  "d1_databases": [
+    {
+      "binding": "QUERY_LOG_DB",
+      "database_name": "ntpu-aia-query-logs",
+      "database_id": "31bbd194-88b4-487e-9ea1-4e2a13c17e79",
+      "migrations_dir": "migrations"
+    }
+  ],
+
   "observability": {
     "enabled": true
   }
