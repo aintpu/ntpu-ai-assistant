@@ -851,6 +851,9 @@ class OPEIndex:
     def build(self):
         # 資料檔沒變就直接用快取索引
         fingerprint = _data_fingerprint()
+        # 索引版本（老師建議 四-1）：資料檔指紋與建立時間，/api/health 與每則回答的日誌都會記錄
+        self.fingerprint = fingerprint
+        self.built_at = _now_iso()
         if self._try_load_cache(fingerprint):
             return
 
@@ -999,8 +1002,10 @@ else:
 
 BM25_ZH = None
 BM25_ZH_CORPUS = []
-def _prep_bm25():
-    global BM25_ZH, BM25_ZH_CORPUS
+
+
+def _build_bm25(docs):
+    """依同一份文件清單建 BM25（文件順序必須與 FAISS 的 doc_id 一致）。"""
     def zh_en_tok(s: str):
         parts = re.findall(r"[\u4e00-\u9fff]+|[A-Za-z0-9_]+", s)
         tokens = []
@@ -1010,11 +1015,48 @@ def _prep_bm25():
             else:
                 tokens.append(p.lower())
         return tokens
-    if INDEX.docs_zh:
-        BM25_ZH_CORPUS = [zh_en_tok(d.page_content) for d in INDEX.docs_zh]
-        BM25_ZH = BM25Okapi(BM25_ZH_CORPUS)
+    if not docs:
+        return None, []
+    corpus = [zh_en_tok(d.page_content) for d in docs]
+    return BM25Okapi(corpus), corpus
+
+
+def _prep_bm25():
+    global BM25_ZH, BM25_ZH_CORPUS
+    BM25_ZH, BM25_ZH_CORPUS = _build_bm25(INDEX.docs_zh)
+
 
 _prep_bm25()
+_index_lock = threading.Lock()
+
+
+def refresh_knowledge_index():
+    """重建本機知識庫（老師建議 四-1：資料更新後同步更新索引及相關快取）。
+    先在新物件上建好 FAISS 與 BM25，再一起換上，並清掉依文件內容建立的比對快取；
+    換的過程中查詢不會看到「新 FAISS、舊 BM25」這種不一致的組合。"""
+    global INDEX, BM25_ZH, BM25_ZH_CORPUS, _title_index, _content_index
+    new_index = OPEIndex()
+    new_index.build()
+    new_bm25, new_corpus = _build_bm25(new_index.docs_zh)
+    with _index_lock:
+        INDEX, BM25_ZH, BM25_ZH_CORPUS = new_index, new_bm25, new_corpus
+        _title_index = None
+        _content_index = None
+    print(f"[索引] 已更新：{index_version()}")
+    return index_version()
+
+
+def index_version() -> dict:
+    """本機索引的版本：資料檔指紋、建立時間、FAISS／BM25 筆數，以及是否與目前資料檔一致。"""
+    fp = getattr(INDEX, "fingerprint", "")
+    docs = len(INDEX.docs_zh or [])
+    return {
+        "fingerprint": fp[:12],
+        "built_at": getattr(INDEX, "built_at", None),
+        "faiss_docs": docs,
+        "bm25_docs": len(BM25_ZH_CORPUS or []),
+        "aligned": len(BM25_ZH_CORPUS or []) == docs,
+    }
 
 # 定期更新
 def auto_update():
@@ -1026,10 +1068,8 @@ def auto_update():
         subprocess.run(["python", "ope_scraping_newsComplete_v2.py"], check=True)
         print("[排程] 爬蟲完成")
         
-        # 2. 重建索引
-        INDEX.build()
-        _prep_bm25()
-        print(f"[排程] 索引重建完成，共 {len(INDEX.docs_zh)} 筆")
+        # 2. 重建索引（FAISS、BM25 與比對快取一起換上）
+        refresh_knowledge_index()
     except Exception as e:
         print(f"[排程] 更新失敗：{e}")
 
@@ -1245,6 +1285,10 @@ def _collect_source_docs(docs: List[Document]):
             "type": d.metadata.get("type", ""),
             "source_id": _source_id_for_doc(d),
             "content": str(d.page_content or "")[:6000],  # 比對引文、回答後檢查證據用，不對外輸出
+            # 老師建議 四-2：來源修訂、系統抓取、最後確認分開記錄，不把「最近抓取」說成「內容已確認」
+            "revised_at": str(d.metadata.get("date") or "")[:10],
+            "fetched_at": str(d.metadata.get("fetched_at") or "")[:10],
+            "confirmed_at": str(d.metadata.get("confirmed_at") or "")[:10],
         }
         if not any(c["source_id"] == entry["source_id"] and c["title"] == entry["title"] for c in cands):
             cands.append(entry)
@@ -1267,6 +1311,9 @@ def _finalize_sources(answer: str, quotes=()):
         item = {"title": s.get("title", ""), "url": s.get("url", "")}
         if quote:
             item["quote"] = quote
+        for key in ("revised_at", "fetched_at", "confirmed_at"):
+            if s.get(key):
+                item[key] = s[key]
         if not any(c["title"] == item["title"] and c["url"] == item["url"] for c in cards):
             cards.append(item)
             cited.append({**s, "quote": quote})
@@ -1685,6 +1732,7 @@ def _latest_news_from_mcp(keyword: str, dept: str = None):
         docs.append(Document(page_content=preview, metadata={
             "title": item.get("title", ""), "url": url, "type": "news", "date": date,
             "dept": dept or "", "source_id": f"mcp:announcement:{item.get('unit')}:{item.get('id')}",
+            "fetched_at": _taipei_date((item.get("provenance") or {}).get("verifiedAt") or ""),
         }))
         blocks.append(_format_news_block(date, item.get("title", ""), preview, url))
     _collect_source_docs(docs)
@@ -1814,6 +1862,9 @@ def _official_document(o: dict) -> Document:
         "type": "official", "category": "現任主管資料（官方介紹頁）",
         "dept": mcp_client.MCP_UNIT_TO_DEPT.get(o.get("unit"), ""),
         "date": _taipei_date(o.get("pageUpdatedAt") or ""),
+        # 現任主管資料每次抓取都確認姓名仍在官方頁面上，所以抓取時間就是最後確認時間
+        "fetched_at": _taipei_date(prov.get("verifiedAt") or ""),
+        "confirmed_at": _taipei_date(prov.get("verifiedAt") or ""),
         "source_id": f"mcp:official:{o.get('unit')}:{o.get('id')}",
     })
 
@@ -1854,7 +1905,8 @@ OFFICIALS_INSTRUCTION = (
     "可說明其他文件記載的是過去的職務。英文姓名只能用資料裡的官方英文姓名，官網未提供時不得自行音譯。"
     "以英文回答時，答案主句的姓名必須逐字使用「以英文回答時，姓名一律寫作」那一行（例如林道通寫作 Dalton Daw-Tung Lin，"
     "不可寫成 Lin Dao-Tung、Lin Tao-Tung 等自行音譯的拼法）。"
-    "回答時附上官方介紹頁連結。\n\n"
+    "回答時附上官方介紹頁連結。"
+    "「官方頁面最後修改」是來源修訂時間；「最後確認時間」是系統確認姓名仍載明在官方頁面上的時間，不代表內容經人工審核。\n\n"
 )
 
 
@@ -1878,6 +1930,13 @@ def _record_search_terms(keywords: str) -> list:
 
 
 def _record_document(kind: str, item: dict, detail: dict, dept: str) -> Document:
+    """MCP 紀錄轉成檢索文件；另記系統最後抓取時間（老師建議 四-2：與來源修訂日期分開）。"""
+    doc = _record_document_body(kind, item, detail, dept)
+    doc.metadata["fetched_at"] = _taipei_date((item.get("provenance") or {}).get("verifiedAt") or "")
+    return doc
+
+
+def _record_document_body(kind: str, item: dict, detail: dict, dept: str) -> Document:
     prov = item.get("provenance") or {}
     source_name = item.get("sourceName") or ""
     if kind == "attachment":
@@ -2033,7 +2092,9 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str):
 
 
 _ANSWER_RULE = ("請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。資料裡沒有寫的人名、職稱對應、數字、日期一律不得說出，"
-                "也不得用常識或印象補上；問題問的事實若文件沒有直接寫明，要明說查不到。\n\n")
+                "也不得用常識或印象補上；問題問的事實若文件沒有直接寫明，要明說查不到。"
+                "提到時間時要分清楚：公告或頁面上的日期是來源發布或修訂時間；系統抓取時間只代表系統最近讀取過，"
+                "不可說成內容已確認正確。\n\n")
 
 
 def _search_in(search_query: str, dept, previous_source_docs, keywords: str):
@@ -2922,7 +2983,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
 
     answer, model_quotes = answer_evidence.split_quotes(answer)
     if language == "en" and is_cjk(answer):
-        answer = safe_translate_bulk(answer, direction="zh2en")
+        answer = safe_translate_bulk(official_terms_for_translation(answer), direction="zh2en")
 
     answer = soften_empty_answer(answer)
     retrieval_trace = get_last_retrieval_trace()
@@ -2962,7 +3023,9 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
                     llm_adapter.complete(fix_msgs, model=MODEL_AGENT) or "")
                 if fixed.strip():
                     if language == "en" and is_cjk(fixed):
-                        fixed = safe_translate_bulk(fixed, direction="zh2en")
+                        fixed = safe_translate_bulk(official_terms_for_translation(fixed), direction="zh2en")
+                    if language == "en":
+                        fixed = fix_official_english_names(fixed)
                     _finalize_sources(fixed, fixed_quotes)
                     recheck = answer_evidence.check_answer(standalone_query, fixed, get_last_evidence(),
                                                            llm_adapter.classify_complete)
@@ -3074,6 +3137,8 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
             reranked_top_ids=retrieval_trace.get("reranked_top_ids", []),
             evidence_checks=evidence_checks,
             answer_check=answer_check,
+            index_version=index_version(),
+            mcp_synced_at=get_last_data_updated_at(),
             evidence_sufficient=(
                 any(bool(check.get("sufficient")) for check in evidence_checks
                     if isinstance(check, dict))
@@ -3495,6 +3560,23 @@ def fix_official_english_names(answer: str) -> str:
                     rf"({z}\*{{0,2}}\s*[（(]\s*\*{{0,2}})({_ROMANIZED_NAME})(\*{{0,2}}\s*[)）])")
         answer = re.sub(patterns[0], lambda m: (m.group(1) if m.group(1).strip("* ").lower() == en.lower() else en) + m.group(2), answer)
         answer = re.sub(patterns[1], lambda m: m.group(1) + (m.group(2) if m.group(2).strip("* ").lower() == en.lower() else en) + m.group(3), answer)
+    return answer
+
+
+def official_terms_for_translation(answer: str) -> str:
+    """中文答案要翻成英文前，先把現任主管的姓名與職稱換成官方英文寫法（翻譯會把林道通譯成 Lin Daotong、校長譯成 principal）。"""
+    roster = current_officials_roster()
+    for o in roster:
+        zh, en = o.get("name"), o.get("nameEn")
+        if zh and en and zh in (answer or ""):
+            answer = answer.replace(zh, f"{en} ({zh})")
+    # 職稱：長的先換，避免「學術副校長」被「校長」切開
+    for o in sorted(roster, key=lambda o: -len(o.get("title") or "")):
+        title, en_titles = o.get("title"), o.get("titleEnSearch") or []
+        if title and en_titles and title in (answer or ""):
+            en_title = en_titles[0][:1].upper() + en_titles[0][1:]
+            # 「校長室」是單位名稱、「副校長」是另一個職稱，都不換
+            answer = re.sub(rf"(?<!副){re.escape(title)}(?!室)", en_title, answer)
     return answer
 
 
@@ -4594,7 +4676,10 @@ async def feedback_endpoint(req: FeedbackRequest, request: Request):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "model": MODEL_AGENT, "provider": llm_adapter.PROVIDER}
+    version = index_version()
+    # 資料檔與建索引時不同：索引過期，需要重新部署或呼叫 refresh_knowledge_index
+    version["matches_data_files"] = bool(getattr(INDEX, "fingerprint", "")) and _data_fingerprint() == INDEX.fingerprint
+    return {"status": "ok", "model": MODEL_AGENT, "provider": llm_adapter.PROVIDER, "index": version}
 
 
 # ==========================================

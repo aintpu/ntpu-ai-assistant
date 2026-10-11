@@ -112,7 +112,7 @@ CHECK_PROMPT = """你是回答前的證據查核員。判斷「系統回答」�
 - supported=false：回答有任何具體事實在證據裡找不到直接支持（例如證據只寫曾任，回答卻說現任；證據沒寫的日期或數字）。
 - conflict=true：證據之間對同一件事說法互相矛盾（例如兩份文件寫不同人是現任），而回答直接選了其中一個下定論。
 - 回答只是換句話說、摘要、省略細節，或明說查不到、建議洽詢，都算 supported=true。
-- 回答提到「資料來源」「官方介紹頁」等引用說明不算具體事實。
+- 回答提到「資料來源」「官方介紹頁」等引用說明不算具體事實；證據列出的來源網址可以出現在回答中。
 - 回答指出上一輪錯誤的更正說明（例如「更正：上一則回答說校長是某某有誤」）裡被更正的錯誤內容不需要證據，只檢查更正後的正確內容。
 只輸出 JSON：{"supported": true|false, "conflict": true|false, "reason": "20 字內，說明哪一項沒有證據或哪裡衝突"}"""
 
@@ -123,6 +123,8 @@ def check_answer(question: str, answer: str, evidence: List[dict],
     blocks, budget = [], CHECK_EVIDENCE_CHARS
     for e in evidence[:10]:
         piece = f"【{e.get('title', '')}】"
+        if e.get("url"):
+            piece += f"\n來源網址：{e['url']}"
         if e.get("quote"):
             piece += f"\n原文片段：{e['quote']}"
         # 答案常引用文件後段（例如公告最後才寫獎金），只給開頭會誤判成「證據沒有」
@@ -151,7 +153,7 @@ def unconfirmed_answer(reason: str, conflict: bool, language: str) -> str:
     """證據不足或衝突時取代原答案：停止斷言，明確說明無法確認。"""
     if language == "en":
         why = "the sources conflict with each other" if conflict else "the sources do not directly support every detail"
-        return (f"I can't confirm this answer: {why}" + (f" ({reason})" if reason else "") + ". "
+        return (f"I can't confirm this answer: {why}. "
                 "Please check the official sources listed below or contact the office directly.")
     why = "查到的資料彼此說法不一致" if conflict else "查到的資料沒有直接寫明答案裡的每一項內容"
     return (f"目前無法確認這個問題的答案：{why}" + (f"（{reason}）" if reason else "") + "。"
