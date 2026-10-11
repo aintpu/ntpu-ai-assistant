@@ -4,6 +4,7 @@ import { AttachmentDocSchema, type AttachmentDoc } from "../../shared/schemas";
 import { MAX_OCR_BYTES, ocrImage } from "../extract/ocr";
 import { officeText } from "../extract/office";
 import { pdfText } from "../extract/pdf";
+import { scannedPageImages } from "../extract/scanned";
 import { personalDataReason } from "../personal-data";
 import type { SourceDefinition } from "../types";
 import type { Adapter, AdapterRecord, Plan, PlanStore, RejectedRecord, Step } from "./types";
@@ -122,9 +123,31 @@ function step(source: SourceDefinition, c: Candidate): Step {
         let doc: Parameters<typeof record>[1];
         if (c.ext === "pdf") {
           const pdf = await pdfText(bytes);
-          doc = pdf.scanned
-            ? { method: "none", extracted: false, note: "scanned", pages: pdf.pages, text: "" }
-            : { method: "pdf", extracted: true, note: null, pages: pdf.pages, text: pdf.text };
+          const cfg = source.adapter.kind === "attachments" ? source.adapter : null;
+          if (!pdf.scanned) {
+            doc = { method: "pdf", extracted: true, note: null, pages: pdf.pages, text: pdf.text };
+          } else if (!ctx.ai || !cfg) {
+            doc = { method: "none", extracted: false, note: "scanned", pages: pdf.pages, text: "" };
+          } else {
+            // 掃描型 PDF：逐頁取出掃描圖 OCR（最多前 maxOcrPagesPerPdf 頁）
+            const scan = await scannedPageImages(bytes, cfg.maxOcrPagesPerPdf);
+            const parts: string[] = [];
+            for (const img of scan.images) {
+              const text = await ocrImage(ctx.ai, cfg.ocrModel, img.png, "image/png");
+              if (text) parts.push(`【第 ${img.page} 頁】\n${text}`);
+            }
+            const truncated = scan.pages > cfg.maxOcrPagesPerPdf;
+            doc = parts.length
+              ? { method: "ocr", extracted: true, note: truncated ? `ocr_first_${cfg.maxOcrPagesPerPdf}_pages` : null, pages: pdf.pages, text: parts.join("\n\n") }
+              : {
+                  method: "none",
+                  extracted: false,
+                  // 取不出掃描圖（多半是傳真格式 CCITT）或辨識不到文字：換個標記，不再每輪重試
+                  note: scan.images.length ? "scanned_no_text" : "scanned_unsupported",
+                  pages: pdf.pages,
+                  text: "",
+                };
+          }
         } else if (OFFICE.has(c.ext)) {
           const text = officeText(bytes, c.ext);
           doc = text ? { method: "office", extracted: true, note: null, pages: null, text } : { method: "none", extracted: false, note: "no_text", pages: null, text: "" };
@@ -188,11 +211,18 @@ export const attachmentsAdapter: Adapter = {
       }
       batch.push(c);
     }
+    // 第二階段：之前標記為掃描檔（只有檔名與連結）的 PDF，每輪重新處理幾份、逐頁 OCR
+    const scannedKeys = await store.scannedKeys(source.entityType);
+    const rescans = candidates.filter((c) => scannedKeys.has(`${c.unit}:${c.id}`) && !failed.has(c.url));
+    for (const c of rescans.slice(0, cfg.maxScannedPerRun)) {
+      if (!batch.includes(c)) batch.push(c);
+    }
     const inBatch = new Set(batch.map((c) => c.id));
     return {
       steps: batch.map((c) => step(source, c)),
       seen: candidates.filter((c) => !inBatch.has(c.id)).map((c) => ({ id: c.id, unit: c.unit })),
-      deferred: pending.length - batch.length,
+      deferred: pending.length - batch.filter((c) => !scannedKeys.has(`${c.unit}:${c.id}`)).length +
+        Math.max(0, rescans.length - cfg.maxScannedPerRun),
     };
   },
 };

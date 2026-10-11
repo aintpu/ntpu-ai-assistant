@@ -90,7 +90,7 @@ describe("announcement attachments", () => {
     expect((await call("search_attachments", { keyword: "報名截止" })).items[0]).toMatchObject({ name: "poster_5.png", method: "ocr" });
     expect((await call("search_attachments", { keyword: "研發處" })).items[0]).toMatchObject({ name: "form_4.odt", method: "office" });
     // 掃描檔與壞檔：只有檔名與連結，可用檔名找到
-    expect((await call("search_attachments", { keyword: "scan_2" })).items[0]).toMatchObject({ extracted: false, note: "scanned" });
+    expect((await call("search_attachments", { keyword: "scan_2" })).items[0]).toMatchObject({ extracted: false, note: "scanned_unsupported" });
     expect((await call("search_attachments", { keyword: "broken_6" })).items[0]).toMatchObject({ extracted: false });
     // 名單：讀取但不公開
     expect((await call("search_attachments", { keyword: "王O明" })).count).toBe(0);

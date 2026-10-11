@@ -69,6 +69,7 @@ describe("attachment candidates and batches", () => {
     const plan = await attachmentsAdapter.plan!(source, "2026-10-08T00:00:00.000Z", {
       announcementAttachments: async () => [row("oaa", files)],
       handledKeys: async () => handled,
+      scannedKeys: async () => new Set<string>(),
       recentlyFailedTargets: async () => failed,
     });
     const targets = plan.steps.map((s) => s.request.target);
