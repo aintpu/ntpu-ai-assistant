@@ -63,5 +63,21 @@ class SourceTimeTests(unittest.TestCase):
         self.assertEqual(cards["https://new.ntpu.edu.tw/oaa/director"]["confirmed_at"], "2026-10-11")
 
 
+@unittest.skipIf(core is None, f"後端相依套件未安裝：{_IMPORT_ERROR}")
+class QueryTraceTests(unittest.TestCase):
+    """老師建議 五-1：日誌保存檢索片段與各來源的時間。"""
+
+    def test_trace_snippets_keep_source_and_times(self):
+        core._reset_source_collector()
+        core._collect_source_docs([Document(page_content="學雜費" * 200, metadata={
+            "title": "學雜費專區", "url": "https://u/fee", "type": "page", "date": "2026-07-08",
+            "fetched_at": "2026-10-11", "source_id": "mcp:page:oaa:1"})])
+        [snip] = core.retrieval_snippets_for_trace()
+        self.assertEqual(snip["source_id"], "mcp:page:oaa:1")
+        self.assertEqual((snip["revised_at"], snip["fetched_at"]), ("2026-07-08", "2026-10-11"))
+        self.assertEqual(len(snip["snippet"]), core.TRACE_SNIPPET_CHARS)
+        self.assertNotIn("confirmed_at", snip)
+
+
 if __name__ == "__main__":
     unittest.main()
