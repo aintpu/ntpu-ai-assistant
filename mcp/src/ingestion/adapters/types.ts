@@ -70,6 +70,8 @@ export interface PlanStore {
     { unit: string; announcementId: string; title: string; publishedAt: string | null; attachments: string }[]
   >;
   handledKeys(sourceId: string, entityType: string): Promise<Set<string>>;
+  /** 已收錄、但標記為掃描檔（note=scanned，還沒 OCR）的附件 stable_key。 */
+  scannedKeys(entityType: string): Promise<Set<string>>;
   recentlyFailedTargets(sourceId: string, sinceIso: string): Promise<Set<string>>;
 }
 

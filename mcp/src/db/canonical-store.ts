@@ -279,6 +279,17 @@ export class CanonicalStore {
   }
 
   /** 最近抓取失敗的目標（例如 404），這段期間先略過，避免同一批壞連結每次都佔掉名額。 */
+  async scannedKeys(entityType: string): Promise<Set<string>> {
+    const { results } = await this.db
+      .prepare(
+        `SELECT stable_key FROM entities
+         WHERE entity_type = ?1 AND status = 'active' AND json_extract(payload_json, '$.note') = 'scanned'`,
+      )
+      .bind(entityType)
+      .all<{ stable_key: string }>();
+    return new Set(results.map((r) => r.stable_key));
+  }
+
   async recentlyFailedTargets(sourceId: string, sinceIso: string): Promise<Set<string>> {
     const { results } = await this.db
       .prepare(

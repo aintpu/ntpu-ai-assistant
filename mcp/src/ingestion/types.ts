@@ -51,6 +51,10 @@ export interface AttachmentsConfig {
   maxPerRun: number;
   /** 每次執行最多送幾張圖片給看圖模型（OCR 較慢、會用到 Workers AI 額度）。 */
   maxOcrPerRun: number;
+  /** 每次執行最多重新處理幾份掃描型 PDF（每份逐頁 OCR，第二階段）。 */
+  maxScannedPerRun: number;
+  /** 掃描型 PDF 最多辨識前幾頁。 */
+  maxOcrPagesPerPdf: number;
   /** 看圖模型（Workers AI）。 */
   ocrModel: string;
 }

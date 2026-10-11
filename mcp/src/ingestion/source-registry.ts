@@ -345,6 +345,8 @@ const WEB_SOURCES: SourceDefinition[] = [
       kind: "attachments",
       maxPerRun: 40,
       maxOcrPerRun: 15,
+      maxScannedPerRun: 3,
+      maxOcrPagesPerPdf: 10,
       ocrModel: "@cf/mistralai/mistral-small-3.1-24b-instruct",
     },
     entityType: "attachment",
