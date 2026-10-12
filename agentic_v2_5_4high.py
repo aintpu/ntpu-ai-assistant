@@ -4036,7 +4036,29 @@ def prepare_conversation_turn(
             "domain": "OTHER",
         }
 
+    def _scope_for(standalone: str, res) -> ScopeDecision:
+        return decide_scope(
+            standalone,
+            {
+                "active_office": state.active_office,
+                "active_topic": state.active_topic,
+                "scope_verified": state.scope_verified,
+                "raw_query": raw_query,
+                **resolution_scope_context(res),
+            },
+            raw_query,
+        )
+
+    # 對話的第一個問題沒有前文可改寫：範圍判斷（Jev）不必等問題改寫（GPT-6 Luna），兩者同時跑，
+    # 省下其中一段的等待（2026-10-12 換模型後各約 3–5 秒）。追問仍依序執行，範圍判斷要用改寫後的問題。
+    first_turn = not history and not state.active_office and not state.active_topic
+    scope_future = None
     t0 = time.time()
+    if first_turn:
+        from concurrent.futures import ThreadPoolExecutor
+        _pool = ThreadPoolExecutor(max_workers=1)
+        scope_future = _pool.submit(_scope_for, raw_query, ConversationResolution(standalone_query=raw_query))
+        _pool.shutdown(wait=False)
     resolution = resolve_conversation(
         current_query=raw_query,
         history=history,
@@ -4072,17 +4094,10 @@ def prepare_conversation_turn(
         )
 
     t0 = time.time()
-    scope = decide_scope(
-        resolution.standalone_query,
-        {
-            "active_office": state.active_office,
-            "active_topic": state.active_topic,
-            "scope_verified": state.scope_verified,
-            "raw_query": raw_query,
-            **resolution_scope_context(resolution),
-        },
-        raw_query,
-    )
+    if scope_future is not None and not resolution.is_followup:
+        scope = scope_future.result()  # 已與問題改寫同時進行
+    else:
+        scope = _scope_for(resolution.standalone_query, resolution)
     _record_timing("scope_guardrail", time.time() - t0)
 
     if scope.status == "OUT_OF_SCOPE":
