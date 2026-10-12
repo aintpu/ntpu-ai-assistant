@@ -79,9 +79,13 @@ class VoicePipelineTests(unittest.TestCase):
                 raise RuntimeError("model_not_found")
             return SimpleNamespace(text="選課時間")
 
-        with patch.object(core.audio_client.audio.transcriptions, "create", side_effect=create):
+        # 預設只用 GPT Transcribe（老師 2026-10-12 指定）；有設定備援模型時才改用備援
+        with patch.object(core, "STT_FALLBACK_MODELS", ["backup-transcribe"]), \
+                patch.object(core.audio_client.audio.transcriptions, "create", side_effect=create):
             self.assertEqual(core.transcribe_audio_bytes(WEBM), "選課時間")
-        self.assertEqual(models, [core.STT_MODEL, *core.STT_FALLBACK_MODELS][:2])
+        self.assertEqual(models, [core.STT_MODEL, "backup-transcribe"])
+        self.assertEqual(core.STT_MODEL, "gpt-transcribe")
+        self.assertEqual(core.STT_FALLBACK_MODELS, [])
 
         with patch.object(core.audio_client.audio.transcriptions, "create", side_effect=RuntimeError("down")):
             self.assertEqual(core.transcribe_audio_bytes(WEBM), "")

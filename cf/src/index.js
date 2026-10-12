@@ -122,7 +122,7 @@ export class NtpuAiaBackend extends Container {
       MCP_REGULATIONS: env.MCP_REGULATIONS ?? "0",
       MCP_URL: env.MCP_URL ?? "https://aia.mcp.ntpu.ai/mcp",
       // 意圖與範圍分類模型（問題改寫、處室判斷），透過 OpenRouter 呼叫；兩者都設定才啟用，
-      // 否則或呼叫失敗時沿用 gpt-4o-mini。以 Worker secret 設定（一般變數會在部署時被清掉）。
+      // 否則或呼叫失敗時改用主模型 GPT-6 Luna。以 Worker secret 設定（一般變數會在部署時被清掉）。
       CLASSIFIER_MODEL: env.CLASSIFIER_MODEL ?? "",
       OPENROUTER_API_KEY: env.OPENROUTER_API_KEY ?? "",
       // 查詢流程紀錄長期保存（老師建議 五-1）：後端把結構化事件 POST 到這個 Worker 的內部端點，寫入 D1。
