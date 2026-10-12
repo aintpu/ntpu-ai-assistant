@@ -50,7 +50,7 @@ MCP 在下一輪抓取時更新（約 5 小時內）；機器人本機索引要�
 - 串流文字回答
 - 繁體中文與英文介面
 - 圖片內容分析
-- Whisper 語音辨識
+- GPT Transcribe 語音轉文字（中文、英文及中英混合）
 - OpenAI TTS 語音輸出
 - 每個 IP 每分鐘最多 15 次請求
 - Prompt injection 基礎偵測
@@ -67,7 +67,7 @@ Cloudflare Worker：ntpu-aia-api
   └─ /api/* → Cloudflare Container（FastAPI + FAISS + BM25）
                   ├─ SYSTEM FAQ
                   ├─ 21 單位 Router / Agent 工具呼叫
-                  └─ 設定的 LLM、Embedding、Whisper / TTS API
+                  └─ 設定的 LLM、Embedding、GPT Transcribe / TTS API
 ```
 
 前端與後端使用同一網域與 Worker。正式拓撲與操作方式見 [DEPLOY.md](DEPLOY.md)；
@@ -109,8 +109,9 @@ Copy-Item config.example.txt config.txt
 ```text
 OPENAI_API_KEY=你的金鑰
 OPENAI_BASE_URL=https://api.openai.com/v1
-MODEL_BIG=gpt-5.4-mini
-MODEL_SMALL=gpt-4o-mini
+MODEL_BIG=gpt-6-luna
+MODEL_SMALL=gpt-6-luna
+# CLASSIFIER_MODEL=typesafe/jev-router（意圖分類、處室判斷、候選選擇、結果評分；需 OPENROUTER_API_KEY）
 EMBEDDING_MODEL=text-embedding-3-small
 EMBEDDING_MAX_RETRIES=8
 SYSTEM_PRIMARY_THRESHOLD=0.56

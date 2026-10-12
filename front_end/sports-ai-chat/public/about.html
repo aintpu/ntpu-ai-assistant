@@ -206,6 +206,8 @@
   .layer h4{font-size:16.5px;font-weight:700;margin-bottom:6px}
   .layer .stack{font-size:12.5px;color:var(--plum);font-weight:600;margin-bottom:8px;font-family:"SFMono-Regular",Consolas,monospace;letter-spacing:.01em}
   .layer p{font-size:13.5px;color:var(--muted);line-height:1.6}
+  .layer ol{font-size:13.5px;color:var(--muted);line-height:1.6;margin:6px 0 0;padding-left:20px}
+  .layer ol b{color:var(--text,inherit);font-weight:600}
   .layer svg{width:22px;height:22px}
 
   /* ---------- scope detail ---------- */
@@ -724,8 +726,13 @@
       <div class="layer reveal">
         <div class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1 0 8v1a4 4 0 0 1-8 0v-1a4 4 0 0 1 0-8V6a4 4 0 0 1 4-4z"/></svg></div>
         <div><h4><span class="zh">AI 模型</span><span class="en">AI models</span></h4>
-        <div class="stack">GPT-5.4-mini · GPT-4o-mini · Whisper</div>
-        <p><span class="zh">主模型負責理解問題與產生回答；輔助模型處理處室判斷、問題改寫與結果排序；Whisper 支援語音辨識。</span><span class="en">The main model interprets questions and composes answers; a lighter model handles routing, query rewriting, and re-ranking; Whisper powers speech recognition.</span></p></div>
+        <div class="stack">GPT-6 Luna · Jev 1.13 · GPT Transcribe</div>
+        <p><span class="zh">採用成本效益預期較理想的 AI 模型組合，分工如下：</span><span class="en">A model mix chosen for expected cost-effectiveness, divided as follows:</span></p>
+        <ol>
+          <li><span class="zh"><b>GPT-6 Luna</b>：問題改寫、文字回答與圖片解析。</span><span class="en"><b>GPT-6 Luna</b>: query rewriting, text answers, and image analysis.</span></li>
+          <li><span class="zh"><b>Jev 1.13</b>：意圖分類、處室判斷、候選選擇與結果評分。</span><span class="en"><b>Jev 1.13</b>: intent classification, office routing, candidate selection, and result scoring.</span></li>
+          <li><span class="zh"><b>GPT Transcribe</b>：中文、英文及中英混合語音轉文字。</span><span class="en"><b>GPT Transcribe</b>: speech-to-text for Chinese, English, and mixed Chinese–English.</span></li>
+        </ol></div>
       </div>
       <div class="layer reveal">
         <div class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 10a6 6 0 0 0-11.3-2A4.5 4.5 0 0 0 7 17h11a4 4 0 0 0 0-8z"/></svg></div>

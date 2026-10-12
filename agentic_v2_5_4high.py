@@ -3,6 +3,7 @@
 # 架構：Modular RAG (Agentic Loop & Tool Calling) + Multimodal UI
 
 import asyncio
+import functools
 import os
 import re
 import io
@@ -125,10 +126,10 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 client_vision = google_genai.Client(api_key=GOOGLE_API_KEY) if (google_genai and GOOGLE_API_KEY) else None
 # 圖片解析模型（OpenAI 相容 API，與 OPENAI_BASE_URL 共用 client）。
 # 預設 gpt-5.5（2026 旗艦、支援圖片輸入）；帳號無權限或模型下架時改用備援模型。
-VISION_MODEL = os.getenv("VISION_MODEL", "").strip() or "gpt-5.5"
-# 逗號分隔，依序嘗試；gpt-4o 是舊版正式環境已驗證可用的最後防線。
+VISION_MODEL = os.getenv("VISION_MODEL", "").strip() or "gpt-6-luna"  # 圖片解析（老師 2026-10-12 指定 GPT-6 Luna）
+# 逗號分隔，依序嘗試；預設不設備援，只用老師指定的三個模型（需要時以環境變數加上）。
 VISION_FALLBACK_MODELS = [
-    m.strip() for m in os.getenv("VISION_FALLBACK_MODELS", "gpt-5.4-mini,gpt-4o").split(",") if m.strip()
+    m.strip() for m in os.getenv("VISION_FALLBACK_MODELS", "").split(",") if m.strip()
 ]
 VISION_FOLLOWUP_MODEL = os.getenv("VISION_FOLLOWUP_MODEL", "").strip()
 VISION_REASONING_EFFORT = os.getenv("VISION_REASONING_EFFORT", "low").strip()
@@ -1113,6 +1114,18 @@ def hyde_expand(query: str) -> str:
     except:
         return query
 
+@functools.lru_cache(maxsize=256)
+def _query_variants(query: str) -> tuple:
+    """查詢改寫與 HyDE（兩次獨立的模型呼叫，並行執行）。同一題的處室查詢與全校補查共用結果，
+    換成 GPT-6 Luna 後每次約 3–5 秒，不重複呼叫（2026-10-12）。"""
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_rw = ex.submit(llm_rewrite_query, query, "zh-TW")
+        f_hy = ex.submit(hyde_expand, query)
+        variants = [query] + f_rw.result() + [f_hy.result()]
+    return tuple(dict.fromkeys(variants))[:5]
+
+
 def retrieve_and_rerank(query: str, top_k: int = 8, use_rerank: bool = True,
                         dept: str = None,
                         previous_source_docs: List[Document] = None) -> List[Document]:
@@ -1132,14 +1145,8 @@ def retrieve_and_rerank(query: str, top_k: int = 8, use_rerank: bool = True,
         [_source_id_for_doc(d) for d in previous_source_docs],
     )
 
-    # query 改寫與 HyDE 是兩次獨立的 LLM 呼叫，並行執行省 ~1s
     t0 = time.time()
-    from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=2) as ex:
-        f_rw = ex.submit(llm_rewrite_query, query, "zh-TW")
-        f_hy = ex.submit(hyde_expand, query)
-        variants = [query] + f_rw.result() + [f_hy.result()]
-    variants = list(dict.fromkeys(variants))[:5]
+    variants = list(_query_variants(query))
     _record_timing("rewrite+hyde", time.time() - t0)
 
     # dept 過濾會刷掉部分結果，先多撈再過濾以維持 recall
@@ -1191,7 +1198,7 @@ def retrieve_and_rerank(query: str, top_k: int = 8, use_rerank: bool = True,
         t0 = time.time()
         items = [f"[{i+1}] {d.page_content[:300]}" for i, d in enumerate(candidates[:10])]
         try:
-            out = llm_adapter.complete(
+            out = llm_adapter.classify_complete(  # 結果評分／排序：Jev（老師指定）
                 [{"role":"system","content":"Score snippets 0-3 for relevance to query. Return JSON array of numbers."},
                  {"role":"user","content":f"Query: {query}\n\n" + "\n".join(items)}],
                 temperature=0)
@@ -2101,7 +2108,7 @@ def is_overview_question(*queries) -> bool:
 def overview_terms(question: str, terms: list) -> list:
     """請分類模型列出完整回答這題要查的子主題（學校規定的用語），分別去查；失敗就不擴充。"""
     try:
-        raw = llm_adapter.classify_complete([
+        raw = llm_adapter.complete([  # 子主題擴充屬於問題改寫：GPT-6 Luna
             {"role": "system", "content": (
                 "使用者問的是國立臺北大學某類規定的總覽（例如「畢業門檻有哪些」）。列出要完整回答需要分別查詢的子主題，"
                 "用學校規定與網頁上會出現的中文詞（例如 外語能力、資訊素養、跨領域學習、學則、應修學分），每個 2–8 字，最多 5 個；"
@@ -2267,7 +2274,8 @@ def _search_in(search_query: str, dept, previous_source_docs, keywords: str, ove
         hits = retrieve_and_rerank(
             search_query,
             top_k=6,
-            use_rerank=True,
+            # 全校補查只是擴大範圍，不再跑一次 Jev 排序（每次 4–6 秒）；排序只在處室查詢做
+            use_rerank=dept is not None,
             dept=dept,
             previous_source_docs=previous_source_docs,
         )
@@ -3352,10 +3360,10 @@ def synthesize_agentic_answer_stream(user_query: str, language: str, history: li
 # ==========================================
 # 7. 多模態模組 (Audio & Vision)
 # ==========================================
-# 語音轉文字：預設 gpt-transcribe（OpenAI 2026 建議的轉寫模型），失敗時改用 whisper-1。
+# 語音轉文字：GPT Transcribe（老師 2026-10-12 指定；中文、英文及中英混合）。備援模型預設不設，需要時以環境變數加上。
 STT_MODEL = os.getenv("STT_MODEL", "").strip() or "gpt-transcribe"
 STT_FALLBACK_MODELS = [
-    m.strip() for m in os.getenv("STT_FALLBACK_MODELS", "whisper-1").split(",") if m.strip()
+    m.strip() for m in os.getenv("STT_FALLBACK_MODELS", "").split(",") if m.strip()
 ]
 # 提示詞同時是「繁體中文輸出」與「校務專有名詞」的提示；Whisper 對中文常輸出簡體字。
 STT_PROMPT = os.getenv(
@@ -4033,7 +4041,7 @@ def prepare_conversation_turn(
         current_query=raw_query,
         history=history,
         state=state,
-        complete_fn=llm_adapter.classify_complete,
+        complete_fn=llm_adapter.complete,  # 問題改寫：GPT-6 Luna（老師指定）
         retries=1,
     )
     _record_timing("conversation_resolution", time.time() - t0)
@@ -4367,7 +4375,7 @@ def classify_department(query: str, history: list = None) -> str:
     """Backward-compatible adapter; new endpoints use prepare_conversation_turn."""
     state = ConversationState.from_value({})
     resolution = resolve_conversation(
-        query, history or [], state, llm_adapter.classify_complete, retries=1
+        query, history or [], state, llm_adapter.complete, retries=1
     )
     system_match = _best_system_match(query, resolution.standalone_query)
     if should_route_system(query, system_match, threshold=SYSTEM_PRIMARY_THRESHOLD):

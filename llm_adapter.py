@@ -5,8 +5,8 @@
     LLM_PROVIDER=openai|ollama          預設 openai
     # openai 模式
     OPENAI_API_KEY=sk-...
-    MODEL_BIG=gpt-5.4-mini              agent 主模型
-    MODEL_SMALL=gpt-4o-mini             分類/改寫/rerank 等輔助任務
+    MODEL_BIG=gpt-6-luna                主模型：問題改寫、文字回答（老師 2026-10-12 指定）
+    MODEL_SMALL=gpt-6-luna              其餘輔助任務（翻譯、HyDE、子主題擴充）；分類與評分走 CLASSIFIER_MODEL（Jev）
     # ollama 模式（實驗室電腦）
     OLLAMA_BASE_URL=http://localhost:11434
     OLLAMA_MODEL_BIG=gemma4:31b
@@ -54,8 +54,10 @@ else:
         "OPENAI_BASE_URL", "https://api.openai.com/v1"
     ).rstrip("/")
     client = OpenAI(api_key=_api_key, base_url=_base_url)
-    MODEL_BIG = os.getenv("MODEL_BIG", "gpt-5.4-mini")
-    MODEL_SMALL = os.getenv("MODEL_SMALL", "gpt-4o-mini")
+    # 老師 2026-10-12 指定的模型分工：GPT-6 Luna（問題改寫、文字回答、圖片解析）＋ Jev 1.13（意圖分類、處室判斷、
+    # 候選選擇、結果評分，見 CLASSIFIER_MODEL）＋ GPT Transcribe（語音轉文字）
+    MODEL_BIG = os.getenv("MODEL_BIG", "gpt-6-luna")
+    MODEL_SMALL = os.getenv("MODEL_SMALL", "gpt-6-luna")
     SUPPORTS_STREAMING = True
     SUPPORTS_REASONING = True
 
@@ -64,7 +66,8 @@ else:
 CLASSIFIER_MODEL = os.getenv("CLASSIFIER_MODEL", "").strip()
 _openrouter_key = os.getenv("OPENROUTER_API_KEY", "").strip()
 classifier_client = (
-    OpenAI(api_key=_openrouter_key, base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"))
+    # 不自動重試：逾時或失敗就直接改用主模型（見 classify_complete）
+    OpenAI(api_key=_openrouter_key, base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"), max_retries=0)
     if CLASSIFIER_MODEL and _openrouter_key else None
 )
 
@@ -97,6 +100,18 @@ def _build_kwargs(messages, model, tools, tool_choice, temperature,
     return kwargs
 
 
+def _create_retry(kwargs):
+    """第二次呼叫；仍有不支援的參數（例如 temperature）就再剝除一次。"""
+    try:
+        return client.chat.completions.create(**kwargs)
+    except Exception as e:
+        msg = str(e)
+        dropped = [k for k in ("temperature", "response_format", "tool_choice") if k in msg and kwargs.pop(k, None) is not None]
+        if dropped:
+            return client.chat.completions.create(**kwargs)
+        raise
+
+
 def _create(messages, model=None, tools=None, tool_choice=None, temperature=None,
             max_tokens=None, reasoning_effort=None, stream=False,
             response_format=None):
@@ -108,7 +123,13 @@ def _create(messages, model=None, tools=None, tool_choice=None, temperature=None
         # 供應商不認得的參數（如 reasoning_effort / max_completion_tokens）自動剝除重試
         msg = str(e)
         retried = False
-        for bad in ("reasoning_effort", "max_completion_tokens", "tool_choice", "response_format"):
+        # GPT-6 Luna 在 chat completions 帶工具時只接受 reasoning_effort='none'（2026-10-12 錯誤訊息明示）
+        if "reasoning_effort" in msg and "'none'" in msg and kwargs.get("reasoning_effort") != "none":
+            kwargs["reasoning_effort"] = "none"
+            kwargs.pop("temperature", None)
+            return _create_retry(kwargs)
+        # GPT-6 系列只接受預設 temperature（2026-10-12：temperature=0 會回 400）
+        for bad in ("reasoning_effort", "max_completion_tokens", "tool_choice", "response_format", "temperature"):
             if bad in msg and bad in kwargs:
                 val = kwargs.pop(bad)
                 if bad == "max_completion_tokens":
@@ -130,6 +151,11 @@ def complete(messages, model=None, temperature=0, max_tokens=None,
     return (rsp.choices[0].message.content or "").strip()
 
 
+# Jev 經 OpenRouter 呼叫，回應時間不穩（2026-10-12 實測範圍判斷平均 8.7 秒、最慢 66 秒）：
+# 超過這個秒數就放棄、改用主模型，不讓單次分類拖慢整個問答。
+CLASSIFIER_TIMEOUT_SECONDS = float(os.getenv("CLASSIFIER_TIMEOUT_SECONDS", "8"))
+
+
 def classify_complete(messages, temperature=0, max_tokens=None, response_format=None, **_ignored) -> str:
     """意圖與範圍分類用。設定了 CLASSIFIER_MODEL 與 OPENROUTER_API_KEY 時改用該模型；
     呼叫失敗（網路、額度、模型不支援某參數）就退回 MODEL_SMALL，不讓分類中斷整個問答。"""
@@ -144,12 +170,12 @@ def classify_complete(messages, temperature=0, max_tokens=None, response_format=
         kwargs["response_format"] = response_format
     try:
         try:
-            rsp = classifier_client.chat.completions.create(**kwargs)
+            rsp = classifier_client.chat.completions.create(**kwargs, timeout=CLASSIFIER_TIMEOUT_SECONDS)
         except Exception as e:
             if "response_format" not in str(e) or "response_format" not in kwargs:
                 raise
             kwargs.pop("response_format")
-            rsp = classifier_client.chat.completions.create(**kwargs)
+            rsp = classifier_client.chat.completions.create(**kwargs, timeout=CLASSIFIER_TIMEOUT_SECONDS)
         text = (rsp.choices[0].message.content or "").strip()
         if text:
             return text

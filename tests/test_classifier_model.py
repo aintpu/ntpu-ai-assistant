@@ -33,6 +33,7 @@ class ClassifierModelTests(unittest.TestCase):
         self.assertEqual(out, '{"status":"IN_SCOPE"}')
         kwargs = client.chat.completions.create.call_args.kwargs
         self.assertEqual(kwargs["model"], "anthropic/claude-sonnet-5.5")
+        self.assertEqual(kwargs["timeout"], llm_adapter.CLASSIFIER_TIMEOUT_SECONDS)  # Jev 逾時就改用主模型
         self.assertEqual(kwargs["response_format"], {"type": "json_object"})
         small.assert_not_called()
 
@@ -52,12 +53,17 @@ class ClassifierModelTests(unittest.TestCase):
             self.assertEqual(llm_adapter.classify_complete("q", response_format={"type": "json_object"}), "ok")
         self.assertNotIn("response_format", client.chat.completions.create.call_args.kwargs)
 
-    def test_scope_and_resolver_use_the_classifier(self):
+    def test_model_division_follows_the_teachers_spec(self):
+        """老師 2026-10-12 指定：GPT-6 Luna 問題改寫、文字回答、圖片解析；Jev 意圖分類、處室判斷、候選選擇、結果評分；
+        GPT Transcribe 語音轉文字。"""
         import pathlib
         src = (pathlib.Path(__file__).resolve().parents[1] / "agentic_v2_5_4high.py").read_text(encoding="utf-8")
-        self.assertNotIn("complete_fn=llm_adapter.complete", src)
-        # 改寫、範圍判斷、處室分類、回答後檢查證據與修正後再檢查（老師建議 二-2）、總覽題子主題擴充
-        self.assertEqual(src.count("llm_adapter.classify_complete"), 6)
+        # Jev：範圍與處室判斷、rerank 評分、回答後證據檢查（含修正後再檢查）
+        self.assertEqual(src.count("llm_adapter.classify_complete"), 4)
+        self.assertIn("complete_fn=llm_adapter.classify_complete, retries=1", src)  # 範圍／處室判斷
+        # 問題改寫走主模型
+        self.assertIn("complete_fn=llm_adapter.complete,  # 問題改寫", src)
+        self.assertEqual(llm_adapter.MODEL_BIG if llm_adapter.PROVIDER == "openai" else "gpt-6-luna", "gpt-6-luna")
 
 
 if __name__ == "__main__":
