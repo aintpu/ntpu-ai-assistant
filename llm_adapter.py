@@ -140,14 +140,20 @@ def _create(messages, model=None, tools=None, tool_choice=None, temperature=None
         raise
 
 
+# 輔助任務（問題改寫、HyDE、翻譯、子主題擴充）不需要長推理。GPT-6 Luna 的推理 token 會算進輸出上限，
+# max_tokens=150 時推理就用完、回傳空白（2026-10-12：子主題擴充每次都失敗）。設為 none 也比較快。
+AUX_REASONING_EFFORT = os.getenv("AUX_REASONING_EFFORT", "none").strip()
+
+
 def complete(messages, model=None, temperature=0, max_tokens=None,
-             response_format=None) -> str:
+             response_format=None, reasoning_effort=None) -> str:
     """輔助任務用：單次呼叫回覆文字（分類、改寫、rerank、摘要等）"""
     if isinstance(messages, str):
         messages = [{"role": "user", "content": messages}]
     rsp = _create(messages, model=model or MODEL_SMALL,
                   temperature=temperature, max_tokens=max_tokens,
-                  response_format=response_format)
+                  response_format=response_format,
+                  reasoning_effort=reasoning_effort or AUX_REASONING_EFFORT or None)
     return (rsp.choices[0].message.content or "").strip()
 
 

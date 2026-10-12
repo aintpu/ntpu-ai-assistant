@@ -2087,6 +2087,7 @@ def _record_document_body(kind: str, item: dict, detail: dict, dept: str) -> Doc
 
 
 _ALL_UNITS = "*"  # 不指定處室
+MCP_MIN_FIRST_ROUND = 3  # 第一輪少於這個筆數就繼續逐詞查
 
 # 總覽題（「畢業門檻有哪些？」）：只用問題裡的詞查，標題剛好含該詞的公告會擠掉真正寫明各項規定的辦法與專區頁面
 # （2026-10-11 漏掉〈選課專區〉的跨領域學習規定與〈外語能力指標檢核辦法〉）。
@@ -2201,7 +2202,8 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
                     if overview and len(entry) == 3:
                         entry[0] += _OVERVIEW_KIND_BONUS.get(kind, 0)
                         entry.append(True)  # 類型加分每筆只加一次
-        if scored:
+        # 第一輪（全部關鍵字一起）只找到一兩筆時也繼續逐詞查（2026-10-12「畢業門檻」只查到一份碩士班簡章就停）
+        if len(scored) >= MCP_MIN_FIRST_ROUND:
             break
     if failures:
         print(f"[MCP] 部分查詢失敗，其餘照常使用：{failures[:3]}")
