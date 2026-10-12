@@ -75,7 +75,7 @@ describe("real crawler_data files", () => {
   });
 
   it("keeps every FAQ question", () => {
-    expect(count(`SELECT COUNT(*) n FROM entities WHERE entity_type='faq'`)).toBe(1038 - RETIRED);
+    expect(count(`SELECT COUNT(*) n FROM entities WHERE entity_type='faq'`)).toBe(1057 - RETIRED);
     expect(count(`SELECT COUNT(DISTINCT source_unit) n FROM entities WHERE entity_type='faq'`)).toBe(16);
   });
 

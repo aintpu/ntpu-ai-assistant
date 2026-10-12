@@ -3,8 +3,8 @@
     "name": "研究發展處",
     "workbook": "NTPU_ORD_FAQ_20261002-研發處.xlsx",
     "workbook_sha256": "c80e7817ab95f4ad556d460023c11c8e40b90ce36bcfefb025c2ec2e660385e1",
-    "markdown_sha256": "a8f772f0e8327e0ae6d7ea50eedb382f98afc0c64cb480a619b7a9c220a96b91",
-    "count": 175,
+    "markdown_sha256": "f1b591760c7c18bfe4035443e84010ae65d8ea5f866c53ae180e75930d0f3ce0",
+    "count": 194,
     "records": [
       {
         "id": "ORD-HQ-001",
@@ -880,6 +880,109 @@
         "id": "ORD-AE-033",
         "question": "國科會研究誠信電子報有什麼內容？",
         "url": "https://new.ntpu.edu.tw/ord/news/69a52fb863f5a608851faf78"
+      },
+      {
+        "id": "ORD-QA-001",
+        "question": "本校教師欲申請國科會計畫，應該從哪裡開始？",
+        "url": "https://ntpu-new-faculty-handbook.netlify.app/#rnd"
+      },
+      {
+        "id": "ORD-QA-002",
+        "question": "國科會計畫尚未通過或目前還沒有計畫經費，學校有哪些相關支持？",
+        "url": "https://new.ntpu.edu.tw/ord/subsidies-university"
+      },
+      {
+        "id": "ORD-QA-003",
+        "question": "國科會大專學生計畫何時開始受理申請？申請方式為何？",
+        "url": "https://new.ntpu.edu.tw/ord/nstc-studnent-research"
+      },
+      {
+        "id": "ORD-QA-004",
+        "question": "我需要學生協助研究，但目前沒有足夠的人力經費，可以申請哪些補助？",
+        "url": "https://new.ntpu.edu.tw/ord/student-assistant"
+      },
+      {
+        "id": "ORD-QA-005",
+        "question": "國科會計畫獲得補助後，若遇到經費調整、計畫變更或結案問題，可以找誰協助？",
+        "url": "https://new.ntpu.edu.tw/ord/projects-most"
+      },
+      {
+        "id": "ORD-QA-006",
+        "question": "校內學術研究獎勵及補助可以立即申請？申請方式、時間與補助金額為何？",
+        "url": "https://new.ntpu.edu.tw/ord/subsidies-university"
+      },
+      {
+        "id": "ORD-QA-007",
+        "question": "每年常常需要填報個人研究成果與論文數據，這些資料會用在哪裡？會影響我的權益嗎？",
+        "url": "https://ntpu-new-faculty-handbook.netlify.app/#rnd"
+      },
+      {
+        "id": "ORD-QA-008",
+        "question": "我想辦理產學合作計畫，校內程序可以怎麼開始？",
+        "url": "https://new.ntpu.edu.tw/ord/projects-cooperate"
+      },
+      {
+        "id": "ORD-QA-009",
+        "question": "我有一些研發成果，我應該怎麼保護？",
+        "url": "https://new.ntpu.edu.tw/ord/patents"
+      },
+      {
+        "id": "ORD-QA-010",
+        "question": "廠商想私下找我做，可以直接接嗎？兼職、借調要辦什麼？",
+        "url": "https://new.ntpu.edu.tw/ord/projects-cooperate"
+      },
+      {
+        "id": "ORD-QA-011",
+        "question": "本校是否有跨校研究合作的資源可提供老師申請？",
+        "url": "https://new.ntpu.edu.tw/ord/ustp-academic-cooperation"
+      },
+      {
+        "id": "ORD-QA-012",
+        "question": "研究發展處各項獎補助資源可在哪裡找到相關資訊？",
+        "url": "https://new.ntpu.edu.tw/ord/grants"
+      },
+      {
+        "id": "ORD-QA-013",
+        "question": "想要尋求產學合作的機會可以向哪個單位尋求協助？",
+        "url": "https://ntpu-new-faculty-handbook.netlify.app/#rnd"
+      },
+      {
+        "id": "ORD-QA-014",
+        "question": "本校 BOT 產學合作研究計畫資源有哪些？合作模式為何？",
+        "url": "https://new.ntpu.edu.tw/ord/grants"
+      },
+      {
+        "id": "ORD-QA-015",
+        "question": "如果希望成立衍生新創公司，應如何辦理？",
+        "url": "https://ntpu-new-faculty-handbook.netlify.app/#rnd"
+      },
+      {
+        "id": "ORD-QA-016",
+        "question": "研發處所轄研究計畫（國科會／產學案／北聯大）之兼任人力聘任類別及其流程為何？",
+        "url": "https://new.ntpu.edu.tw/ord/project-recruitment"
+      },
+      {
+        "id": "ORD-QA-017",
+        "question": "誰需要上學術倫理教育課程？",
+        "url": "https://new.ntpu.edu.tw/ord/academic-integrity-training"
+      },
+      {
+        "id": "ORD-QA-018",
+        "question": "校內研究倫理送審流程為何？",
+        "url": "https://new.ntpu.edu.tw/ord/academic-integrity-review"
+      },
+      {
+        "id": "ORD-QA-019",
+        "question": "本校對於生成式 AI 用於學術暨產學研究發展，有何參考指引？",
+        "url": "https://cms-carrier.ntpu.edu.tw/uploads/AI_v10_46b3b5666e.pdf"
+      }
+    ],
+    "supplements": [
+      {
+        "file": "1150922_NTPU AI Assistant-研發處Q&A.pdf",
+        "count": 19,
+        "ids": "ORD-QA-001..ORD-QA-019",
+        "note": "研發處 2026-09-22 提供，人工轉寫"
       }
     ]
   },

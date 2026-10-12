@@ -14,7 +14,7 @@ from office_catalog import FAQ_OFFICES
 from system_faq import QueryDomain, SystemFAQRetriever, should_route_system
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED = dict(ord=175, oa=70, lib=187, cic=101, oia=85, eec=111,
+EXPECTED = dict(ord=194, oa=70, lib=187, cic=101, oia=85, eec=111,
                 alu=57, sus=42, edusp=26, os=61, vpa=6, vpad=6, vpf=5, pres=6)
 
 
@@ -36,7 +36,7 @@ class AddedOfficeTests(unittest.TestCase):
                          H3_RE=re.compile(r'^###\s+(.+?)\s*$', re.M))
         exec(compile(ast.Module(body=functions, type_ignores=[]), '<parser>', 'exec'), namespace)
         manifest = json.loads((ROOT / 'crawler_data/office_faq_manifest.json').read_text())
-        self.assertEqual(sum(EXPECTED.values()), 938)
+        self.assertEqual(sum(EXPECTED.values()), 957)
         for code, count in EXPECTED.items():
             with self.subTest(code=code):
                 path = ROOT / 'crawler_data' / f'{code}_faq.md'
