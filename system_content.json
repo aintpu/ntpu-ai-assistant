@@ -53,8 +53,8 @@
       "Office of the President"
     ],
     "deployment_stack": "Cloudflare Workers · Containers · Durable Objects · D1 · R2",
-    "deployment_zh": "前端靜態資源與 API 由同一個 Cloudflare Worker 提供；FastAPI、FAISS 與 BM25 執行於 Cloudflare Container，對話狀態保存於 Durable Object storage，API 金鑰以 Worker Secret 管理。公告、法規與常見問答由另一組 Worker 每天同步到 D1（原始檔存 R2），透過唯讀 MCP 服務 aia.mcp.ntpu.ai 查詢。",
-    "deployment_en": "One Cloudflare Worker serves the static frontend and API gateway; FastAPI, FAISS, and BM25 run in a Cloudflare Container, conversation state is stored in Durable Object storage, and API keys are managed as Worker Secrets. Announcements, regulations, and FAQs are synced daily by separate Workers into D1 (raw files in R2) and queried through the read-only MCP service at aia.mcp.ntpu.ai."
+    "deployment_zh": "前端靜態資源與 API 由同一個 Cloudflare Worker 提供；FastAPI、FAISS 與 BM25 執行於 Cloudflare Container，對話狀態保存於 Durable Object storage，API 金鑰以 Worker Secret 管理。公告、官網內容頁、附件、法規、常見問答與現任主管資料由另一組 Worker 每天同步到 D1（原始檔存 R2），透過唯讀 MCP 服務 aia.mcp.ntpu.ai 查詢；查詢流程紀錄另存於 D1（ntpu-aia-query-logs）。",
+    "deployment_en": "One Cloudflare Worker serves the static frontend and API gateway; FastAPI, FAISS, and BM25 run in a Cloudflare Container, conversation state is stored in Durable Object storage, and API keys are managed as Worker Secrets. Announcements, web pages, attachments, regulations, FAQs, and current officials are synced daily by separate Workers into D1 (raw files in R2) and queried through the read-only MCP service at aia.mcp.ntpu.ai; query traces are stored in a separate D1 database."
   },
   "faqs": [
     {
@@ -64,7 +64,7 @@
       "question_en": "What questions can you answer?",
       "aliases_zh": ["你會什麼", "你能幹嘛", "你會回答什麼", "這網站可以問什麼", "這個系統能做什麼", "可以查什麼", "可以查哪些處室", "支援哪些業務", "服務範圍是什麼", "有哪些功能"],
       "aliases_en": ["What can you do?", "What does this system support?", "What can I ask?", "What is your scope?"],
-      "answer_zh": "目前可查詢 體育室、通識教育中心、語言中心、教務處、學務處、人事室、總務處、研究發展處、主計室、圖書館、資訊中心、國際事務處、進修暨推廣部、校友中心、永續辦公室、高等教育深耕計畫辦公室、秘書室、學術副校長室、行政副校長室、財務暨永續發展副校長室、校長室，共 21 個單位的公告、規定與常見問題。17 個單位的官網公告每天自動同步；法規與常見問答為人工整理收錄，各單位資料範圍不同。你也可以詢問本系統的使用方式、資料來源、限制與隱私提醒。",
+      "answer_zh": "目前可查詢 體育室、通識教育中心、語言中心、教務處、學務處、人事室、總務處、研究發展處、主計室、圖書館、資訊中心、國際事務處、進修暨推廣部、校友中心、永續辦公室、高等教育深耕計畫辦公室、秘書室、學術副校長室、行政副校長室、財務暨永續發展副校長室、校長室，共 21 個單位的公告、規定、常見問題、官網內容頁、公告附件與現任主管資料。17 個單位的官網公告每天自動同步；法規與常見問答為人工整理收錄，各單位資料範圍不同。你也可以詢問本系統的使用方式、資料來源、限制與隱私提醒。",
       "answer_en": "Ask about announcements, regulations, or FAQs from these 21 units: Physical Education Office, Center for General Education, Language Center, Office of Academic Affairs, Office of Student Affairs, Personnel Office, Office of General Affairs, Office of Research and Development, Accounting Office, Library, Computer and Information Center, Office of International Affairs, Division of Continuing and Extension Education, Alumni Center, Sustainability Office, Higher Education Sprout Project Office, Secretariat, Office of the Vice President for Academic Affairs, Office of the Vice President for Administrative Affairs, Office of the Vice President for Finance and Sustainable Development, Office of the President. Official announcements from 17 units sync daily; regulations and FAQs are curated manually, and coverage varies by unit. You may also ask about the system's usage, data sources, limitations, and privacy reminders.",
       "keywords": ["回答", "問題", "功能", "服務範圍", "capabilities", "support", "scope"],
       "source": {"type": "system", "title_zh": "系統說明：服務範圍", "title_en": "System Guide: Coverage", "url": "https://aia.ntpu.ai/about#scope"}
@@ -76,8 +76,8 @@
       "question_en": "Which offices are currently supported?",
       "aliases_zh": ["有哪些處室", "支援單位", "可以問哪些行政單位", "七處室是哪些", "六處室是哪些", "21個單位", "二十一個單位", "19個處室"],
       "aliases_en": ["Which departments are covered?", "What offices are supported?", "Which university units can I ask about?"],
-      "answer_zh": "目前支援 21 個單位：體育室、通識教育中心、語言中心、教務處、學務處、人事室、總務處、研究發展處、主計室、圖書館、資訊中心、國際事務處、進修暨推廣部、校友中心、永續辦公室、高等教育深耕計畫辦公室、秘書室、學術副校長室、行政副校長室、財務暨永續發展副校長室、校長室。包含校方列出的 19 個處室，以及原有通識教育中心、語言中心。其中 17 個單位的官網公告每天自動同步；14 個單位另有共 938 題常見問答。可查內容依已收錄資料而定，資訊以每題來源日期及官網最新公告為準。",
-      "answer_en": "21 units are currently supported: Physical Education Office, Center for General Education, Language Center, Office of Academic Affairs, Office of Student Affairs, Personnel Office, Office of General Affairs, Office of Research and Development, Accounting Office, Library, Computer and Information Center, Office of International Affairs, Division of Continuing and Extension Education, Alumni Center, Sustainability Office, Higher Education Sprout Project Office, Secretariat, Office of the Vice President for Academic Affairs, Office of the Vice President for Administrative Affairs, Office of the Vice President for Finance and Sustainable Development, Office of the President. These include the university's 19 listed offices plus the existing General Education and Language centers. Official announcements from 17 units sync daily, and 14 units also provide 938 FAQs. Available topics depend on collected materials; check each source date and the latest official announcements.",
+      "answer_zh": "目前支援 21 個單位：體育室、通識教育中心、語言中心、教務處、學務處、人事室、總務處、研究發展處、主計室、圖書館、資訊中心、國際事務處、進修暨推廣部、校友中心、永續辦公室、高等教育深耕計畫辦公室、秘書室、學術副校長室、行政副校長室、財務暨永續發展副校長室、校長室。包含校方列出的 19 個處室，以及原有通識教育中心、語言中心。其中 17 個單位的官網公告每天自動同步；14 個單位另有共 937 題常見問答（1 題內容過期已停用）；另收錄各處室官網內容頁、公告附件與現任主管資料。可查內容依已收錄資料而定，資訊以每題來源日期及官網最新公告為準。",
+      "answer_en": "21 units are currently supported: Physical Education Office, Center for General Education, Language Center, Office of Academic Affairs, Office of Student Affairs, Personnel Office, Office of General Affairs, Office of Research and Development, Accounting Office, Library, Computer and Information Center, Office of International Affairs, Division of Continuing and Extension Education, Alumni Center, Sustainability Office, Higher Education Sprout Project Office, Secretariat, Office of the Vice President for Academic Affairs, Office of the Vice President for Administrative Affairs, Office of the Vice President for Finance and Sustainable Development, Office of the President. These include the university's 19 listed offices plus the existing General Education and Language centers. Official announcements from 17 units sync daily, and 14 units also provide 937 FAQs (1 retired as outdated); office web pages, announcement attachments, and current officials are also included. Available topics depend on collected materials; check each source date and the latest official announcements.",
       "keywords": ["處室", "單位", "七處室", "六處室", "office", "department", "coverage", "21個單位", "19個處室"],
       "source": {"type": "system", "title_zh": "系統說明：服務範圍", "title_en": "System Guide: Coverage", "url": "https://aia.ntpu.ai/about#scope"}
     },
@@ -124,8 +124,8 @@
       "question_en": "Where does your information come from?",
       "aliases_zh": ["資料從哪來", "知識庫來源", "引用什麼資料", "來源可靠嗎"],
       "aliases_en": ["Where is the data from?", "What are your sources?", "What is in the knowledge base?"],
-      "answer_zh": "資料分兩類：各處室官網公告由排程每天自動抓取；法規全文、法規彙整表與各處室常見問答由人工整理後上傳。兩者都經驗證、保存原始檔與版本紀錄，再透過 MCP 服務（aia.mcp.ntpu.ai）查詢。回答會盡量附上對應的官方來源連結；沒有官方連結的資料只標示來源名稱。系統自我說明則連到本系統說明頁。",
-      "answer_en": "There are two kinds of data: official office announcements are fetched automatically every day, while full-text regulations, the regulation catalog, and office FAQs are curated and uploaded. Both are validated, archived, and versioned, then queried through the MCP service (aia.mcp.ntpu.ai). Answers aim to include the official source link; items without one name the source in text. System-related answers link to this system guide.",
+      "answer_zh": "資料分三類：各處室官網公告、官網內容頁與公告附件（PDF、文件抽出的文字與圖片辨識）由排程每天自動抓取；校長、副校長與一級主管的現任資料每天確認姓名仍載明於官方介紹頁；法規全文、法規彙整表與各處室常見問答由人工整理後上傳。都經驗證、保存原始檔與版本紀錄，再透過 MCP 服務（aia.mcp.ntpu.ai）查詢。回答會附上官方來源連結與支持回答的原文片段；沒有官方連結的資料只標示來源名稱。系統自我說明則連到本系統說明頁。",
+      "answer_en": "There are three kinds of data: office announcements, office web pages, and announcement attachments (text extracted from PDFs and documents, plus image OCR) are fetched daily; current President, Vice Presidents, and first-level heads are checked daily against their official profile pages; full-text regulations, the regulation catalog, and office FAQs are curated and uploaded. All are validated, archived, and versioned, then queried through the MCP service (aia.mcp.ntpu.ai). Answers include official source links and the supporting original passage; items without a link name the source in text. Questions about this system link to this about page.",
       "keywords": ["資料來源", "知識庫", "官方", "source", "data", "knowledge base"],
       "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.ai/about#architecture"}
     },
@@ -148,8 +148,8 @@
       "question_en": "How often is the data updated?",
       "aliases_zh": ["多久同步一次", "是即時資料嗎", "最新資料嗎", "知識庫更新頻率", "資料何時更新", "資料更新時間是什麼"],
       "aliases_en": ["How often is the knowledge base updated?", "Is the data real time?", "When was the data updated?"],
-      "answer_zh": "各處室官網公告每天自動同步一次（每個來源約 20 小時重新抓取），回答用到這些資料時，下方會顯示「資料更新時間」。法規與常見問答則在人工整理檔更新後上傳。資料並非即時，最新公告、緊急資訊與正式期限請以各處室官網為準。",
-      "answer_en": "Official office announcements sync automatically once a day (each source is re-fetched about every 20 hours), and answers using them show a data update time. Regulations and FAQs are uploaded when the curated files are updated. The data is not real time; check official office sites for the latest or urgent information and deadlines.",
+      "answer_zh": "各處室官網公告、內容頁與公告附件每天自動同步一次（每個來源約 20 小時重新抓取），回答用到這些資料時，下方會顯示「系統最後抓取時間」（只代表系統最近讀取過，不代表內容已人工確認）；來源卡片也會分開標示來源修訂與系統抓取時間。法規與常見問答則在人工整理檔更新後上傳。資料並非即時，最新公告、緊急資訊與正式期限請以各處室官網為準。",
+      "answer_en": "Official office announcements, web pages, and attachments sync automatically once a day (each source is re-fetched about every 20 hours), and answers using them show a data update time. Regulations and FAQs are uploaded when the curated files are updated. The data is not real time; check official office sites for the latest or urgent information and deadlines.",
       "keywords": ["更新", "即時", "多久", "頻率", "update", "real time", "frequency"],
       "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
     },
@@ -160,8 +160,8 @@
       "question_en": "How is my conversation handled?",
       "aliases_zh": ["會保存對話嗎", "隱私安全嗎", "可以輸入個資嗎", "對話紀錄", "你可以幫我查我的成績嗎", "可以查我的成績嗎", "可以查我的學籍嗎", "可以查我的帳務嗎"],
       "aliases_en": ["Is my chat saved?", "What about privacy?", "Can I enter personal data?", "How is chat history handled?", "Can you check my grades?", "Can this system access my student record?"],
-      "answer_zh": "系統無法登入校務系統，也不能存取或查詢個人成績、學籍、帳務或其他非公開資料；只能說明公開的查詢規定與辦理方式。系統會用 conversation ID 與結構化狀態維持同一對話的追問脈絡，並會產生操作與品質改善所需的服務日誌。問題與必要上下文會傳給設定的 AI 服務以產生回答。請勿輸入密碼、身分證字號、學號、金融資訊或其他敏感個資。",
-      "answer_en": "The system cannot sign in to university systems or access personal grades, student records, billing, or other non-public data; it can only explain public lookup rules and procedures. It uses a conversation ID and structured state to keep follow-up context, and service logs may be produced for operation and quality improvement. Your question and necessary context are sent to the configured AI service to generate an answer. Do not enter passwords, ID or student numbers, financial information, or other sensitive personal data.",
+      "answer_zh": "系統無法登入校務系統，也不能存取或查詢個人成績、學籍、帳務或其他非公開資料；只能說明公開的查詢規定與辦理方式。系統會用 conversation ID 與結構化狀態維持同一對話的追問脈絡，並會產生操作與品質改善所需的服務日誌：提問、回答與查詢流程會長期保存在系統紀錄中，寫入前已遮罩電話、Email、身分證號等個人資料。問題與必要上下文會傳給設定的 AI 服務以產生回答。請勿輸入密碼、身分證字號、學號、金融資訊或其他敏感個資。",
+      "answer_en": "The system cannot sign in to university systems or access personal grades, student records, billing, or other non-public data; it can only explain public lookup rules and procedures. It uses a conversation ID and structured state to keep follow-up context, and service logs (questions, answers, and the lookup trace are kept long-term, with phone numbers, emails, and ID numbers masked before saving) may be produced for operation and quality improvement. Your question and necessary context are sent to the configured AI service to generate an answer. Do not enter passwords, ID or student numbers, financial information, or other sensitive personal data.",
       "keywords": ["隱私", "個資", "保存", "對話紀錄", "個人成績", "個人學籍", "帳務", "privacy", "personal data", "student record", "grades", "saved"],
       "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
     },
@@ -208,8 +208,8 @@
       "question_en": "How does the system find an answer?",
       "aliases_zh": ["搜尋原理", "RAG是什麼", "怎麼檢索", "回答流程"],
       "aliases_en": ["How does retrieval work?", "What is RAG?", "How are answers generated?"],
-      "answer_zh": "校務問題會先判斷所屬處室，再改寫成適合檢索的完整查詢。公告、法規與常見問答透過 MCP 服務以關鍵字查詢；查不到或證據不足時，改用 FAISS 向量搜尋與 BM25 關鍵詞搜尋，經融合與重排序後交給模型整理。只有有足夠證據時才應作答，最後附上來源。SYSTEM 問題則直接從本系統 FAQ 回答，不進入 21 個單位的檢索。",
-      "answer_en": "For administrative questions, the system first selects an office and rewrites the question into a retrieval-ready query. Announcements, regulations, and FAQs are looked up by keyword through the MCP service; if nothing is found or evidence is weak, it falls back to FAISS vector search plus BM25 keyword search, fuses and reranks candidates, and lets the model compose an answer. It should answer only when evidence is sufficient and include sources. SYSTEM questions are answered directly from this system FAQ instead of the 21-unit retrieval.",
+      "answer_zh": "校務問題會先判斷所屬處室，再改寫成適合檢索的完整查詢。問現任職務或人名時先查現任主管資料；公告、官網內容頁、附件、法規與常見問答透過 MCP 服務以關鍵字查詢，處室內證據不足時補查全校資料；仍不足時改用 FAISS 向量搜尋與 BM25 關鍵詞搜尋，經融合與重排序後交給模型整理。回答後再檢查人物、職務、時間與數字是否都有原文支持，證據不足或衝突時說明無法確認；最後附上來源與原文片段。SYSTEM 問題則直接從本系統 FAQ 回答，不進入 21 個單位的檢索。",
+      "answer_en": "For administrative questions, the system first selects an office and rewrites the question into a retrieval-ready query. Questions about current officials check the current-officials data first; announcements, web pages, attachments, regulations, and FAQs are looked up by keyword through the MCP service, widening to all units when the office has too little evidence, then falling back to FAISS vector search plus BM25 keyword search, fuses and reranks candidates, and lets the model compose an answer. It should answer only when evidence is sufficient and include sources. SYSTEM questions are answered directly from this system FAQ instead of the 21-unit retrieval.",
       "keywords": ["BM25", "FAISS", "MCP", "RAG", "architecture", "retrieval", "搜尋", "檢索", "流程"],
       "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.ai/about#architecture"}
     },
