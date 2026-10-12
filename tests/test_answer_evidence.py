@@ -49,6 +49,16 @@ class AnswerCheckTests(unittest.TestCase):
         self.assertIn("證據沒有宋明翰", text)
         self.assertIn("can't confirm", ae.unconfirmed_answer("", True, "en"))
 
+    def test_checker_sees_source_dates(self):
+        seen = {}
+
+        def capture(msgs, **_):
+            seen["prompt"] = msgs[1]["content"]
+            return '{"supported": true, "conflict": false, "reason": ""}'
+        ae.check_answer("戴敏育是誰", "資管所教授（公告，2026-09-04）",
+                        [{"title": "重要公告", "content": "戴敏育主任", "revised_at": "2026-09-04"}], capture)
+        self.assertIn("來源日期：2026-09-04", seen["prompt"])
+
     def test_checker_failure_does_not_block_the_answer(self):
         def boom(*a, **k):
             raise RuntimeError("down")
