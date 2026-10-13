@@ -1,0 +1,403 @@
+{
+  "revision": "2026-10-13.1",
+  "note": "處室歸類回歸測試：每題只跑範圍判斷與處室歸類（prepare_conversation_turn，不產生回答）。accept 列出可接受的歸類：處室代碼、null（跨單位查詢）或 \"blocked\"（擋下）。新增單位或修改歸類邏輯後都要跑一次。",
+  "cases": [
+    {
+      "id": "R01",
+      "question": "綜合體育館可以借用嗎？",
+      "accept": [
+        "ope"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R02",
+      "question": "運動代表隊如何加入？",
+      "accept": [
+        "ope"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R03",
+      "question": "向度通識畢業門檻",
+      "accept": [
+        "ge"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R04",
+      "question": "通識課夏季學院怎麼選課",
+      "accept": [
+        "ge"
+      ],
+      "note": "曾被誤判外校（2026-10-11）"
+    },
+    {
+      "id": "R05",
+      "question": "大學英文抵免及免修方式",
+      "accept": [
+        "lc"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R06",
+      "question": "外語能力畢業門檻",
+      "accept": [
+        "lc",
+        "oaa"
+      ],
+      "note": "語言中心辦檢核、教務處管畢業資格"
+    },
+    {
+      "id": "R07",
+      "question": "辦理休學需要哪些程序？",
+      "accept": [
+        "oaa"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R08",
+      "question": "學分抵免的規定為何？",
+      "accept": [
+        "oaa"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R09",
+      "question": "學校畢業門檻有哪些？",
+      "accept": [
+        "oaa"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R10",
+      "question": "弱勢學生助學金如何申請？",
+      "accept": [
+        "osa"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R11",
+      "question": "宿舍住宿管理規定",
+      "accept": [
+        "osa"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R12",
+      "question": "身心調適假可以請幾天？",
+      "accept": [
+        "hr"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R13",
+      "question": "忘記刷卡該如何補辦？",
+      "accept": [
+        "hr"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R14",
+      "question": "學雜費繳費單要去哪裡查？",
+      "accept": [
+        "oga"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R15",
+      "question": "校園停車證怎麼申請？",
+      "accept": [
+        "oga"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R16",
+      "question": "研究發展處底下有哪些組？",
+      "accept": [
+        "ord"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R17",
+      "question": "國科會計畫應該從哪裡開始申請？",
+      "accept": [
+        "ord"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R18",
+      "question": "主計室主要負責什麼業務？",
+      "accept": [
+        "oa"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R19",
+      "question": "出差旅費要怎麼核銷？",
+      "accept": [
+        "oa"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R20",
+      "question": "圖書館借期為什麼只有14天？",
+      "accept": [
+        "lib"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R21",
+      "question": "研究小間怎麼借？",
+      "accept": [
+        "lib"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R22",
+      "question": "資訊中心在哪裡？服務時間和電話？",
+      "accept": [
+        "cic"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R23",
+      "question": "校園 VPN 怎麼設定？",
+      "accept": [
+        "cic"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R24",
+      "question": "國際事務處有哪些線上申請系統？",
+      "accept": [
+        "oia"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R25",
+      "question": "赴外交換生怎麼申請？",
+      "accept": [
+        "oia",
+        "cob"
+      ],
+      "note": "國際處統籌，商學院也有交換計畫"
+    },
+    {
+      "id": "R26",
+      "question": "進修暨推廣部的服務時間？",
+      "accept": [
+        "eec"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R27",
+      "question": "碩士在職專班怎麼選課？",
+      "accept": [
+        "eec"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R28",
+      "question": "校友證怎麼申辦？",
+      "accept": [
+        "alu"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R29",
+      "question": "校友中心負責什麼業務？",
+      "accept": [
+        "alu"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R30",
+      "question": "永續辦公室下設哪些組？",
+      "accept": [
+        "sus"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R31",
+      "question": "學校的永續報告書在哪裡？",
+      "accept": [
+        "sus"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R32",
+      "question": "高教深耕計畫辦公室怎麼聯絡？",
+      "accept": [
+        "edusp"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R33",
+      "question": "秘書室負責什麼業務？",
+      "accept": [
+        "os"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R34",
+      "question": "校務建言要怎麼提出？",
+      "accept": [
+        "os"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R35",
+      "question": "學術副校長室怎麼聯絡？",
+      "accept": [
+        "vpa"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R36",
+      "question": "行政副校長室怎麼聯絡？",
+      "accept": [
+        "vpad"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R37",
+      "question": "財務暨永續發展副校長室怎麼聯絡？",
+      "accept": [
+        "vpf"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R38",
+      "question": "校長室怎麼聯絡？",
+      "accept": [
+        "pres"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R39",
+      "question": "現任校長是誰",
+      "accept": [
+        "pres"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R40",
+      "question": "Who is the vice president for academic affairs at NTPU?",
+      "accept": [
+        "vpa"
+      ],
+      "note": "曾被分到校長室並反問"
+    },
+    {
+      "id": "R41",
+      "question": "商學院有哪些系所與研究中心？",
+      "accept": [
+        "cob"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R42",
+      "question": "商學院院長是誰？",
+      "accept": [
+        "cob"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R43",
+      "question": "商學院有哪些獎助學金？",
+      "accept": [
+        "cob"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R44",
+      "question": "商學院赴外交換怎麼申請？",
+      "accept": [
+        "cob",
+        "oia"
+      ],
+      "note": "容易混淆：商學院 vs 國際處"
+    },
+    {
+      "id": "R45",
+      "question": "資管所碩士班考試科目有哪些？",
+      "accept": [
+        "oaa",
+        null
+      ],
+      "note": "招生簡章屬教務處；不應只查商學院"
+    },
+    {
+      "id": "R46",
+      "question": "戴敏育是誰",
+      "accept": [
+        null
+      ],
+      "note": "曾被分到體育室（只是名字出現在球賽名單）"
+    },
+    {
+      "id": "R47",
+      "question": "誰是陳宥杉",
+      "accept": [
+        "vpa",
+        null
+      ],
+      "note": ""
+    },
+    {
+      "id": "R48",
+      "question": "台大的校長是誰",
+      "accept": [
+        "blocked"
+      ],
+      "note": "外校"
+    },
+    {
+      "id": "R49",
+      "question": "今天天氣如何？",
+      "accept": [
+        "blocked"
+      ],
+      "note": "無關"
+    }
+  ]
+}
