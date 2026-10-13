@@ -13,6 +13,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Iterable
 from office_catalog import (
     FAQ_OFFICES, FAQ_OFFICE_NAMES, FAQ_OFFICE_ALIASES, OFFICE_SEARCH_GROUPS, VICE_PRESIDENT_TITLES,
+    MCP_ONLY_OFFICES, MCP_ONLY_OFFICE_NAMES,
 )
 
 
@@ -29,6 +30,8 @@ OFFICE_NAMES = {
 
 OFFICE_NAMES.update(FAQ_OFFICE_NAMES)
 VALID_OFFICES.update(FAQ_OFFICES)
+OFFICE_NAMES.update(MCP_ONLY_OFFICE_NAMES)
+VALID_OFFICES.update(MCP_ONLY_OFFICES)
 
 OFFICE_KEYWORDS = {
     "ope": (
@@ -70,6 +73,7 @@ OFFICE_KEYWORDS = {
 }
 
 OFFICE_KEYWORDS.update({code: (zh, en, *keywords) for code, (zh, en, keywords) in FAQ_OFFICES.items()})
+OFFICE_KEYWORDS.update({code: (zh, en, *keywords) for code, (zh, en, keywords) in MCP_ONLY_OFFICES.items()})
 
 OFFICE_PRIORITY_KEYWORDS = {
     "os": ("與校長有約",),
@@ -924,7 +928,7 @@ def resolution_scope_context(resolution: ConversationResolution | None) -> dict[
 def _faq_office_topics() -> str:
     return "；".join(
         f"{code}={zh}（{'、'.join(keywords[:6])}）"
-        for code, (zh, _en, keywords) in FAQ_OFFICES.items()
+        for code, (zh, _en, keywords) in {**FAQ_OFFICES, **MCP_ONLY_OFFICES}.items()
     )
 
 

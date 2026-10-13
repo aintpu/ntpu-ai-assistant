@@ -32,6 +32,7 @@ DEPT_TO_MCP_UNIT = {
     "sus": "sustainable",
     "edusp": "edusp",
     "os": "os",
+    "cob": "business",  # 商學院網站（www.aacsb.ntpu.edu.tw）的最新消息
 }
 
 
@@ -57,6 +58,8 @@ DEPT_TO_MCP_RECORD_UNITS = {
     "vpa": (None, "vice-president-academic"),
     "vpad": (None, "vice-president-administration"),
     "vpf": (None, "vice-president-financial"),
+    # 商學院沒有法規全文與 FAQ 檔；登記在這裡是為了讓檢索走 MCP（公告、內容頁、附件）
+    "cob": (None, None),
 }
 
 
@@ -83,6 +86,7 @@ DEPT_TO_MCP_PAGE_UNIT = {
     "vpa": "vice-president-academic",
     "vpad": "vice-president-administration",
     "vpf": "vice-president-financial",
+    "cob": "business",  # 商學院網站的內容頁
 }
 
 

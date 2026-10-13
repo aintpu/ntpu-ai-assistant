@@ -113,6 +113,20 @@ export class FakeSites {
       const item = this.lc.find((n) => n.id === url.searchParams.get("np_no"));
       return item ? html(lcDetailHtml(item)) : new Response("not found", { status: 404 });
     }
+    if (url.hostname === "www.aacsb.ntpu.edu.tw") {
+      // 商學院：最新消息列表只連到 3 號；2 號是已刪除的空白頁；內容頁每組一個分頁
+      const main = (inner: string) => `<html><body><div role="main" class="main">${inner}</div></body></html>`;
+      if (url.pathname === "/news.php") return html(main(`<a href="view.php?id=${btoa("3")}">最新</a>`));
+      if (url.pathname === "/view.php") {
+        const n = Number(atob(url.searchParams.get("id") ?? ""));
+        if (n === 2) return html(main(`<div class="blog-posts"><h3>最新消息</h3></div>`));
+        return html(main(`<div class="blog-posts"><h3>最新消息</h3><article class="post"><div class="post-content"><h3>商學院公告 ${n}</h3></div></article><p>商學院第 ${n} 則公告內文。</p><p>刊登時間：2026-10-0${n} 10:00:00</p></div>`));
+      }
+      if (url.pathname === "/page.php") {
+        const g = url.searchParams.get("id");
+        return html(main(`<ul class="nav nav-tabs"><li class="active"><a href="#t1">第 ${g} 組</a></li></ul><div class="tab-pane active" id="t1">${"商學院介紹內容。".repeat(10)}</div>`));
+      }
+    }
     return new Response("unexpected host", { status: 599 });
   };
 }
