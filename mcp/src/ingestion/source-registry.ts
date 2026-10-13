@@ -1,5 +1,6 @@
 import { validateSourceDefinition } from "./url-policy";
 import { ATTACHMENT_HOST, ATTACHMENT_PATH } from "./adapters/attachments";
+import { MIS_POST_PATH } from "./adapters/html-sites";
 import { OFFICIALS } from "./officials";
 import type { FetchPolicy, PersonalDataGuard, SourceDefinition } from "./types";
 
@@ -27,6 +28,17 @@ const HTML_FETCH: FetchPolicy = {
   maxRedirects: 0,
   minIntervalMs: 1_000,
 };
+
+/** 資管所 WordPress：文章列表是 sitemap（application/xml），其餘同 HTML_FETCH。 */
+const MIS_FETCH: FetchPolicy = { ...HTML_FETCH, methods: ["GET"], acceptedContentTypes: ["text/html", "application/xml"] };
+
+/** 資管所固定頁面（wp-sitemap-posts-page-1.xml；不含首頁、最新消息等列表頁）。 */
+const MIS_PAGES = [
+  "/about-mis/", "/description/", "/history/", "/professor/", "/faculty/", "/admissions/", "/studyrules/",
+  "/rules/", "/courses/", "/research/", "/students/", "/intern/", "/social/", "/community/", "/chdonation/",
+  "/donatemethod/", "/partnership/", "/activity/", "/historyen/", "/donation/", "/donation-methods/",
+  "/business-partners/", "/event-achievements/",
+];
 
 /**
  * 全部公告來源的個資過濾模式。使用者 2026-10-03 決定全部放行（官網本來就公開）。
@@ -162,6 +174,7 @@ export const UNIT_NAMES: Record<string, string> = {
   faq: "各處室常見問答",
   officials: "現任主管（各單位主管介紹頁）",
   business: "商學院",
+  mis: "資訊管理研究所",
 };
 
 /**
@@ -434,6 +447,51 @@ const WEB_SOURCES: SourceDefinition[] = [
     entityType: "page",
     enabled: true,
     fetch: HTML_FETCH,
+    freshness: DAILY,
+  },
+  {
+    // 資訊管理研究所網站（www.mis.ntpu.edu.tw，WordPress；使用者 2026-10-13 指定加入）。
+    // 文章列表用 wp-sitemap（REST API 需要登入）；約 224 則，每次最多抓 60 則內文。
+    id: "mis-announcements",
+    sourceUnit: "mis",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://www.mis.ntpu.edu.tw/latestnews/",
+    newsUrlBase: "https://www.mis.ntpu.edu.tw",
+    origin: "https://www.mis.ntpu.edu.tw",
+    // 文章路徑 /20YY/…，再由 pathRules 限定完整格式
+    allowedPathPrefixes: ["/wp-sitemap-posts-post-1.xml", ...Array.from({ length: 100 }, (_, i) => `/20${String(i).padStart(2, "0")}/`)],
+    entrypoints: ["/wp-sitemap-posts-post-1.xml"],
+    pathRules: [MIS_POST_PATH],
+    parser: "html-news",
+    adapter: {
+      kind: "html-news",
+      site: "mis-wp",
+      maxDetailsPerRun: 60,
+      reverifyAfterSeconds: 30 * 86_400,
+      personalDataGuard: PERSONAL_DATA_GUARD,
+    },
+    entityType: "announcement",
+    enabled: true,
+    fetch: MIS_FETCH,
+    freshness: DAILY,
+  },
+  {
+    // 資管所網站的固定頁面（簡介、沿革、師資、招生、修業規定、課程、捐款、產學合作等）。
+    id: "mis-site-pages",
+    sourceUnit: "mis",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://www.mis.ntpu.edu.tw/",
+    newsUrlBase: "https://www.mis.ntpu.edu.tw",
+    origin: "https://www.mis.ntpu.edu.tw",
+    allowedPathPrefixes: MIS_PAGES,
+    entrypoints: MIS_PAGES,
+    parser: "html-pages",
+    adapter: { kind: "html-pages", site: "mis", paths: MIS_PAGES },
+    entityType: "page",
+    enabled: true,
+    fetch: MIS_FETCH,
     freshness: DAILY,
   },
   {

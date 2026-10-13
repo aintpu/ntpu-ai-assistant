@@ -9,6 +9,8 @@ export interface ListItem {
   title: string;
   /** 台灣日期 YYYY-MM-DD。 */
   date: string;
+  /** 內文頁路徑無法由編號推回時（資管所 WordPress 文章網址）由列表提供。 */
+  path?: string;
 }
 
 export interface ListPage {
@@ -32,8 +34,8 @@ export interface HtmlSite {
   listPath: string;
   detailPath: string;
   listRequest(page: number): SourceRequest;
-  detailRequest(id: string): SourceRequest;
-  detailUrl(id: string): string;
+  detailRequest(id: string, item?: ListItem): SourceRequest;
+  detailUrl(id: string, item?: ListItem): string;
   parseList(html: string): ListPage;
   parseDetail(html: string, id: string): DetailPage;
 }
@@ -350,7 +352,100 @@ export function parseAacsbGroup(html: string, group: number): SitePage[] {
   return pages;
 }
 
-export const HTML_SITES = { "library-ewpt": librarySite, "lc-jsp": lcSite, "aacsb-php": aacsbSite } as const;
+// ── 資訊管理研究所 www.mis.ntpu.edu.tw（WordPress；使用者 2026-10-13 指定）─────────────────
+// REST API 需要登入，改用公開的 wp-sitemap 當列表（列出全部文章，約 224 則）；
+// 文章網址是 /YYYY/MM/DD/slug/，日期取自網址（內文頁沒有 article:published_time）。
+
+/** 文章網址：sitemap 裡的原樣（slug 已百分比編碼）。 */
+export const MIS_POST_PATH = /^\/(20\d{2})\/(\d{2})\/(\d{2})\/[A-Za-z0-9%_-]{1,400}\/$/;
+
+/** FNV-1a 32 位元：把 slug 縮成固定長度的編號。 */
+function fnv1a(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+
+/** 資管所文章編號：mis + 刊登日期 + 網址雜湊（例如 mis20261006a1b2c3d4）。 */
+export function misPostId(path: string): string {
+  const m = MIS_POST_PATH.exec(path);
+  if (!m) throw new IngestionError("INTERNAL_ERROR", `bad mis post path: ${path}`);
+  return `mis${m[1]}${m[2]}${m[3]}${fnv1a(path.toLowerCase())}`;
+}
+
+function misPath(id: string, item?: ListItem): string {
+  if (!item?.path || misPostId(item.path) !== id) throw new IngestionError("INTERNAL_ERROR", `mis post path unknown: ${id}`);
+  return item.path;
+}
+
+export const misSite: HtmlSite = {
+  origin: "https://www.mis.ntpu.edu.tw",
+  listPath: "/wp-sitemap-posts-post-1.xml",
+  detailPath: "/",
+
+  listRequest() {
+    return { target: this.listPath, path: this.listPath, method: "GET" };
+  },
+
+  detailRequest(id, item) {
+    const path = misPath(id, item);
+    return { target: path, path, method: "GET" };
+  },
+
+  detailUrl(id, item) {
+    return `${this.origin}${misPath(id, item)}`;
+  },
+
+  parseList(xml) {
+    const items: ListItem[] = [];
+    let external = 0;
+    const locs = [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map((m) => m[1]!);
+    required(locs.length ? locs : null, "sitemap <loc>");
+    for (const loc of locs) {
+      let url: URL;
+      try {
+        url = new URL(loc);
+      } catch {
+        external++;
+        continue;
+      }
+      const m = MIS_POST_PATH.exec(url.pathname);
+      if (url.origin !== this.origin || url.search || !m) {
+        external++;
+        continue;
+      }
+      items.push({ id: misPostId(url.pathname), title: "", date: `${m[1]}-${m[2]}-${m[3]}`, path: url.pathname });
+    }
+    return { items, external, totalPages: 1 };
+  },
+
+  parseDetail(html) {
+    const root = dom(html);
+    const title = clean(required(root.querySelector("h1.entry-title"), "h1.entry-title").text);
+    const body = required(root.querySelector("div.post-content"), "div.post-content");
+    const files = body.querySelectorAll("a[href]").filter((a) => FILE_EXT.test(a.getAttribute("href") ?? ""));
+    const attachments = collectFiles(files, `${this.origin}/`, (a) => a.text);
+    return { title, date: "", bodyHtml: body.innerHTML, attachments };
+  },
+};
+
+/** 資管所固定頁面（WordPress page）：內文在 div.entry-content。 */
+export function parseMisPage(html: string): { title: string; bodyHtml: string } {
+  const root = dom(html);
+  const title = clean(required(root.querySelector("h1.entry-title"), "h1.entry-title").text);
+  const body = required(root.querySelector("div.entry-content"), "div.entry-content");
+  return { title, bodyHtml: body.innerHTML };
+}
+
+export const HTML_SITES = {
+  "library-ewpt": librarySite,
+  "lc-jsp": lcSite,
+  "aacsb-php": aacsbSite,
+  "mis-wp": misSite,
+} as const;
 
 export function bodyText(html: string): string {
   return htmlToText(html);

@@ -46,7 +46,7 @@ class AddedOfficeBackendTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
 
     def test_blocked_message_lists_every_supported_office(self):
-        self.assertEqual(len(core.DEPT_NAMES), 22)
+        self.assertEqual(len(core.DEPT_NAMES), 23)
         for name in core.DEPT_NAMES.values():
             self.assertIn(name, core._BLOCKED_MSG)
 

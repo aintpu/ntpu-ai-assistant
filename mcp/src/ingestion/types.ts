@@ -62,7 +62,7 @@ export interface AttachmentsConfig {
 /** 伺服器端產生的 HTML 公告網站：列表頁翻頁，再逐則抓內文。 */
 export interface HtmlNewsConfig {
   kind: "html-news";
-  site: "library-ewpt" | "lc-jsp" | "aacsb-php";
+  site: "library-ewpt" | "lc-jsp" | "aacsb-php" | "mis-wp";
   /** 每次執行最多抓幾則內文；其餘留到下一次（避免超過單次執行的子請求上限）。 */
   maxDetailsPerRun: number;
   /** 內文多久沒重新驗證就要重抓。 */
@@ -107,13 +107,23 @@ export interface StrapiOfficialsConfig {
 
 export type ManualAdapterConfig = ManualRegulationsConfig | ManualRegulationCatalogConfig | ManualFaqConfig;
 
-/** 伺服器端產生 HTML 的內容頁網站（目前只有商學院）：每組頁面抓一次，依分頁切成多筆。 */
-export interface HtmlPagesConfig {
-  kind: "html-pages";
-  site: "aacsb";
-  /** page.php?id= 的組別編號。 */
-  groups: number[];
-}
+/**
+ * 伺服器端產生 HTML 的內容頁網站。
+ * 商學院：每組頁面（page.php?id=）抓一次，依分頁切成多筆；資管所：每個固定頁面（WordPress page）一筆。
+ */
+export type HtmlPagesConfig =
+  | {
+      kind: "html-pages";
+      site: "aacsb";
+      /** page.php?id= 的組別編號。 */
+      groups: number[];
+    }
+  | {
+      kind: "html-pages";
+      site: "mis";
+      /** 頁面路徑（例如 /admissions/），都必須列在 entrypoints。 */
+      paths: string[];
+    };
 
 export type AdapterConfig =
   | StrapiPublicationsConfig

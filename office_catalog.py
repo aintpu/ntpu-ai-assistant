@@ -19,9 +19,12 @@ FAQ_OFFICES = {
 }
 
 # 只有 MCP 資料（官網公告、內容頁）、沒有 FAQ 檔的單位。不放進 FAQ_OFFICES（那裡的每個單位都要有
-# crawler_data/<code>_faq.md 與 manifest）。2026-10-13 使用者指定加入商學院（www.aacsb.ntpu.edu.tw）。
+# crawler_data/<code>_faq.md 與 manifest）。2026-10-13 使用者指定加入商學院（www.aacsb.ntpu.edu.tw）
+# 與資訊管理研究所（www.mis.ntpu.edu.tw）。
 MCP_ONLY_OFFICES = {
     "cob": ("商學院", "College of Business", ("商學院", "商院", "aacsb", "商學院院長", "商學院辦公室", "商學院公告")),
+    "mis": ("資訊管理研究所", "Graduate Institute of Information Management",
+            ("資訊管理研究所", "資管所", "北大資管", "資管所所長", "資管所教授", "資管所師資", "資管所招生", "資管所公告", "資管所修業")),
 }
 MCP_ONLY_OFFICE_NAMES = {code: spec[0] for code, spec in MCP_ONLY_OFFICES.items()}
 
