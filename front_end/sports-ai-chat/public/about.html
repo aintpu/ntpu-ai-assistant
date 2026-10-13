@@ -213,6 +213,13 @@
   /* ---------- scope detail ---------- */
   /* flex + wrap（而非固定三欄）：處室數量非 3 的倍數時，末排會置中而不留空格 */
   .scope-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+  /* 單位依層級分組；之後新增單位只要放進對應分組，下級單位（系所）緊接在所屬學院之後並加 dept-sub */
+  .scope-group{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-size:20px;font-weight:700;color:var(--navy);margin:40px 0 16px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+  .scope-group:first-of-type{margin-top:8px}
+  .scope-count{font-family:inherit;font-size:12px;font-weight:700;color:#fff;background:var(--plum);border-radius:999px;padding:2px 9px}
+  .scope-grid-4{grid-template-columns:repeat(4,1fr)}
+  .dept-sub{border-left:4px solid var(--plum)}
+  .dept-sub .dept-top{padding-left:20px}
   .dept{background:var(--white);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;transition:transform .2s,box-shadow .2s}
   .dept:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
   .dept-top{padding:22px 24px 18px;background:linear-gradient(135deg,var(--navy),var(--navy-deep));color:#fff;position:relative}
@@ -295,7 +302,7 @@
     .arch-flow{grid-template-columns:1fr 1fr}
     .node:nth-child(2)::after{display:none}
     .layers{grid-template-columns:1fr}
-    .scope-grid{grid-template-columns:1fr 1fr}
+    .scope-grid,.scope-grid-4{grid-template-columns:1fr 1fr}
   }
   @media(max-width:640px){
     .brand span span.zh, .brand span span.en{font-size:14.5px}
@@ -309,7 +316,7 @@
     .langbtn{margin-left:0}
     .feat-grid,.arch-flow,.step-list{grid-template-columns:1fr}
     .faq-grid{grid-template-columns:1fr}
-    .scope-grid{grid-template-columns:1fr}
+    .scope-grid,.scope-grid-4{grid-template-columns:1fr}
     .node::after{display:none!important}
     .notice{grid-template-columns:1fr;padding:26px}
     .center-card{padding:16px;gap:13px}
@@ -502,31 +509,43 @@
       <h2 class="sec-title"><span class="zh">目前可以問什麼</span><span class="en">What you can ask today</span></h2>
       <p class="sec-sub"><span class="zh">系統目前涵蓋 23 個單位，包括校方列出的 19 個處室、通識教育中心、語言中心，以及商學院與資訊管理研究所（資料來自各自的網站）。回答範圍以已匯入資料為限。</span><span class="en">The system covers 23 units: the university's 19 listed offices, General Education, the Language Center, the College of Business, and the Graduate Institute of Information Management (from their own websites). Answers are limited to indexed materials.</span></p>
     </div>
+    <h3 class="scope-group reveal"><span class="zh">校長室與副校長室</span><span class="en">President &amp; Vice Presidents</span><span class="scope-count">4</span></h3>
+    <div class="scope-grid scope-grid-4">
+      <div class="dept reveal">
+        <div class="dept-top"><div class="code">PRES</div><h3><span class="zh">校長室</span><span class="en">Office of the President</span></h3></div>
+        <div class="dept-body"><ul>
+          <li><span class="zh">現任校長與聯絡方式</span><span class="en">Current President and contact</span></li>
+          <li><span class="zh">學術與行政經歷、榮譽</span><span class="en">Academic &amp; administrative career, honors</span></li>
+          <li><span class="zh">研究領域與辦學理念</span><span class="en">Research areas &amp; educational philosophy</span></li>
+        </ul></div>
+      </div>
+      <div class="dept reveal">
+        <div class="dept-top"><div class="code">VPA</div><h3><span class="zh">學術副校長室</span><span class="en">Office of the Vice President for Academic Affairs</span></h3></div>
+        <div class="dept-body"><ul>
+          <li><span class="zh">現任學術副校長與聯絡方式</span><span class="en">Current VP and contact</span></li>
+          <li><span class="zh">學術與行政經歷、榮譽</span><span class="en">Academic &amp; administrative career, honors</span></li>
+          <li><span class="zh">研究領域</span><span class="en">Research areas</span></li>
+        </ul></div>
+      </div>
+      <div class="dept reveal">
+        <div class="dept-top"><div class="code">VPAD</div><h3><span class="zh">行政副校長室</span><span class="en">Office of the Vice President for Administrative Affairs</span></h3></div>
+        <div class="dept-body"><ul>
+          <li><span class="zh">現任行政副校長與聯絡方式</span><span class="en">Current VP and contact</span></li>
+          <li><span class="zh">學術與行政經歷、榮譽</span><span class="en">Academic &amp; administrative career, honors</span></li>
+          <li><span class="zh">研究興趣</span><span class="en">Research interests</span></li>
+        </ul></div>
+      </div>
+      <div class="dept reveal">
+        <div class="dept-top"><div class="code">VPF</div><h3><span class="zh">財務暨永續發展副校長室</span><span class="en">Office of the Vice President for Finance and Sustainable Development</span></h3></div>
+        <div class="dept-body"><ul>
+          <li><span class="zh">現任財務暨永續發展副校長與聯絡方式</span><span class="en">Current VP and contact</span></li>
+          <li><span class="zh">學術與行政經歷</span><span class="en">Academic &amp; administrative career</span></li>
+          <li><span class="zh">研究領域</span><span class="en">Research areas</span></li>
+        </ul></div>
+      </div>
+    </div>
+    <h3 class="scope-group reveal"><span class="zh">行政單位</span><span class="en">Administrative Offices</span><span class="scope-count">12</span></h3>
     <div class="scope-grid">
-      <div class="dept reveal">
-        <div class="dept-top"><div class="code">OPE</div><h3><span class="zh">體育室</span><span class="en">Physical Education</span></h3></div>
-        <div class="dept-body"><ul>
-          <li><span class="zh">場館與器材借用</span><span class="en">Venue &amp; equipment booking</span></li>
-          <li><span class="zh">體育課程與體適能檢測</span><span class="en">PE courses &amp; fitness tests</span></li>
-          <li><span class="zh">運動賽事與社團公告</span><span class="en">Events &amp; club announcements</span></li>
-        </ul></div>
-      </div>
-      <div class="dept reveal">
-        <div class="dept-top"><div class="code">GE</div><h3><span class="zh">通識教育中心</span><span class="en">General Education</span></h3></div>
-        <div class="dept-body"><ul>
-          <li><span class="zh">通識課程規定</span><span class="en">General-education course rules</span></li>
-          <li><span class="zh">通識學分與畢業要求</span><span class="en">Credits &amp; graduation requirements</span></li>
-          <li><span class="zh">選課公告與常見問題</span><span class="en">Enrollment notices &amp; FAQs</span></li>
-        </ul></div>
-      </div>
-      <div class="dept reveal">
-        <div class="dept-top"><div class="code">LC</div><h3><span class="zh">語言中心</span><span class="en">Language Center</span></h3></div>
-        <div class="dept-body"><ul>
-          <li><span class="zh">英語能力檢定</span><span class="en">English proficiency tests</span></li>
-          <li><span class="zh">英文免修辦法</span><span class="en">English exemption rules</span></li>
-          <li><span class="zh">語言課程與相關公告</span><span class="en">Language courses &amp; notices</span></li>
-        </ul></div>
-      </div>
       <div class="dept reveal">
         <div class="dept-top"><div class="code">OAA</div><h3><span class="zh">教務處</span><span class="en">Academic Affairs</span></h3></div>
         <div class="dept-body"><ul>
@@ -546,15 +565,6 @@
         </ul></div>
       </div>
       <div class="dept reveal">
-        <div class="dept-top"><div class="code">HR</div><h3><span class="zh">人事室</span><span class="en">Human Resources</span></h3></div>
-        <div class="dept-body"><ul>
-          <li><span class="zh">教職員差勤與請假</span><span class="en">Employee attendance &amp; leave</span></li>
-          <li><span class="zh">勤休、刷卡與工時規定</span><span class="en">Work hours &amp; clock-in rules</span></li>
-          <li><span class="zh">勞動基準法請假問答</span><span class="en">Labor Standards Act leave FAQs</span></li>
-          <li><span class="zh">最新公告（每天同步官網）</span><span class="en">Latest announcements (synced daily)</span></li>
-        </ul></div>
-      </div>
-      <div class="dept reveal">
         <div class="dept-top"><div class="code">OGA</div><h3><span class="zh">總務處</span><span class="en">General Affairs</span></h3></div>
         <div class="dept-body"><ul>
           <li><span class="zh">設備修繕、採購與財產管理</span><span class="en">Repairs, procurement &amp; property</span></li>
@@ -569,6 +579,33 @@
           <li><span class="zh">國科會、北聯大等研究計畫</span><span class="en">NSTC and University System of Taipei projects</span></li>
           <li><span class="zh">學術倫理課程與研究倫理審查</span><span class="en">Research ethics courses &amp; review</span></li>
           <li><span class="zh">產學合作與博士生獎學金</span><span class="en">Industry collaboration &amp; PhD scholarships</span></li>
+          <li><span class="zh">最新公告（每天同步官網）</span><span class="en">Latest announcements (synced daily)</span></li>
+        </ul></div>
+      </div>
+      <div class="dept reveal">
+        <div class="dept-top"><div class="code">OIA</div><h3><span class="zh">國際事務處</span><span class="en">Office of International Affairs</span></h3></div>
+        <div class="dept-body"><ul>
+          <li><span class="zh">赴外交換與訪問學生</span><span class="en">Outbound exchange &amp; visiting students</span></li>
+          <li><span class="zh">雙聯學位</span><span class="en">Dual degree programs</span></li>
+          <li><span class="zh">境外生工作證與健保</span><span class="en">Work permits &amp; health insurance</span></li>
+          <li><span class="zh">最新公告（每天同步官網）</span><span class="en">Latest announcements (synced daily)</span></li>
+        </ul></div>
+      </div>
+      <div class="dept reveal">
+        <div class="dept-top"><div class="code">OS</div><h3><span class="zh">秘書室</span><span class="en">Secretariat</span></h3></div>
+        <div class="dept-body"><ul>
+          <li><span class="zh">校務會議與分層負責</span><span class="en">University council &amp; delegation of authority</span></li>
+          <li><span class="zh">創新提案與校訊</span><span class="en">Innovation proposals &amp; newsletter</span></li>
+          <li><span class="zh">內部稽核與校務品質保證</span><span class="en">Internal audit &amp; quality assurance</span></li>
+          <li><span class="zh">最新公告（每天同步官網）</span><span class="en">Latest announcements (synced daily)</span></li>
+        </ul></div>
+      </div>
+      <div class="dept reveal">
+        <div class="dept-top"><div class="code">HR</div><h3><span class="zh">人事室</span><span class="en">Human Resources</span></h3></div>
+        <div class="dept-body"><ul>
+          <li><span class="zh">教職員差勤與請假</span><span class="en">Employee attendance &amp; leave</span></li>
+          <li><span class="zh">勤休、刷卡與工時規定</span><span class="en">Work hours &amp; clock-in rules</span></li>
+          <li><span class="zh">勞動基準法請假問答</span><span class="en">Labor Standards Act leave FAQs</span></li>
           <li><span class="zh">最新公告（每天同步官網）</span><span class="en">Latest announcements (synced daily)</span></li>
         </ul></div>
       </div>
@@ -600,21 +637,39 @@
         </ul></div>
       </div>
       <div class="dept reveal">
-        <div class="dept-top"><div class="code">OIA</div><h3><span class="zh">國際事務處</span><span class="en">Office of International Affairs</span></h3></div>
-        <div class="dept-body"><ul>
-          <li><span class="zh">赴外交換與訪問學生</span><span class="en">Outbound exchange &amp; visiting students</span></li>
-          <li><span class="zh">雙聯學位</span><span class="en">Dual degree programs</span></li>
-          <li><span class="zh">境外生工作證與健保</span><span class="en">Work permits &amp; health insurance</span></li>
-          <li><span class="zh">最新公告（每天同步官網）</span><span class="en">Latest announcements (synced daily)</span></li>
-        </ul></div>
-      </div>
-      <div class="dept reveal">
         <div class="dept-top"><div class="code">EEC</div><h3><span class="zh">進修暨推廣部</span><span class="en">Division of Continuing and Extension Education</span></h3></div>
         <div class="dept-body"><ul>
           <li><span class="zh">進修學士班與碩專班選課</span><span class="en">Course selection for continuing programs</span></li>
           <li><span class="zh">暑修與學位服</span><span class="en">Summer courses &amp; academic regalia</span></li>
           <li><span class="zh">信義會館住宿</span><span class="en">Xinyi Hall accommodation</span></li>
           <li><span class="zh">最新公告（每天同步官網）</span><span class="en">Latest announcements (synced daily)</span></li>
+        </ul></div>
+      </div>
+      <div class="dept reveal">
+        <div class="dept-top"><div class="code">OPE</div><h3><span class="zh">體育室</span><span class="en">Physical Education</span></h3></div>
+        <div class="dept-body"><ul>
+          <li><span class="zh">場館與器材借用</span><span class="en">Venue &amp; equipment booking</span></li>
+          <li><span class="zh">體育課程與體適能檢測</span><span class="en">PE courses &amp; fitness tests</span></li>
+          <li><span class="zh">運動賽事與社團公告</span><span class="en">Events &amp; club announcements</span></li>
+        </ul></div>
+      </div>
+    </div>
+    <h3 class="scope-group reveal"><span class="zh">中心與計畫辦公室</span><span class="en">Centers &amp; Program Offices</span><span class="scope-count">5</span></h3>
+    <div class="scope-grid">
+      <div class="dept reveal">
+        <div class="dept-top"><div class="code">GE</div><h3><span class="zh">通識教育中心</span><span class="en">General Education</span></h3></div>
+        <div class="dept-body"><ul>
+          <li><span class="zh">通識課程規定</span><span class="en">General-education course rules</span></li>
+          <li><span class="zh">通識學分與畢業要求</span><span class="en">Credits &amp; graduation requirements</span></li>
+          <li><span class="zh">選課公告與常見問題</span><span class="en">Enrollment notices &amp; FAQs</span></li>
+        </ul></div>
+      </div>
+      <div class="dept reveal">
+        <div class="dept-top"><div class="code">LC</div><h3><span class="zh">語言中心</span><span class="en">Language Center</span></h3></div>
+        <div class="dept-body"><ul>
+          <li><span class="zh">英語能力檢定</span><span class="en">English proficiency tests</span></li>
+          <li><span class="zh">英文免修辦法</span><span class="en">English exemption rules</span></li>
+          <li><span class="zh">語言課程與相關公告</span><span class="en">Language courses &amp; notices</span></li>
         </ul></div>
       </div>
       <div class="dept reveal">
@@ -644,47 +699,9 @@
           <li><span class="zh">最新公告（每天同步官網）</span><span class="en">Latest announcements (synced daily)</span></li>
         </ul></div>
       </div>
-      <div class="dept reveal">
-        <div class="dept-top"><div class="code">OS</div><h3><span class="zh">秘書室</span><span class="en">Secretariat</span></h3></div>
-        <div class="dept-body"><ul>
-          <li><span class="zh">校務會議與分層負責</span><span class="en">University council &amp; delegation of authority</span></li>
-          <li><span class="zh">創新提案與校訊</span><span class="en">Innovation proposals &amp; newsletter</span></li>
-          <li><span class="zh">內部稽核與校務品質保證</span><span class="en">Internal audit &amp; quality assurance</span></li>
-          <li><span class="zh">最新公告（每天同步官網）</span><span class="en">Latest announcements (synced daily)</span></li>
-        </ul></div>
-      </div>
-      <div class="dept reveal">
-        <div class="dept-top"><div class="code">VPA</div><h3><span class="zh">學術副校長室</span><span class="en">Office of the Vice President for Academic Affairs</span></h3></div>
-        <div class="dept-body"><ul>
-          <li><span class="zh">現任學術副校長與聯絡方式</span><span class="en">Current VP and contact</span></li>
-          <li><span class="zh">學術與行政經歷、榮譽</span><span class="en">Academic &amp; administrative career, honors</span></li>
-          <li><span class="zh">研究領域</span><span class="en">Research areas</span></li>
-        </ul></div>
-      </div>
-      <div class="dept reveal">
-        <div class="dept-top"><div class="code">VPAD</div><h3><span class="zh">行政副校長室</span><span class="en">Office of the Vice President for Administrative Affairs</span></h3></div>
-        <div class="dept-body"><ul>
-          <li><span class="zh">現任行政副校長與聯絡方式</span><span class="en">Current VP and contact</span></li>
-          <li><span class="zh">學術與行政經歷、榮譽</span><span class="en">Academic &amp; administrative career, honors</span></li>
-          <li><span class="zh">研究興趣</span><span class="en">Research interests</span></li>
-        </ul></div>
-      </div>
-      <div class="dept reveal">
-        <div class="dept-top"><div class="code">VPF</div><h3><span class="zh">財務暨永續發展副校長室</span><span class="en">Office of the Vice President for Finance and Sustainable Development</span></h3></div>
-        <div class="dept-body"><ul>
-          <li><span class="zh">現任財務暨永續發展副校長與聯絡方式</span><span class="en">Current VP and contact</span></li>
-          <li><span class="zh">學術與行政經歷</span><span class="en">Academic &amp; administrative career</span></li>
-          <li><span class="zh">研究領域</span><span class="en">Research areas</span></li>
-        </ul></div>
-      </div>
-      <div class="dept reveal">
-        <div class="dept-top"><div class="code">PRES</div><h3><span class="zh">校長室</span><span class="en">Office of the President</span></h3></div>
-        <div class="dept-body"><ul>
-          <li><span class="zh">現任校長與聯絡方式</span><span class="en">Current President and contact</span></li>
-          <li><span class="zh">學術與行政經歷、榮譽</span><span class="en">Academic &amp; administrative career, honors</span></li>
-          <li><span class="zh">研究領域與辦學理念</span><span class="en">Research areas &amp; educational philosophy</span></li>
-        </ul></div>
-      </div>
+    </div>
+    <h3 class="scope-group reveal"><span class="zh">學術單位</span><span class="en">Academic Units</span><span class="scope-count">2</span></h3>
+    <div class="scope-grid">
       <div class="dept reveal">
         <div class="dept-top"><div class="code">COB</div><h3><span class="zh">商學院</span><span class="en">College of Business</span></h3></div>
         <div class="dept-body"><ul>
@@ -694,8 +711,8 @@
           <li><span class="zh">最新消息（每天同步商學院網站）</span><span class="en">Latest news (synced daily from the college website)</span></li>
         </ul></div>
       </div>
-      <div class="dept reveal">
-        <div class="dept-top"><div class="code">MIS</div><h3><span class="zh">資訊管理研究所</span><span class="en">Graduate Institute of Information Management</span></h3></div>
+      <div class="dept dept-sub reveal">
+        <div class="dept-top"><div class="code">MIS · <span class="zh">隸屬商學院</span><span class="en">College of Business</span></div><h3><span class="zh">資訊管理研究所</span><span class="en">Graduate Institute of Information Management</span></h3></div>
         <div class="dept-body"><ul>
           <li><span class="zh">所簡介、歷史沿革與師資陣容</span><span class="en">Overview, history &amp; faculty</span></li>
           <li><span class="zh">招生資訊、修業規則與課程</span><span class="en">Admissions, study rules &amp; courses</span></li>
