@@ -18,6 +18,13 @@ FAQ_OFFICES = {
     "pres": ("校長室", "Office of the President", ("校長室", "校長", "現任校長", "校長學歷", "校長的研究", "president")),
 }
 
+# 只有 MCP 資料（官網公告、內容頁）、沒有 FAQ 檔的單位。不放進 FAQ_OFFICES（那裡的每個單位都要有
+# crawler_data/<code>_faq.md 與 manifest）。2026-10-13 使用者指定加入商學院（www.aacsb.ntpu.edu.tw）。
+MCP_ONLY_OFFICES = {
+    "cob": ("商學院", "College of Business", ("商學院", "商院", "aacsb", "商學院院長", "商學院辦公室", "商學院公告")),
+}
+MCP_ONLY_OFFICE_NAMES = {code: spec[0] for code, spec in MCP_ONLY_OFFICES.items()}
+
 # Offices whose retrieval also covers other offices' FAQ.  A question about
 # the vice presidents without naming one routes to 校長室, so 校長室 searches
 # the three vice-president offices as well and can list them all.

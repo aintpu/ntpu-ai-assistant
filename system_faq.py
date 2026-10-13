@@ -43,6 +43,7 @@ class QueryDomain(str, Enum):
     VPAD = "VPAD"
     VPF = "VPF"
     PRES = "PRES"
+    COB = "COB"  # 商學院（只有 MCP 資料）
     OTHER = "OTHER"
 
 

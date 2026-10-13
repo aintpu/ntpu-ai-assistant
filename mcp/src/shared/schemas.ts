@@ -34,7 +34,8 @@ export const PageSchema = z
     // 招生頁等路徑含中文與括號（例如 /admission/碩士班一般入學）；不允許空白、引號、角括號與反斜線。
     path: z.string().regex(/^\/[^\s"'<>\\]{1,200}$/u),
     title: z.string().min(1).max(500),
-    updatedAt: z.string().datetime(),
+    // 來源修改時間；網站沒有提供時為空字串（例如商學院網站），不以抓取時間代替
+    updatedAt: z.union([z.string().datetime(), z.literal("")]),
     bodyText: z.string().min(1).max(200_000),
     links: z.array(AttachmentSchema).max(500),
     sourceUrl: z.string().url().max(2000),

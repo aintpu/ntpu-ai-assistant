@@ -59,6 +59,11 @@ function detailStep(source: SourceDefinition, site: HtmlSite, config: HtmlNewsCo
       const detail = site.parseDetail(decodeUtf8(bytes), item.id);
       const text = bodyText(detail.bodyHtml);
       const outcome: StepOutcome = { parsed: 1, records: [], rejected: [], skipped: 0 };
+      if (!detail.title && !item.title) {
+        // 已刪除或不存在的編號（商學院依流水號補齊時會遇到）：記入隔離區，不算解析錯誤，之後不再重抓
+        outcome.rejected.push({ id: item.id, reason: "not found (blank page)", countsTowardDrift: false });
+        return outcome;
+      }
       const guard = config.personalDataGuard;
       const privacy = guard === "off" ? null : personalDataReason(detail.title, text, guard);
       if (privacy) {

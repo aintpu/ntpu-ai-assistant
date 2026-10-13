@@ -1,6 +1,6 @@
 import { parse as parseHtml, type HTMLElement } from "node-html-parser";
 import { IngestionError } from "../../shared/errors";
-import { htmlToText } from "../html-text";
+import { htmlToText, visibleHtml } from "../html-text";
 import type { SourceRequest } from "../types";
 
 /** 列表頁上的一則公告。 */
@@ -232,7 +232,125 @@ export const lcSite: HtmlSite = {
   },
 };
 
-export const HTML_SITES = { "library-ewpt": librarySite, "lc-jsp": lcSite } as const;
+// ── 商學院 www.aacsb.ntpu.edu.tw（PHP，伺服器端產生 HTML；使用者 2026-10-13 指定）───────────────
+// 最新消息列表沒有分頁、只列最新約 24 則；內文頁 view.php?id= 是流水號的 base64。
+// 使用者選擇補齊歷史公告：列表以「1 到最新流水號」的每個編號當作項目，每次只抓有限數量的未收錄編號。
+// 已刪除的編號回傳沒有標題與刊登時間的空白頁，記入隔離區後不再重抓。
+
+/** 商學院公告編號：b + 7 位流水號（RecordIdSchema 至少 8 碼）。 */
+export function aacsbId(n: number): string {
+  return `b${String(n).padStart(7, "0")}`;
+}
+
+function aacsbNumber(id: string): number {
+  const m = /^b(\d{7})$/.exec(id);
+  if (!m) throw new IngestionError("INTERNAL_ERROR", `bad business news id: ${id}`);
+  return Number(m[1]);
+}
+
+/** 流水號 ↔ view.php 的 id 參數（base64）。 */
+export function aacsbParam(n: number): string {
+  return btoa(String(n));
+}
+
+function aacsbDecode(param: string): number | null {
+  try {
+    const n = Number(atob(param));
+    return Number.isInteger(n) && n > 0 && n < 10_000_000 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 補齊歷史公告時列出的最大數量（避免流水號異常時產生過多項目）。 */
+const AACSB_MAX_ITEMS = 20_000;
+
+export const aacsbSite: HtmlSite = {
+  origin: "https://www.aacsb.ntpu.edu.tw",
+  listPath: "/news.php",
+  detailPath: "/view.php",
+
+  listRequest() {
+    return {
+      target: `${this.listPath}?id=0&ids=17`,
+      path: this.listPath,
+      method: "GET",
+      query: { id: "0", ids: "17" },
+    };
+  },
+
+  detailRequest(id) {
+    const param = aacsbParam(aacsbNumber(id));
+    return { target: `${this.detailPath}?id=${param}`, path: this.detailPath, method: "GET", query: { id: param } };
+  },
+
+  detailUrl(id) {
+    return `${this.origin}${this.detailPath}?id=${aacsbParam(aacsbNumber(id))}`;
+  },
+
+  parseList(html) {
+    const numbers = [...html.matchAll(/view\.php\?id=([A-Za-z0-9+/]{2,12}={0,2})/g)]
+      .map((m) => aacsbDecode(m[1]!))
+      .filter((n): n is number => n !== null);
+    const max = required(numbers.length ? Math.max(...numbers) : null, "news links");
+    const items: ListItem[] = [];
+    for (let n = max; n >= Math.max(1, max - AACSB_MAX_ITEMS + 1); n--) items.push({ id: aacsbId(n), title: "", date: "" });
+    return { items, external: 0, totalPages: 1 };
+  },
+
+  parseDetail(html) {
+    const root = dom(html);
+    const main = required(root.querySelector("div.main"), "div.main");
+    const title = clean(main.querySelector("div.post-content h3")?.text);
+    const date = taiwanDate(/刊登時間：\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/.exec(main.text)?.[1] ?? "");
+    const posts = main.querySelector("div.blog-posts") ?? main;
+    // 內文：去掉區塊標題（最新消息）、標題卡片與聯絡人／刊登時間等欄位
+    for (const el of posts.querySelectorAll("article.post, h3")) el.remove();
+    let bodyHtml = posts.innerHTML.replace(/<p>\s*(聯絡人|聯絡電話|刊登時間|分享連結)：[\s\S]*?<\/p>/g, "");
+    if (!title) bodyHtml = "";
+    const files = posts
+      .querySelectorAll("a[href]")
+      .filter((a) => FILE_EXT.test(a.getAttribute("href") ?? "") || (a.getAttribute("href") ?? "").includes("uploads/file/"));
+    const attachments = collectFiles(files, `${this.origin}/`, (a) => a.text);
+    return { title, date, bodyHtml, attachments };
+  },
+};
+
+/**
+ * 商學院內容頁：page.php?id=N 一次包含該組所有分頁（tab-pane），ids 只決定預設開哪一頁。
+ * 每組抓一次（ids=1），再依分頁切成一筆一筆。按鈕被註解掉、也不是預設顯示的分頁不收（visibleHtml）。
+ */
+export interface SitePage {
+  key: string;
+  title: string;
+  path: string;
+  bodyHtml: string;
+}
+
+export function parseAacsbGroup(html: string, group: number): SitePage[] {
+  const root = dom(visibleHtml(html));
+  // 部分頁面 HTML 標籤沒有正確關閉（例如 USR 計畫頁），分頁不一定在 div.main 裡：直接在整頁找
+  required(root.querySelector("div.main"), "div.main");
+  const labels = new Map<string, string>();
+  for (const a of root.querySelectorAll("a[href^='#']")) {
+    const id = (a.getAttribute("href") ?? "").slice(1);
+    const text = clean(a.text);
+    if (id && text && !labels.has(id)) labels.set(id, text);
+  }
+  const pages: SitePage[] = [];
+  root.querySelectorAll("div.tab-pane").forEach((pane, index) => {
+    const label = labels.get(pane.getAttribute("id") ?? "") || `第 ${index + 1} 頁`;
+    pages.push({
+      key: `cobp${String(group).padStart(3, "0")}t${String(index + 1).padStart(2, "0")}`,
+      title: label,
+      path: `/page.php?id=${group}&ids=${index + 1}`,
+      bodyHtml: pane.innerHTML,
+    });
+  });
+  return pages;
+}
+
+export const HTML_SITES = { "library-ewpt": librarySite, "lc-jsp": lcSite, "aacsb-php": aacsbSite } as const;
 
 export function bodyText(html: string): string {
   return htmlToText(html);

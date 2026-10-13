@@ -161,6 +161,7 @@ export const UNIT_NAMES: Record<string, string> = {
   regulations: "全校法規彙編",
   faq: "各處室常見問答",
   officials: "現任主管（各單位主管介紹頁）",
+  business: "商學院",
 };
 
 /**
@@ -382,6 +383,55 @@ const WEB_SOURCES: SourceDefinition[] = [
       personalDataGuard: PERSONAL_DATA_GUARD,
     },
     entityType: "announcement",
+    enabled: true,
+    fetch: HTML_FETCH,
+    freshness: DAILY,
+  },
+  {
+    // 商學院自己的網站（www.aacsb.ntpu.edu.tw；new.ntpu.edu.tw/business 幾乎沒有內容、也沒有公告）。
+    // 使用者 2026-10-13 指定加入，並選擇補齊歷史公告：每次最多抓 60 則未收錄的編號（約 2,300 則，約一天補齊）。
+    id: "business-announcements",
+    sourceUnit: "business",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://www.aacsb.ntpu.edu.tw/news.php?id=0&ids=17",
+    newsUrlBase: "https://www.aacsb.ntpu.edu.tw/view.php",
+    origin: "https://www.aacsb.ntpu.edu.tw",
+    allowedPathPrefixes: ["/news.php", "/view.php"],
+    entrypoints: ["/news.php", "/view.php"],
+    queryRules: {
+      "/news.php": { id: /^0$/, ids: /^17$/ },
+      "/view.php": { id: /^[A-Za-z0-9+/]{2,12}={0,2}$/ },
+    },
+    parser: "html-news",
+    adapter: {
+      kind: "html-news",
+      site: "aacsb-php",
+      maxDetailsPerRun: 60,
+      // 已收錄的公告很少修改；30 天才重新驗證一次，避免每週重抓兩千多則
+      reverifyAfterSeconds: 30 * 86_400,
+      personalDataGuard: PERSONAL_DATA_GUARD,
+    },
+    entityType: "announcement",
+    enabled: true,
+    fetch: HTML_FETCH,
+    freshness: DAILY,
+  },
+  {
+    // 商學院網站的內容頁（關於本院、單位介紹、師資、學生專區、研究、國際、企業關係、榮耀、捐款、USR）。
+    id: "business-site-pages",
+    sourceUnit: "business",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://www.aacsb.ntpu.edu.tw/",
+    newsUrlBase: "https://www.aacsb.ntpu.edu.tw/page.php",
+    origin: "https://www.aacsb.ntpu.edu.tw",
+    allowedPathPrefixes: ["/page.php"],
+    entrypoints: ["/page.php"],
+    queryRules: { "/page.php": { id: /^\d{1,3}$/, ids: /^1$/ } },
+    parser: "html-pages",
+    adapter: { kind: "html-pages", site: "aacsb", groups: [1, 2, 3, 4, 5, 6, 7, 9, 10, 132] },
+    entityType: "page",
     enabled: true,
     fetch: HTML_FETCH,
     freshness: DAILY,

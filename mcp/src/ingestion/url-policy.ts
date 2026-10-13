@@ -2,7 +2,7 @@ import { IngestionError } from "../shared/errors";
 import { MANUAL_PATH } from "./manual-inbox";
 import { isManualSource, type SourceDefinition, type SourceRequest } from "./types";
 
-const ADAPTER_KINDS = ["strapi-publications", "strapi-sections", "html-news", "attachments", "strapi-officials"];
+const ADAPTER_KINDS = ["strapi-publications", "strapi-sections", "html-news", "attachments", "strapi-officials", "html-pages"];
 
 const METADATA_HOSTS = new Set([
   "metadata",
