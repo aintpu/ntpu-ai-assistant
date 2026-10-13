@@ -285,6 +285,13 @@ class McpRecordTests(unittest.TestCase):
         self.assertFalse(any("研究發展處" in (k or "") for k in keywords))
         self.assertTrue({"簡介", "行政團隊", "成員介紹"} <= keywords)
 
+    def test_exclusive_keyword_moves_misrouted_question(self):
+        """問題寫明只屬於某單位的明確關鍵詞、又沒寫到模型所選單位時，改歸到那個單位（碩專班選課 → 進修推廣部）。"""
+        self.assertEqual(core.exclusive_keyword_office("碩士在職專班怎麼選課？", "oaa"), ("eec", "碩士在職專班"))
+        # 寫到模型所選單位（商學院）就不改，即使「獎助學金」只屬學務處
+        self.assertIsNone(core.exclusive_keyword_office("商學院有哪些獎助學金？", "cob"))
+        self.assertIsNone(core.exclusive_keyword_office("辦理休學需要哪些程序？", "oaa"))
+
     def _local_depts(self):
         return [c.kwargs.get("dept") for c in self.local_mock.call_args_list]
 
