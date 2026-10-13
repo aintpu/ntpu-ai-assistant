@@ -53,7 +53,7 @@ export function selectDetails(
 
 function detailStep(source: SourceDefinition, site: HtmlSite, config: HtmlNewsConfig, item: ListItem): Step {
   return {
-    request: site.detailRequest(item.id),
+    request: site.detailRequest(item.id, item),
     fatal: false,
     async handle(bytes): Promise<StepOutcome> {
       const detail = site.parseDetail(decodeUtf8(bytes), item.id);
@@ -79,7 +79,7 @@ function detailStep(source: SourceDefinition, site: HtmlSite, config: HtmlNewsCo
         attachments: [...detail.attachments].sort((a, b) =>
           a.url === b.url ? a.name.localeCompare(b.name) : a.url < b.url ? -1 : 1,
         ),
-        sourceUrl: site.detailUrl(item.id),
+        sourceUrl: site.detailUrl(item.id, item),
       };
       const parsed = AnnouncementSchema.safeParse(candidate);
       if (!parsed.success) {

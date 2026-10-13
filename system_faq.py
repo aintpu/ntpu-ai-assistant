@@ -44,6 +44,7 @@ class QueryDomain(str, Enum):
     VPF = "VPF"
     PRES = "PRES"
     COB = "COB"  # 商學院（只有 MCP 資料）
+    MIS = "MIS"  # 資訊管理研究所（只有 MCP 資料）
     OTHER = "OTHER"
 
 

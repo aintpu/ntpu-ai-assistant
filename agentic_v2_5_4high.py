@@ -181,7 +181,7 @@ DEPT_NAMES = {"ope": "體育室", "ge": "通識教育中心", "lc": "語言中�
               "oaa": "教務處", "osa": "學務處", "hr": "人事室",
               "oga": "總務處"}
 DEPT_NAMES.update(FAQ_OFFICE_NAMES)
-DEPT_NAMES.update(MCP_ONLY_OFFICE_NAMES)  # 商學院：只有 MCP 資料（官網公告、內容頁）
+DEPT_NAMES.update(MCP_ONLY_OFFICE_NAMES)  # 商學院、資管所：只有 MCP 資料（官網公告、內容頁）
 FAQ_PAGE_URLS = {
     "ope": "https://new.ntpu.edu.tw/ope/faq",
     "ge":  "https://new.ntpu.edu.tw/cge/faq",
@@ -2556,6 +2556,7 @@ SYSTEM_STYLE = (
     f"- 國立臺北大學{'、'.join(FAQ_OFFICE_NAMES.values())}已匯入 FAQ 涵蓋的相關業務；"
     "這些單位目前不是完整法規全文或即時公告，請依檢索證據及每題官方來源回答。\n"
     "- 國立臺北大學商學院相關業務（學院簡介、系所與研究中心介紹、師資、學生專區、獎助學金、學程、國際交流、產學合作、最新消息等）\n"
+    "- 國立臺北大學資訊管理研究所相關業務（所簡介、沿革、師資、招生、修業規則、課程、學術研究、實習徵才、捐款、產學合作、最新消息等）\n"
     "- 體育、運動、健身相關的一般知識\n"
 
     "【對話情境判斷】\n"

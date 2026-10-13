@@ -127,6 +127,20 @@ export class FakeSites {
         return html(main(`<ul class="nav nav-tabs"><li class="active"><a href="#t1">第 ${g} 組</a></li></ul><div class="tab-pane active" id="t1">${"商學院介紹內容。".repeat(10)}</div>`));
       }
     }
+    if (url.hostname === "www.mis.ntpu.edu.tw") {
+      // 資管所 WordPress：sitemap 列 2 則文章；固定頁面都回同一個版型
+      const page = (title: string, cls: string, body: string) =>
+        `<html><body><nav>選單</nav><h1 class="entry-title">${title}</h1><div class="entry-content"><div class="${cls}">${body}</div></div></body></html>`;
+      if (url.pathname === "/wp-sitemap-posts-post-1.xml") {
+        return new Response(
+          `<?xml version="1.0"?><urlset><url><loc>https://www.mis.ntpu.edu.tw/2026/10/06/intern/</loc></url><url><loc>https://www.mis.ntpu.edu.tw/2025/03/01/%e6%b4%bb%e5%8b%95/</loc></url></urlset>`,
+          { headers: { "content-type": "application/xml; charset=UTF-8" } },
+        );
+      }
+      const post = /^\/(\d{4})\/(\d{2})\/(\d{2})\//.exec(url.pathname);
+      if (post) return html(page(`資管所公告 ${post[1]}`, "post-content", "<p>資管所公告內文。</p>"));
+      return html(page(`資管所頁面 ${url.pathname}`, "x", `${"資訊管理研究所介紹。".repeat(10)}`));
+    }
     return new Response("unexpected host", { status: 599 });
   };
 }
