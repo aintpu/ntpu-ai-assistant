@@ -41,6 +41,7 @@ from rank_bm25 import BM25Okapi
 from conversation_guardrail import (
     ConversationResolution,
     ConversationState,
+    OFFICE_KEYWORDS,
     ScopeDecision,
     build_updated_state,
     check_evidence_sufficiency,
@@ -4356,6 +4357,49 @@ def ground_scope_in_data(scope, raw_query: str):
 SCOPE_REVOTES = 2  # 模型判 OUT_OF_SCOPE 時再問幾次（取多數決）
 
 
+def _build_exclusive_keywords() -> dict:
+    """只屬於一個單位、夠明確的關鍵詞（至少 4 字，且不與其他單位的關鍵詞互相包含），例如「碩士在職專班」→ 進修推廣部。"""
+    from collections import defaultdict
+    owners = defaultdict(set)
+    for office, words in OFFICE_KEYWORDS.items():
+        for w in words:
+            w = str(w).strip()
+            if len(w) >= 4 and re.search(r"[\u4e00-\u9fff]", w):
+                owners[w].add(office)
+    pairs = [(str(w), o) for o, words in OFFICE_KEYWORDS.items() for w in words if len(str(w)) >= 2]
+    out = {}
+    for w, offices in owners.items():
+        if len(offices) != 1:
+            continue
+        office = next(iter(offices))
+        if any(o != office and (w in w2 or w2 in w) for w2, o in pairs):
+            continue
+        out[w] = office
+    return out
+
+
+_EXCLUSIVE_KEYWORDS = None
+
+
+def exclusive_keyword_office(query: str, chosen: str | None):
+    """模型選的處室在問題裡沒有任何關鍵詞（3 字以上）、問題卻有只屬於另一個單位的明確關鍵詞時，回傳 (那個單位, 關鍵詞)。
+    2026-10-13 歸類回歸：「碩士在職專班怎麼選課？」被模型分到教務處，碩專班選課是進修推廣部業務。
+    問題寫到模型所選單位的關鍵詞時不改（「商學院有哪些獎助學金」不會因為「獎助學金」被改到學務處）。"""
+    global _EXCLUSIVE_KEYWORDS
+    if _EXCLUSIVE_KEYWORDS is None:
+        _EXCLUSIVE_KEYWORDS = _build_exclusive_keywords()
+    q = query or ""
+    if chosen and any(len(str(w)) >= 3 and str(w) in q for w in OFFICE_KEYWORDS.get(chosen, ())):
+        return None
+    hits = {}
+    for w, office in _EXCLUSIVE_KEYWORDS.items():
+        if w in q and office != chosen:
+            hits.setdefault(office, w)
+    if len(hits) != 1:
+        return None
+    return next(iter(hits.items()))
+
+
 def decide_scope(standalone_query: str, context: dict, raw_query: str):
     """範圍判斷：規則 → 模型 → 資料依據；模型單獨判 OUT_OF_SCOPE 時再問 SCOPE_REVOTES 次取多數決。
 
@@ -4378,6 +4422,12 @@ def decide_scope(standalone_query: str, context: dict, raw_query: str):
         office, name = person
         where = f"{DEPT_NAMES[office]}文件" if office else "多個單位的文件（跨單位查詢）"
         return ScopeDecision("IN_SCOPE", office, 0.85, f"知識庫有寫明「{name}」身分的{where}。")
+    if scope.status == "IN_SCOPE":
+        moved = exclusive_keyword_office(raw_query, scope.office_hint)
+        if moved and moved[0] in DEPT_NAMES:
+            office, word = moved
+            return ScopeDecision("IN_SCOPE", office, max(scope.confidence or 0, 0.8),
+                                 f"問題寫明「{word}」，屬{DEPT_NAMES[office]}業務。")
     if scope.status != "OUT_OF_SCOPE" or SCOPE_REVOTES <= 0:
         return scope
     if any(detect_service_entity_conflict(q) or detect_explicit_unsupported_intent(q)
