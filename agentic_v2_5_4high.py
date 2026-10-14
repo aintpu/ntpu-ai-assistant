@@ -2107,6 +2107,12 @@ ORG_PAGE_TERMS = ("簡介", "行政團隊", "成員介紹", "組織")
 _HISTORY_QUESTION_RE = re.compile(r"成立|創立|創校|創設|設立|哪一年|何時|歷史|沿革|由來|前身")
 HISTORY_PAGE_TERMS = ("沿革", "歷史")
 _NO_ATTACHMENT_UNITS = {"business", "mis"}
+# 問單位主管是誰：〈院長簡介〉〈行政團隊〉等官網頁面寫明現任，公告裡的「院長」多半是活動或來訪報導
+# （2026-10-14「商學院院長是誰」：「院長」出現在 129 則公告，前幾筆都是外校院長來訪，回答無法確認）。
+_HEAD_TITLE_RE = re.compile(r"(院長|所長|系主任|主任|處長|館長|執行長|主管)")
+_WHO_RE = re.compile(r"是誰|誰是|哪位|現任|who|姓名", re.I)
+HEAD_PAGE_TERMS = ("行政團隊", "師資")
+_HEAD_PAGE_BONUS = 4
 
 
 def is_overview_question(*queries) -> bool:
@@ -2193,6 +2199,9 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
         extra += [t for t in ORG_PAGE_TERMS if t not in extra and t not in terms]
     if dept is not None and _HISTORY_QUESTION_RE.search(f"{search_query} {keywords}"):
         extra += [t for t in HISTORY_PAGE_TERMS if t not in extra and t not in terms]
+    head_q = _HEAD_TITLE_RE.search(search_query) if dept is not None and _WHO_RE.search(search_query) else None
+    if head_q:
+        extra += [t for t in (f"{head_q.group(1)}簡介", *HEAD_PAGE_TERMS) if t not in extra and t not in terms]
     if extra:
         print(f"[MCP] 總覽題，另查子主題：{extra}")
     rounds = [attempts[:1] + [[t] for t in extra], attempts[1:]]
@@ -2209,7 +2218,10 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
                     # 關鍵字出現在標題／問題的排前面（內文只是順帶提到的排後面）
                     heading = item.get("question") or item.get("title") or ""
                     entry[0] += sum(2 for t in attempt if t.lower() in heading.lower())
-                    if overview and len(entry) == 3:
+                    if head_q and kind == "page" and len(entry) == 3:
+                        entry[0] += _HEAD_PAGE_BONUS
+                        entry.append(True)  # 頁面加分每筆只加一次
+                    elif overview and len(entry) == 3:
                         entry[0] += _OVERVIEW_KIND_BONUS.get(kind, 0)
                         entry.append(True)  # 類型加分每筆只加一次
         # 第一輪（全部關鍵字一起）只找到一兩筆時也繼續逐詞查（2026-10-12「畢業門檻」只查到一份碩士班簡章就停）
