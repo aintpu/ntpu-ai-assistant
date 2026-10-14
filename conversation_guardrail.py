@@ -13,7 +13,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Iterable
 from office_catalog import (
     FAQ_OFFICES, FAQ_OFFICE_NAMES, FAQ_OFFICE_ALIASES, OFFICE_SEARCH_GROUPS, VICE_PRESIDENT_TITLES,
-    MCP_ONLY_OFFICES, MCP_ONLY_OFFICE_NAMES,
+    MCP_ONLY_OFFICES, MCP_ONLY_OFFICE_NAMES, OFFICE_PARENTS,
 )
 
 
@@ -932,6 +932,24 @@ def _faq_office_topics() -> str:
     )
 
 
+def _office_hierarchy() -> str:
+    """學院與所屬系所（由 OFFICE_PARENTS 產生，新增系所不用改提示詞）。"""
+    children: dict[str, list[str]] = {}
+    for child, parent in OFFICE_PARENTS.items():
+        if child in OFFICE_NAMES and parent in OFFICE_NAMES:
+            children.setdefault(parent, []).append(f"{child}={OFFICE_NAMES[child]}")
+    if not children:
+        return ""
+    tree = "；".join(f"{p}={OFFICE_NAMES[p]} 下設 {'、'.join(c)}" for p, c in children.items())
+    return (
+        f"單位隸屬：{tree}。"
+        "學院與系所的網站收錄師資（教授、老師）、行政人員（助教、秘書）、課程、招生、修業規定、獎學金、系友與最新消息，"
+        "這些問題屬該系所；問學院整體（院長、有哪些系所、學院活動）屬學院。"
+        "問人名時若寫明本校職稱或單位（例如「某某助教的學歷」「資管所某某老師的研究專長」），屬 IN_SCOPE，"
+        "不知道是哪個單位時 office_hint 填 null；只有人名、沒有職稱或單位時，依一般規則判斷。\n"
+    )
+
+
 def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[str, str]]:
     supported = "；".join(f"{code}={name}" for code, name in OFFICE_NAMES.items())
     service_aliases = _configured_aliases(
@@ -952,6 +970,7 @@ def _scope_prompt(standalone_query: str, context: dict[str, Any]) -> list[dict[s
         "自然語句不一定包含處室名稱；例如行政人員午休、特別休假、差勤等仍屬 hr 人事室，"
         "學生團體保險、學生平安保險等仍屬 osa 學務處；捐款給學校（含從國外匯款）屬 alu 校友中心。"
         f"以 FAQ 匯入的單位涵蓋範圍舉例：{_faq_office_topics()}。"
+        f"{_office_hierarchy()}"
         "校長室與各副校長室 FAQ 收錄現任首長姓名、學經歷、研究領域、榮譽與聯絡方式，"
         "詢問本校校長或副校長的這些資訊（含『他們的研究領域呢』這類追問）都屬 IN_SCOPE。"
         "凡是本校（國立臺北大學）的校務、行事曆與典禮活動、課業與考試、學籍、繳費、獎助學金、"
