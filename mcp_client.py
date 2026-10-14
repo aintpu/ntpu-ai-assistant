@@ -34,6 +34,7 @@ DEPT_TO_MCP_UNIT = {
     "os": "os",
     "cob": "business",  # 商學院網站（www.aacsb.ntpu.edu.tw）的最新消息
     "mis": "mis",  # 資管所網站（www.mis.ntpu.edu.tw）的最新消息
+    "dba": "dba", "coop": "coop", "acc": "acc", "stat": "stat",  # 商學院所屬學系網站的最新消息
 }
 
 
@@ -62,6 +63,10 @@ DEPT_TO_MCP_RECORD_UNITS = {
     # 商學院沒有法規全文與 FAQ 檔；登記在這裡是為了讓檢索走 MCP（公告、內容頁、附件）
     "cob": (None, None),
     "mis": (None, None),
+    "dba": (None, None),
+    "coop": (None, None),
+    "acc": (None, None),
+    "stat": (None, None),
 }
 
 
@@ -90,6 +95,7 @@ DEPT_TO_MCP_PAGE_UNIT = {
     "vpf": "vice-president-financial",
     "cob": "business",  # 商學院網站的內容頁
     "mis": "mis",  # 資管所網站的固定頁面
+    "dba": "dba", "coop": "coop", "acc": "acc", "stat": "stat",  # 商學院所屬學系網站的內容頁
 }
 
 

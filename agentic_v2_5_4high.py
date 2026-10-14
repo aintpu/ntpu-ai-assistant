@@ -181,7 +181,7 @@ DEPT_NAMES = {"ope": "體育室", "ge": "通識教育中心", "lc": "語言中�
               "oaa": "教務處", "osa": "學務處", "hr": "人事室",
               "oga": "總務處"}
 DEPT_NAMES.update(FAQ_OFFICE_NAMES)
-DEPT_NAMES.update(MCP_ONLY_OFFICE_NAMES)  # 商學院、資管所：只有 MCP 資料（官網公告、內容頁）
+DEPT_NAMES.update(MCP_ONLY_OFFICE_NAMES)  # 商學院與所屬系所：只有 MCP 資料（官網公告、內容頁）
 FAQ_PAGE_URLS = {
     "ope": "https://new.ntpu.edu.tw/ope/faq",
     "ge":  "https://new.ntpu.edu.tw/cge/faq",
@@ -2106,7 +2106,7 @@ ORG_PAGE_TERMS = ("簡介", "行政團隊", "成員介紹", "組織")
 # （2026-10-14 同一題「商學院成立於哪一年」，關鍵字「成立 年份」查不到、「成立 沿革」查得到）。
 _HISTORY_QUESTION_RE = re.compile(r"成立|創立|創校|創設|設立|哪一年|何時|歷史|沿革|由來|前身")
 HISTORY_PAGE_TERMS = ("沿革", "歷史")
-_NO_ATTACHMENT_UNITS = {"business", "mis"}
+_NO_ATTACHMENT_UNITS = {"business", "mis", "dba", "coop", "acc", "stat"}
 # 問單位主管是誰：〈院長簡介〉〈行政團隊〉等官網頁面寫明現任，公告裡的「院長」多半是活動或來訪報導
 # （2026-10-14「商學院院長是誰」：「院長」出現在 129 則公告，前幾筆都是外校院長來訪，回答無法確認）。
 _HEAD_TITLE_RE = re.compile(r"(院長|所長|系主任|主任|處長|館長|執行長|主管)")
@@ -2170,7 +2170,7 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
         ("faq", "search_faqs", faq_unit), ("regulation", "search_regulations", reg_unit),
         ("announcement", "search_announcements", news_unit), ("page", "search_pages", page_unit),
         # 公告附件內容（招生簡章、活動簡章、作業說明等）；附件依刊登處室分，與公告同一組處室
-        # 商學院、資管所的附件在各自網站上，MCP 沒有收錄附件內容（只收 new.ntpu.edu.tw 的附件），不查
+        # 商學院與所屬系所的附件在各自網站上，MCP 沒有收錄附件內容（只收 new.ntpu.edu.tw 的附件），不查
         ("attachment", "search_attachments", None if news_unit in _NO_ATTACHMENT_UNITS else news_unit)) if u]
 
     from concurrent.futures import ThreadPoolExecutor
@@ -2577,6 +2577,7 @@ SYSTEM_STYLE = (
     "這些單位目前不是完整法規全文或即時公告，請依檢索證據及每題官方來源回答。\n"
     "- 國立臺北大學商學院相關業務（學院簡介、系所與研究中心介紹、師資、學生專區、獎助學金、學程、國際交流、產學合作、最新消息等）\n"
     "- 國立臺北大學資訊管理研究所相關業務（所簡介、沿革、師資、招生、修業規則、課程、學術研究、實習徵才、捐款、產學合作、最新消息等）\n"
+    "- 國立臺北大學企業管理學系、金融與合作經營學系、會計學系、統計學系相關業務（系所簡介、師資、課程、招生、修業規定、獎學金、系友、最新消息等）\n"
     "- 體育、運動、健身相關的一般知識\n"
 
     "【對話情境判斷】\n"

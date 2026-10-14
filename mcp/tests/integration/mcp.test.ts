@@ -178,8 +178,8 @@ describe("MCP endpoint", () => {
     expect(page).toMatchObject({ found: true, warnings: [] });
     expect(page.page.bodyText).toBe("校長簡介：致力推動永續發展。");
     const all = (await call("search_pages", { limit: 20 })).body.result.structuredContent;
-    // 校長室與三個副校長室共 5 頁（商學院、資管所網站的內容頁另外計）
-    expect(all.items.filter((p: { unit: string }) => p.unit !== "business" && p.unit !== "mis").length).toBe(5);
+    // 校長室與三個副校長室共 5 頁（商學院與所屬系所網站的內容頁另外計）
+    expect(all.items.filter((p: { unit: string }) => !["business", "mis", "dba", "coop", "acc", "stat"].includes(p.unit)).length).toBe(5);
     const vp = (await call("search_pages", { unit: "vice-president-financial" })).body.result.structuredContent;
     expect(vp.items[0].links).toBeUndefined();
     const full = (await call("get_page", { id: vp.items[0].id })).body.result.structuredContent;
@@ -251,10 +251,13 @@ describe("incomplete ingestion", () => {
       },
       { trigger: "test" },
     );
-    const { body } = await call("search_announcements", {});
+    const { body } = await call("search_announcements", { limit: 20 });
     const out = body.result.structuredContent;
     // 研發處 3 則＋圖書館、語言中心各 1 則＋商學院 2 則（2 號是已刪除的空白頁，不收）＋資管所 2 則
-    expect(out.count).toBe(9);
+    // ＋企管、金融、統計系各 2 則＋會計系 5 則（列表頁 1 則、四個分類的第二頁各 1 則）
+    expect(out.count).toBe(20);
+    const acc = (await call("search_announcements", { unit: "acc" })).body.result.structuredContent;
+    expect(acc.count).toBe(5);
     expect(out.warnings).toEqual(["INGESTION_INCOMPLETE"]);
     expect(out.freshness[0]).toMatchObject({ state: "fresh", lastRunStatus: "failed", quarantinedCount: 0 });
     const health = (await (await handler.fetch(new Request("https://mcp.test/health"), env)).json()) as any;

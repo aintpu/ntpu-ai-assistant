@@ -127,6 +127,25 @@ export class FakeSites {
         return html(main(`<ul class="nav nav-tabs"><li class="active"><a href="#t1">第 ${g} 組</a></li></ul><div class="tab-pane active" id="t1">${"商學院介紹內容。".repeat(10)}</div>`));
       }
     }
+    if (["www.dba.ntpu.edu.tw", "coop.ntpu.edu.tw", "www.stat.ntpu.edu.tw", "www.acc.ntpu.edu.tw"].includes(url.hostname)) {
+      // 商學院所屬學系：首頁連到最新一則（企管系 nid 從 1000001 起編）；會計系最新消息直接在列表頁
+      const main = (inner: string) => `<html><body><div role="main" class="main">${inner}</div></body></html>`;
+      const nid = url.hostname.startsWith("www.dba");
+      const first = nid ? 1_000_001 : 1;
+      if (url.pathname === "/index.php") return html(main(`<a href="view.php?${nid ? "nid" : "id"}=${btoa(String(first + 1))}">最新</a>`));
+      if (url.pathname === "/view.php") {
+        const n = Number(atob(url.searchParams.get(nid ? "nid" : "id") ?? ""));
+        return html(main(`<div class="blog-posts"><article class="post"><div class="post-content"><h3>學系公告 ${n}</h3><span>2026-10-0${n % 9 || 1}</span></div></article><p>學系公告內文。</p><center>預覽人數:${Date.now() % 1000}</center></div>`));
+      }
+      if (url.pathname === "/news.php" || url.pathname === "/r_news.php") {
+        const n = url.pathname === "/news.php" ? 2004 : 1900 + Number(url.searchParams.get("tarea") ?? 0);
+        return html(`<div class="modal" id="ssdefaultModal${n}"><h4 class="modal-title">會計系公告 ${n}</h4><div class="modal-body"><p>會計系公告內文。</p><p>刊登時間：2026-10-14 14:59:00</p></div></div>`);
+      }
+      if (url.pathname === "/page.php") {
+        const g = url.searchParams.get("id");
+        return html(main(`<ul class="nav nav-tabs"><li class="active"><a href="#t1">第 ${g} 組</a></li></ul><div class="tab-pane active" id="t1">${"學系介紹內容。".repeat(10)}</div>`));
+      }
+    }
     if (url.hostname === "www.mis.ntpu.edu.tw") {
       // 資管所 WordPress：sitemap 列 2 則文章；固定頁面都回同一個版型
       const page = (title: string, cls: string, body: string) =>

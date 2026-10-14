@@ -2,6 +2,7 @@ import type { SourceDefinition } from "../types";
 import { attachmentsAdapter } from "./attachments";
 import { htmlNewsAdapter } from "./html-news";
 import { htmlPagesAdapter } from "./html-pages";
+import { inlineNewsAdapter } from "./inline-news";
 import { manualFaqAdapter, manualRegulationCatalogAdapter, manualRegulationsAdapter } from "./manual";
 import { strapiPublicationsAdapter } from "./strapi-publications";
 import { strapiOfficialsAdapter } from "./strapi-officials";
@@ -13,6 +14,7 @@ const ADAPTERS: Record<SourceDefinition["parser"], Adapter> = {
   "strapi-sections": strapiSectionsAdapter,
   "html-news": htmlNewsAdapter,
   "html-pages": htmlPagesAdapter,
+  "inline-news": inlineNewsAdapter,
   attachments: attachmentsAdapter,
   "strapi-officials": strapiOfficialsAdapter,
   "manual-regulations": manualRegulationsAdapter,

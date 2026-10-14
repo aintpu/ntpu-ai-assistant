@@ -62,7 +62,7 @@ export interface AttachmentsConfig {
 /** 伺服器端產生的 HTML 公告網站：列表頁翻頁，再逐則抓內文。 */
 export interface HtmlNewsConfig {
   kind: "html-news";
-  site: "library-ewpt" | "lc-jsp" | "aacsb-php" | "mis-wp";
+  site: "library-ewpt" | "lc-jsp" | "aacsb-php" | "dba-php" | "coop-php" | "stat-php" | "mis-wp";
   /** 每次執行最多抓幾則內文；其餘留到下一次（避免超過單次執行的子請求上限）。 */
   maxDetailsPerRun: number;
   /** 內文多久沒重新驗證就要重抓。 */
@@ -109,12 +109,12 @@ export type ManualAdapterConfig = ManualRegulationsConfig | ManualRegulationCata
 
 /**
  * 伺服器端產生 HTML 的內容頁網站。
- * 商學院：每組頁面（page.php?id=）抓一次，依分頁切成多筆；資管所：每個固定頁面（WordPress page）一筆。
+ * 商學院與所屬學系：每組頁面（page.php?id=）抓一次，依分頁切成多筆；資管所：每個固定頁面（WordPress page）一筆。
  */
 export type HtmlPagesConfig =
   | {
       kind: "html-pages";
-      site: "aacsb";
+      site: "aacsb" | "dba" | "coop" | "acc" | "stat";
       /** page.php?id= 的組別編號。 */
       groups: number[];
     }
@@ -125,6 +125,14 @@ export type HtmlPagesConfig =
       paths: string[];
     };
 
+/** 最新消息全文直接顯示在列表頁、沒有內文頁的網站（會計系）：只收列表上看得到的公告。 */
+export interface InlineNewsConfig {
+  kind: "inline-news";
+  site: "acc";
+  /** 要抓的列表頁路徑，都必須列在 entrypoints；查詢參數依 queryRules。 */
+  pages: { path: string; query?: Record<string, string> }[];
+}
+
 export type AdapterConfig =
   | StrapiPublicationsConfig
   | StrapiSectionsConfig
@@ -132,6 +140,7 @@ export type AdapterConfig =
   | AttachmentsConfig
   | StrapiOfficialsConfig
   | HtmlPagesConfig
+  | InlineNewsConfig
   | ManualAdapterConfig;
 
 export const MANUAL_ADAPTER_KINDS: readonly ManualAdapterConfig["kind"][] = [

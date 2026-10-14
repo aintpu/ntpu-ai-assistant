@@ -21,7 +21,7 @@ const LABELS = {
     confirmedAt: "最後確認",
     langLabel: "語言",
     welcome: "有什麼我能幫你的？",
-    welcomeSub: "支援 23 個單位：體育室・通識教育中心・語言中心・教務處・學務處・人事室・總務處・研究發展處・主計室・圖書館・資訊中心・國際事務處・進修暨推廣部・校友中心・永續辦公室・高等教育深耕計畫辦公室・秘書室・學術副校長室・行政副校長室・財務暨永續發展副校長室・校長室・商學院・資訊管理研究所。回答範圍以已匯入資料為限。",
+    welcomeSub: "支援 27 個單位：體育室・通識教育中心・語言中心・教務處・學務處・人事室・總務處・研究發展處・主計室・圖書館・資訊中心・國際事務處・進修暨推廣部・校友中心・永續辦公室・高等教育深耕計畫辦公室・秘書室・學術副校長室・行政副校長室・財務暨永續發展副校長室・校長室・商學院・資訊管理研究所・企業管理學系・金融與合作經營學系・會計學系・統計學系。回答範圍以已匯入資料為限。",
     uploadTitle: "上傳圖片",
     voiceTitle: "語音輸入",
     recording: "錄音中，再按一次停止…",
@@ -66,7 +66,7 @@ const LABELS = {
     langLabel: "Language",
     welcome: "How can I help you?",
     welcomeSub:
-      "Ask about 23 university units, including Research and Development, Accounting, the Library and Information Center. See About for full coverage.",
+      "Ask about 27 university units, including Research and Development, Accounting, the Library and Information Center. See About for full coverage.",
     uploadTitle: "Upload image",
     voiceTitle: "Voice input",
     recording: "Recording… click again to stop",
@@ -133,6 +133,7 @@ const QUICK_QUESTIONS = {
     "校長室怎麼聯絡？",
     "商學院有哪些系所與研究中心？",
     "資管所的招生管道與考試科目？",
+    "統計系有哪些專任老師？",
   ],
   en: [
     "What can this system answer?",
@@ -165,6 +166,7 @@ const QUICK_QUESTIONS = {
     "How can I contact the Office of the President?",
     "Which departments and research centers are in the College of Business?",
     "How does the Graduate Institute of Information Management admit students?",
+    "Who are the full-time faculty of the Department of Statistics?",
   ],
 };
 
