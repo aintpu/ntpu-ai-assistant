@@ -1223,7 +1223,10 @@ def build_context_snippets(hits: List[Document], max_chars: int = 1200) -> str:
         category = d.metadata.get("category", "")
         page = d.metadata.get("page", "")
         url = d.metadata.get("url", "")
-        content = d.page_content[:max_chars]
+        # 官網頁面在 _record_document 已依查詢詞挑過段落（最多 PAGE_PASSAGE_CHARS 字），不再截短：
+        # 2026-10-14 資管所〈師資陣容〉被截在 1200 字，後段「行政人員 鄧雅燕 學歷」沒給回答模型，回答說查不到
+        limit = max(max_chars, PAGE_PASSAGE_CHARS) if d.metadata.get("type") == "page" else max_chars
+        content = d.page_content[:limit]
 
         block = (
             f"【文件名稱】{title}\n"

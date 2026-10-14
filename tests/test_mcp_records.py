@@ -336,6 +336,15 @@ class McpRecordTests(unittest.TestCase):
             self.assertIsNone(core.known_person_office("金融系的系主任是誰？"))
         core._mcp_person_units.cache_clear()
 
+    def test_page_context_is_not_cut_to_1200_chars(self):
+        """官網頁面已挑過段落，給回答模型時不再截在 1200 字（資管所〈師資陣容〉後段的行政人員學歷）。"""
+        body = "專任教師名單。" * 300 + "行政人員 鄧雅燕 助教 學歷：朝陽科技大學財務金融系學士"
+        page = core.Document(page_content=body[-2900:], metadata={"title": "師資陣容", "type": "page"})
+        news = core.Document(page_content="公告" * 1000, metadata={"title": "公告", "type": "news"})
+        out = core.build_context_snippets([page, news])
+        self.assertIn("朝陽科技大學", out)
+        self.assertLess(out.count("公告"), 1300)
+
     def test_exclusive_keyword_moves_misrouted_question(self):
         """問題寫明只屬於某單位的明確關鍵詞、又沒寫到模型所選單位時，改歸到那個單位（碩專班選課 → 進修推廣部）。"""
         self.assertEqual(core.exclusive_keyword_office("碩士在職專班怎麼選課？", "oaa"), ("eec", "碩士在職專班"))
