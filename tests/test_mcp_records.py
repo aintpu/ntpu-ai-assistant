@@ -321,6 +321,21 @@ class McpRecordTests(unittest.TestCase):
         self.assertTrue({"院長簡介", "行政團隊"} <= {k for _, k in calls})
         self.assertLess(out.index("院長簡介"), out.index("外校商學院院長來訪"))
 
+    def test_person_found_only_in_mcp_pages(self):
+        """本機知識庫沒有的人名，MCP 官網頁面（系所師資頁）有就不當成不明人物；單位名稱不當人名。"""
+        def fake(tool, args):
+            if args.get("keyword") == "戴敏育" and tool == "search_pages":
+                return {"items": [{"id": "mispprofessor", "unit": "mis", "title": "師資陣容"}]}
+            return {"items": []}
+
+        core._mcp_person_units.cache_clear()
+        with patch.dict(os.environ, {"MCP_REGULATIONS": "1"}), patch.object(mcp_client, "call_tool", side_effect=fake), \
+                patch.object(core, "_grounding_contents", return_value=[]), patch.object(core, "official_name_in", return_value=[]):
+            self.assertEqual(core.known_person_office("戴敏育是誰"), ("mis", "戴敏育"))
+            self.assertIsNone(core.known_person_office("宋明謙是誰"))
+            self.assertIsNone(core.known_person_office("金融系的系主任是誰？"))
+        core._mcp_person_units.cache_clear()
+
     def test_exclusive_keyword_moves_misrouted_question(self):
         """問題寫明只屬於某單位的明確關鍵詞、又沒寫到模型所選單位時，改歸到那個單位（碩專班選課 → 進修推廣部）。"""
         self.assertEqual(core.exclusive_keyword_office("碩士在職專班怎麼選課？", "oaa"), ("eec", "碩士在職專班"))
