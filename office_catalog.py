@@ -36,6 +36,9 @@ MCP_ONLY_OFFICES = {
 }
 MCP_ONLY_OFFICE_NAMES = {code: spec[0] for code, spec in MCP_ONLY_OFFICES.items()}
 
+# 單位的上級（學系、研究所 → 學院）：寫進範圍判斷的提示詞，也供介紹頁依層級排列。新增系所時在這裡登記所屬學院。
+OFFICE_PARENTS = {"mis": "cob", "dba": "cob", "coop": "cob", "acc": "cob", "stat": "cob"}
+
 # Offices whose retrieval also covers other offices' FAQ.  A question about
 # the vice presidents without naming one routes to 校長室, so 校長室 searches
 # the three vice-president offices as well and can list them all.

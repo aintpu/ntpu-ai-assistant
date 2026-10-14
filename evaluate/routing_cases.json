@@ -1,5 +1,5 @@
 {
-  "revision": "2026-10-14.2",
+  "revision": "2026-10-14.3",
   "note": "處室歸類回歸測試：每題只跑範圍判斷與處室歸類（prepare_conversation_turn，不產生回答）。accept 列出可接受的歸類：處室代碼、null（跨單位查詢）或 \"blocked\"（擋下）。新增單位或修改歸類邏輯後都要跑一次。",
   "cases": [
     {
@@ -506,6 +506,38 @@
         "coop"
       ],
       "note": "「金融」不可當人名"
+    },
+    {
+      "id": "R64",
+      "question": "資管所林孝倫老師的研究專長",
+      "accept": [
+        "mis"
+      ],
+      "note": "系所師資"
+    },
+    {
+      "id": "R65",
+      "question": "誰是宋明謙？",
+      "accept": [
+        "blocked"
+      ],
+      "note": "不明人物仍擋（加入隸屬說明後）"
+    },
+    {
+      "id": "R66",
+      "question": "商學院底下有哪些系所？",
+      "accept": [
+        "cob"
+      ],
+      "note": "學院整體"
+    },
+    {
+      "id": "R67",
+      "question": "統計系的系辦助教是誰？",
+      "accept": [
+        "stat"
+      ],
+      "note": ""
     }
   ]
 }

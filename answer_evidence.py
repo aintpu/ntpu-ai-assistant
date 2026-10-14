@@ -104,8 +104,8 @@ def match_quotes(quotes: List[dict], candidates: List[dict]) -> Dict[str, str]:
     return out
 
 
-CHECK_DOC_CHARS = 6000  # 每份文件最多給查核模型看多少字
-CHECK_EVIDENCE_CHARS = 24000  # 全部證據的總字數上限
+CHECK_DOC_CHARS = 20000  # 每份文件最多給查核模型看多少字（與回答模型相同，文件全文讀取）
+CHECK_EVIDENCE_CHARS = 120000  # 全部證據的總字數上限
 
 CHECK_PROMPT = """你是回答前的證據查核員。判斷「系統回答」中的具體事實是否都有「證據」直接支持。
 具體事實指：人名、職務對應（誰擔任什麼）、有效時間（現任、任期、日期、期限）、數字、金額、地點、條件。

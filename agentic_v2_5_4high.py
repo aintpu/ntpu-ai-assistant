@@ -1215,18 +1215,20 @@ def retrieve_and_rerank(query: str, top_k: int = 8, use_rerank: bool = True,
     )
     return candidates[:top_k]
 
-# 把 max_chars 從 800 改為 1500 或 2000
-def build_context_snippets(hits: List[Document], max_chars: int = 1200) -> str:
+# 每份文件給模型的字數上限：使用者 2026-10-14 要求文件一次全部讀取、不要截段。
+# 只有超過這個長度的文件（例如企管系期刊列表 3.3 萬字）才依查詢詞挑段落（focused_passages），避免單份文件撐爆長度。
+DOC_MAX_CHARS = 20000
+
+
+def build_context_snippets(hits: List[Document], max_chars: int = DOC_MAX_CHARS) -> str:
     blocks = []
     for d in hits:
         title = d.metadata.get("title", "")
         category = d.metadata.get("category", "")
         page = d.metadata.get("page", "")
         url = d.metadata.get("url", "")
-        # 官網頁面在 _record_document 已依查詢詞挑過段落（最多 PAGE_PASSAGE_CHARS 字），不再截短：
-        # 2026-10-14 資管所〈師資陣容〉被截在 1200 字，後段「行政人員 鄧雅燕 學歷」沒給回答模型，回答說查不到
-        limit = max(max_chars, PAGE_PASSAGE_CHARS) if d.metadata.get("type") == "page" else max_chars
-        content = d.page_content[:limit]
+        # 2026-10-14 資管所〈師資陣容〉曾被截在 1200 字，後段「行政人員 鄧雅燕 學歷」沒給回答模型，回答說查不到
+        content = d.page_content[:max_chars]
 
         block = (
             f"【文件名稱】{title}\n"
@@ -1314,7 +1316,7 @@ def _collect_source_docs(docs: List[Document]):
             "url": d.metadata.get("url", ""),
             "type": d.metadata.get("type", ""),
             "source_id": _source_id_for_doc(d),
-            "content": str(d.page_content or "")[:6000],  # 比對引文、回答後檢查證據用，不對外輸出
+            "content": str(d.page_content or "")[:DOC_MAX_CHARS],  # 比對引文、回答後檢查證據用，不對外輸出
             # 老師建議 四-2：來源修訂、系統抓取、最後確認分開記錄，不把「最近抓取」說成「內容已確認」
             "revised_at": str(d.metadata.get("date") or "")[:10],
             "fetched_at": str(d.metadata.get("fetched_at") or "")[:10],
@@ -1982,7 +1984,7 @@ OFFICIALS_INSTRUCTION = (
 
 MCP_RECORD_LIMIT = 6
 MCP_RECORD_SEARCH_LIMIT = 20  # 每次搜尋多抓一些，排序後再取前 MCP_RECORD_LIMIT 筆
-MCP_RECORD_FULL_TEXT = 3  # 前幾筆另外取全文（search 只回摘要）
+MCP_RECORD_FULL_TEXT = MCP_RECORD_LIMIT  # 每筆都取全文（search 只回摘要；使用者 2026-10-14 要求全部讀取）
 
 
 def mcp_records_available(dept: str = None) -> bool:
@@ -1999,7 +2001,7 @@ def _record_search_terms(keywords: str) -> list:
     return terms[:5]
 
 
-PAGE_PASSAGE_CHARS = 3000
+PAGE_PASSAGE_CHARS = DOC_MAX_CHARS
 
 
 def focused_passages(body: str, focus, limit: int = PAGE_PASSAGE_CHARS) -> str:
@@ -2031,8 +2033,11 @@ def focused_passages(body: str, focus, limit: int = PAGE_PASSAGE_CHARS) -> str:
 
 def _record_document(kind: str, item: dict, detail: dict, dept: str, focus=()) -> Document:
     """MCP 紀錄轉成檢索文件；另記系統最後抓取時間（老師建議 四-2：與來源修訂日期分開）。"""
-    if kind == "page" and detail and detail.get("bodyText"):
+    # 全文給模型；只有超過 DOC_MAX_CHARS 的長文件才依查詢詞挑段落
+    if kind in ("page", "announcement", "regulation") and detail and detail.get("bodyText"):
         detail = {**detail, "bodyText": focused_passages(detail["bodyText"], list(focus))}
+    if kind == "attachment" and detail and detail.get("text"):
+        detail = {**detail, "text": focused_passages(detail["text"], list(focus))}
     doc = _record_document_body(kind, item, detail, dept)
     doc.metadata["fetched_at"] = _taipei_date((item.get("provenance") or {}).get("verifiedAt") or "")
     return doc
@@ -2042,10 +2047,10 @@ def _record_document_body(kind: str, item: dict, detail: dict, dept: str) -> Doc
     prov = item.get("provenance") or {}
     source_name = item.get("sourceName") or ""
     if kind == "attachment":
-        # 附件全文可能很長：優先取命中關鍵字的段落（search 回傳的 snippet），再補全文開頭
         text = (detail or {}).get("text") or ""
         snippet = item.get("snippet", "")
-        body = (snippet + "\n" + text[:2500]) if snippet and snippet.strip("…") not in text[:2500] else (text[:3000] or snippet)
+        # 全文沒有命中段落時（例如辨識文字與摘要斷行不同）補上搜尋摘要
+        body = (snippet + "\n" + text) if snippet and snippet.strip("…") not in text else (text or snippet)
         method = {"pdf": "PDF", "office": "文件", "ocr": "圖片辨識，可能有錯字", "none": "未讀取內容"}.get(item.get("method"), "")
         return Document(page_content=unquote(body), metadata={
             "title": f"{item.get('name', '')}（{item.get('announcementTitle', '')} 的附件）", "url": item.get("url") or "",
@@ -2055,7 +2060,7 @@ def _record_document_body(kind: str, item: dict, detail: dict, dept: str) -> Doc
         })
     if kind == "page":
         body = (detail or {}).get("bodyText") or item.get("snippet", "")
-        return Document(page_content=unquote(body[:3000]), metadata={
+        return Document(page_content=unquote(body), metadata={
             "title": item.get("title", ""), "url": prov.get("sourceUrl") or "", "type": "page",
             "category": "官網頁面", "dept": dept, "date": _taipei_date(item.get("updatedAt") or ""),
             "source_id": f"mcp:page:{item.get('unit')}:{item.get('id')}",
@@ -2065,7 +2070,7 @@ def _record_document_body(kind: str, item: dict, detail: dict, dept: str) -> Doc
         body = (detail or {}).get("bodyText") or item.get("snippet", "")
         url = prov.get("sourceUrl") or ""
         date = _taipei_date(item.get("publishedAt") or "")
-        return Document(page_content=unquote(body[:2000]), metadata={
+        return Document(page_content=unquote(body), metadata={
             "title": title, "url": url, "type": "news", "category": f"公告（{date}）", "dept": dept,
             "date": date, "source_id": f"mcp:announcement:{item.get('unit')}:{item.get('id')}",
         })
@@ -2265,7 +2270,7 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
         "請根據以下文件內容回答，優先使用原文重點，不要自行擴寫。資料裡沒有寫的人名、職稱對應、數字、日期一律不得說出，也不得用常識或印象補上；問題問的事實若文件沒有直接寫明，要明說查不到。"
         "這些是各處室提供的人工整理資料、官網頁面、公告或公告附件；附件為抽取或圖片辨識的文字，表格可能錯位，請附上附件連結；公告請一併說明公告日期，較舊的公告內容可能已變動。"
         "【來源網址】空白時只以文件類型括號內的來源名稱文字標示來源，不要自行產生連結：\n\n"
-        + build_context_snippets(docs, max_chars=PAGE_PASSAGE_CHARS if overview else 1200)
+        + build_context_snippets(docs)
     )
 
 
