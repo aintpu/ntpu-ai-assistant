@@ -2102,6 +2102,10 @@ _OVERVIEW_KIND_BONUS = {"regulation": 3, "page": 3, "faq": 2, "attachment": 0, "
 
 _ORG_QUESTION_RE = re.compile(r"哪些組|幾個組|下設|組別|組織|分組|單位|部門|分工|負責什麼|業務")
 ORG_PAGE_TERMS = ("簡介", "行政團隊", "成員介紹", "組織")
+# 問單位的成立年份、歷史：〈歷史沿革〉頁寫得最完整。模型挑的關鍵字不一定含「沿革」
+# （2026-10-14 同一題「商學院成立於哪一年」，關鍵字「成立 年份」查不到、「成立 沿革」查得到）。
+_HISTORY_QUESTION_RE = re.compile(r"成立|創立|創校|創設|設立|哪一年|何時|歷史|沿革|由來|前身")
+HISTORY_PAGE_TERMS = ("沿革", "歷史")
 
 
 def is_overview_question(*queries) -> bool:
@@ -2185,6 +2189,8 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
     if dept is not None and _ORG_QUESTION_RE.search(f"{search_query} {keywords}"):
         # 問處室組織（有哪些組、下設哪些單位、負責什麼）：處室的〈簡介〉〈行政團隊〉〈成員介紹〉頁面寫得最完整
         extra += [t for t in ORG_PAGE_TERMS if t not in extra and t not in terms]
+    if dept is not None and _HISTORY_QUESTION_RE.search(f"{search_query} {keywords}"):
+        extra += [t for t in HISTORY_PAGE_TERMS if t not in extra and t not in terms]
     if extra:
         print(f"[MCP] 總覽題，另查子主題：{extra}")
     rounds = [attempts[:1] + [[t] for t in extra], attempts[1:]]
