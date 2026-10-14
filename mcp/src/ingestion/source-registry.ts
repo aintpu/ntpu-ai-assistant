@@ -46,6 +46,79 @@ const MIS_PAGES = [
  */
 const PERSONAL_DATA_GUARD: PersonalDataGuard = "off";
 
+/**
+ * 商學院所屬學系的網站（與商學院同一套 PHP 系統；使用者 2026-10-14 指定加入，比照商學院補齊歷史公告）。
+ * 內容頁組別取自各網站首頁選單；沒有分頁的空殼組別、以及金融系與統計系的 page.php?id=1（其實是最新消息列表，
+ * 金融系的含內嵌圖片達 15MB）不收。會計系的最新消息沒有內文頁，另由 inline-news 只收列表上看得到的公告。
+ */
+const COLLEGE_DEPTS: {
+  unit: string;
+  origin: string;
+  news: { site: "dba-php" | "coop-php" | "stat-php"; idParam: "id" | "nid" } | "inline";
+  pages: "dba" | "coop" | "acc" | "stat";
+  groups: number[];
+}[] = [
+  { unit: "dba", origin: "https://www.dba.ntpu.edu.tw", news: { site: "dba-php", idParam: "nid" }, pages: "dba", groups: [1, 2, 3, 4, 6, 100, 236, 252, 281, 288] },
+  { unit: "coop", origin: "https://coop.ntpu.edu.tw", news: { site: "coop-php", idParam: "id" }, pages: "coop", groups: [4, 5, 6, 97, 150, 158] },
+  { unit: "acc", origin: "https://www.acc.ntpu.edu.tw", news: "inline", pages: "acc", groups: [1, 2, 3, 4, 6, 7, 9, 10, 136, 170] },
+  { unit: "stat", origin: "https://www.stat.ntpu.edu.tw", news: { site: "stat-php", idParam: "id" }, pages: "stat", groups: [4, 5, 6, 9, 97, 98, 141, 147, 150, 158, 162, 188, 194] },
+];
+
+const ACC_NEWS_PAGES = [
+  { path: "/news.php", query: { id: "0", ids: "69" } },
+  ...["69", "70", "71", "72"].map((tarea) => ({ path: "/r_news.php", query: { tarea } })),
+];
+
+function collegeDeptSources(d: (typeof COLLEGE_DEPTS)[number]): SourceDefinition[] {
+  const common = { sourceUnit: d.unit, sourceType: "official_web" as const, trustLevel: "official" as const, origin: d.origin, enabled: true, fetch: HTML_FETCH, freshness: DAILY };
+  const news: SourceDefinition =
+    d.news === "inline"
+      ? {
+          ...common,
+          id: `${d.unit}-announcements`,
+          homepageUrl: `${d.origin}/news.php?id=0&ids=69`,
+          newsUrlBase: `${d.origin}/news.php`,
+          allowedPathPrefixes: ["/news.php", "/r_news.php"],
+          entrypoints: ["/news.php", "/r_news.php"],
+          queryRules: { "/news.php": { id: /^0$/, ids: /^69$/ }, "/r_news.php": { tarea: /^(69|70|71|72)$/ } },
+          parser: "inline-news",
+          adapter: { kind: "inline-news", site: "acc", pages: ACC_NEWS_PAGES },
+          entityType: "announcement",
+        }
+      : {
+          ...common,
+          id: `${d.unit}-announcements`,
+          homepageUrl: `${d.origin}/`,
+          newsUrlBase: `${d.origin}/view.php`,
+          allowedPathPrefixes: ["/index.php", "/view.php"],
+          entrypoints: ["/index.php", "/view.php"],
+          queryRules: { "/view.php": { [d.news.idParam]: /^[A-Za-z0-9+/]{2,16}={0,2}$/ } },
+          parser: "html-news",
+          adapter: {
+            kind: "html-news",
+            site: d.news.site,
+            maxDetailsPerRun: 60,
+            reverifyAfterSeconds: 30 * 86_400,
+            personalDataGuard: PERSONAL_DATA_GUARD,
+          },
+          entityType: "announcement",
+        };
+  const pages: SourceDefinition = {
+    ...common,
+    id: `${d.unit}-site-pages`,
+    homepageUrl: `${d.origin}/`,
+    newsUrlBase: `${d.origin}/page.php`,
+    allowedPathPrefixes: ["/page.php"],
+    entrypoints: ["/page.php"],
+    queryRules: { "/page.php": { id: /^\d{1,3}$/, ids: /^1$/ } },
+    parser: "html-pages",
+    adapter: { kind: "html-pages", site: d.pages, groups: d.groups },
+    entityType: "page",
+  };
+  return [news, pages];
+}
+
+
 const DAILY = { schedule: "daily", maxStalenessSeconds: 48 * 60 * 60 };
 
 /** 人工整理檔：從 R2 manual/ 讀取，不連網站（見 manual-inbox.ts）。 */
@@ -175,6 +248,10 @@ export const UNIT_NAMES: Record<string, string> = {
   officials: "現任主管（各單位主管介紹頁）",
   business: "商學院",
   mis: "資訊管理研究所",
+  dba: "企業管理學系",
+  coop: "金融與合作經營學系",
+  acc: "會計學系",
+  stat: "統計學系",
 };
 
 /**
@@ -449,6 +526,7 @@ const WEB_SOURCES: SourceDefinition[] = [
     fetch: HTML_FETCH,
     freshness: DAILY,
   },
+  ...COLLEGE_DEPTS.flatMap(collegeDeptSources),
   {
     // 資訊管理研究所網站（www.mis.ntpu.edu.tw，WordPress；使用者 2026-10-13 指定加入）。
     // 文章列表用 wp-sitemap（REST API 需要登入）；約 224 則，每次最多抓 60 則內文。

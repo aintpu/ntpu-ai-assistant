@@ -3,7 +3,7 @@ import { IngestionError, safeMessage } from "../../shared/errors";
 import { PageSchema } from "../../shared/schemas";
 import { htmlToText } from "../html-text";
 import type { SourceDefinition } from "../types";
-import { aacsbSite, clean, misSite, parseAacsbGroup, parseMisPage } from "./html-sites";
+import { COLLEGE_SITES, type CollegeSiteKey, clean, misSite, parseCollegeGroup, parseMisPage } from "./html-sites";
 import type { Adapter, AdapterRecord, RejectedRecord, Step } from "./types";
 import { decodeUtf8 } from "./types";
 
@@ -31,13 +31,14 @@ function linksOf(html: string, base: string): { name: string; url: string }[] {
   return out.slice(0, 500);
 }
 
-function groupStep(source: SourceDefinition, group: number, last: boolean): Step {
+function groupStep(source: SourceDefinition, site: CollegeSiteKey, group: number, last: boolean): Step {
+  const spec = COLLEGE_SITES[site];
   const path = "/page.php";
   return {
     request: { target: `${path}?id=${group}&ids=1`, path, method: "GET", query: { id: String(group), ids: "1" } },
     fatal: false,
     async handle(bytes) {
-      const pages = parseAacsbGroup(decodeUtf8(bytes), group);
+      const pages = parseCollegeGroup(decodeUtf8(bytes), group, spec.pagePrefix);
       if (pages.length === 0) throw new IngestionError("PARSER_DRIFT", `page group ${group} has no tabs`);
       const records: AdapterRecord[] = [];
       const rejected: RejectedRecord[] = [];
@@ -56,8 +57,8 @@ function groupStep(source: SourceDefinition, group: number, last: boolean): Step
           // 網站沒有提供修改時間：留空，不以抓取時間冒充來源修訂時間（老師建議 四-2）
           updatedAt: "",
           bodyText: body,
-          links: linksOf(p.bodyHtml, `${aacsbSite.origin}/`),
-          sourceUrl: `${aacsbSite.origin}${p.path}`,
+          links: linksOf(p.bodyHtml, `${spec.origin}/`),
+          sourceUrl: `${spec.origin}${p.path}`,
         };
         const parsed = PageSchema.safeParse(candidate);
         if (!parsed.success) {
@@ -125,7 +126,7 @@ function misStep(source: SourceDefinition, path: string, last: boolean): Step {
 }
 
 /**
- * 內容頁網站：商學院（www.aacsb.ntpu.edu.tw/page.php，每組抓一次、依分頁切成多筆）與
+ * 內容頁網站：商學院與所屬學系（page.php，每組抓一次、依分頁切成多筆）與
  * 資管所（www.mis.ntpu.edu.tw 的 WordPress 固定頁面，一頁一筆）。請求間隔依來源設定。
  */
 export const htmlPagesAdapter: Adapter = {
@@ -143,6 +144,6 @@ export const htmlPagesAdapter: Adapter = {
     if (groups.length === 0 || groups.length > 30 || !groups.every((g) => Number.isInteger(g) && g > 0 && g < 1000)) {
       throw new IngestionError("URL_NOT_ALLOWED", `invalid page groups for ${source.id}`);
     }
-    return groups.map((g, i) => groupStep(source, g, i === groups.length - 1));
+    return groups.map((g, i) => groupStep(source, cfg.site, g, i === groups.length - 1));
   },
 };

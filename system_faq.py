@@ -45,6 +45,10 @@ class QueryDomain(str, Enum):
     PRES = "PRES"
     COB = "COB"  # 商學院（只有 MCP 資料）
     MIS = "MIS"  # 資訊管理研究所（只有 MCP 資料）
+    DBA = "DBA"  # 企業管理學系（只有 MCP 資料）
+    COOP = "COOP"  # 金融與合作經營學系（只有 MCP 資料）
+    ACC = "ACC"  # 會計學系（只有 MCP 資料）
+    STAT = "STAT"  # 統計學系（只有 MCP 資料）
     OTHER = "OTHER"
 
 
