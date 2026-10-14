@@ -4276,6 +4276,10 @@ _IDENTITY_TITLE_RE = re.compile(r"首長|校長|副校長|處長|主任|館長|�
 # 標題就是在問「這個人是誰」（例如「現任校長是誰？」）：權重最高，勝過只是標題提到職稱的新聞
 _WHO_TITLE_RE = re.compile(r"現任|是誰")
 _GROUNDING_MIN_CHARS = 3
+# 姓氏開頭、但其實是單位或職稱的詞（「金融系」「高教處」「黃金組」）：不當人名找
+# （2026-10-14「金融系的系主任是誰」被當成找人名「金融系」，在商學院頁面找到而分錯單位）
+_NOT_A_NAME_RE = re.compile(r"[系所室處院館組會部科班長]$")
+_OFFICE_WORDS = {str(w) for words in OFFICE_KEYWORDS.values() for w in words}
 _title_index = None
 
 
@@ -4315,7 +4319,8 @@ def known_person_office(query: str):
         return (dept if dept in DEPT_NAMES else None), roster[0]["name"]
     # 只比對像人名的詞（2–3 字、常見姓氏開頭）：「現任行政副校長是誰？學歷？」拆開後只剩「學歷」，
     # 不能拿來找人（2026-10-08 幻覺檢查發現會比對到研發長頁面）
-    names = [r for r in _GROUNDING_BREAK_RE.split(query) if 2 <= len(r) <= 3 and r[0] in _SURNAMES]
+    names = [r for r in _GROUNDING_BREAK_RE.split(query) if 2 <= len(r) <= 3 and r[0] in _SURNAMES
+             and not _NOT_A_NAME_RE.search(r) and r not in _OFFICE_WORDS]
     for name in sorted(names, key=len, reverse=True):
         depts = Counter()
         identity_depts = set()
@@ -4335,7 +4340,48 @@ def known_person_office(query: str):
             return None, name
         if depts:
             return depts.most_common(1)[0][0], name
+        found = _mcp_person_units(name)
+        if found is not None:
+            # 本機知識庫沒有、但 MCP 收錄的官網頁面或公告有這個名字（例如各系所師資頁上的老師）
+            return (found if found in DEPT_NAMES else None), name
     return None
+
+
+_NEWS_UNIT_TO_DEPT = {unit: dept for dept, unit in mcp_client.DEPT_TO_MCP_UNIT.items()}
+
+
+@functools.lru_cache(maxsize=512)
+def _mcp_person_units(name: str):
+    """在 MCP 官網內容頁與公告裡找人名：只出現在一個單位回傳該處室代碼，多個單位回 ""（跨單位），沒有回 None。
+
+    本機知識庫只有 FAQ 與法規，系所師資頁等官網資料只在 MCP（2026-10-14「戴敏育是誰」：
+    資管所師資頁寫明「戴敏育 教授兼任所長」，本機沒建索引時被當成不明人物擋下）。
+    """
+    if not mcp_client.records_enabled():
+        return None
+    units = Counter()
+    for tool in ("search_pages", "search_announcements"):
+        try:
+            res = mcp_client.call_tool(tool, {"keyword": name, "limit": 10})
+        except mcp_client.McpUnavailable:
+            continue
+        for item in res.get("items") or []:
+            # 頁面（師資、行政團隊）寫明身分，權重高於公告順帶提到
+            units[item.get("unit")] += 3 if tool == "search_pages" else 1
+    if not units:
+        return None
+    depts = Counter()
+    for unit, n in units.items():
+        dept = mcp_client.MCP_UNIT_TO_DEPT.get(unit) or _NEWS_UNIT_TO_DEPT.get(unit)
+        if dept:
+            depts[dept] += n
+    if len(depts) == 1:
+        return next(iter(depts))
+    top = depts.most_common(2)
+    # 某個單位的頁面明顯占多數（例如師資頁）就交給它，否則跨單位查詢
+    if top and (len(top) == 1 or top[0][1] >= 2 * top[1][1]):
+        return top[0][0]
+    return ""
 
 
 def known_topic_office(query: str):
