@@ -2106,6 +2106,7 @@ ORG_PAGE_TERMS = ("簡介", "行政團隊", "成員介紹", "組織")
 # （2026-10-14 同一題「商學院成立於哪一年」，關鍵字「成立 年份」查不到、「成立 沿革」查得到）。
 _HISTORY_QUESTION_RE = re.compile(r"成立|創立|創校|創設|設立|哪一年|何時|歷史|沿革|由來|前身")
 HISTORY_PAGE_TERMS = ("沿革", "歷史")
+_NO_ATTACHMENT_UNITS = {"business", "mis"}
 
 
 def is_overview_question(*queries) -> bool:
@@ -2163,7 +2164,8 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
         ("faq", "search_faqs", faq_unit), ("regulation", "search_regulations", reg_unit),
         ("announcement", "search_announcements", news_unit), ("page", "search_pages", page_unit),
         # 公告附件內容（招生簡章、活動簡章、作業說明等）；附件依刊登處室分，與公告同一組處室
-        ("attachment", "search_attachments", news_unit)) if u]
+        # 商學院、資管所的附件在各自網站上，MCP 沒有收錄附件內容（只收 new.ntpu.edu.tw 的附件），不查
+        ("attachment", "search_attachments", None if news_unit in _NO_ATTACHMENT_UNITS else news_unit)) if u]
 
     from concurrent.futures import ThreadPoolExecutor
 
