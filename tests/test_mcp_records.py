@@ -334,6 +334,10 @@ class McpRecordTests(unittest.TestCase):
             self.assertEqual(core.known_person_office("戴敏育是誰"), ("mis", "戴敏育"))
             self.assertIsNone(core.known_person_office("宋明謙是誰"))
             self.assertIsNone(core.known_person_office("金融系的系主任是誰？"))
+            self.assertIsNone(core.known_person_office("金融系主任是誰"))
+            # 沒有「是誰」，但人名後面接職稱
+            self.assertEqual(core.known_person_office("戴敏育教授的研究專長"), ("mis", "戴敏育"))
+            self.assertIsNone(core.known_person_office("圖書館的開館時間"))
         core._mcp_person_units.cache_clear()
 
     def test_page_context_is_not_cut_to_1200_chars(self):
