@@ -298,6 +298,29 @@ class McpRecordTests(unittest.TestCase):
         keywords = {k for _, k in calls}
         self.assertTrue({"沿革", "歷史"} <= keywords)
 
+    def test_head_question_prefers_profile_pages_over_announcements(self):
+        """「商學院院長是誰」：另查〈院長簡介〉〈行政團隊〉，官網頁面排在標題也有「院長」的來訪公告前面。"""
+        calls = []
+        news = [{"id": f"n{i:07d}", "unit": "business", "title": f"外校商學院院長來訪 {i}", "publishedAt": "2026-01-01T00:00:00.000Z",
+                 "snippet": "院長", "provenance": {"sourceUrl": "https://www.aacsb.ntpu.edu.tw/view.php"}} for i in range(8)]
+        page = {"id": "cobp001t03", "unit": "business", "title": "院長簡介", "path": "/page.php", "updatedAt": "",
+                "snippet": "教授兼商學院院長", "provenance": {"sourceUrl": "https://www.aacsb.ntpu.edu.tw/page.php"}}
+
+        def fake(tool, args):
+            calls.append((tool, args.get("keyword")))
+            if tool == "search_announcements":
+                return {"items": news, "count": 8, "freshness": []}
+            if tool == "search_pages" and args.get("keyword") in ("院長", "院長簡介"):
+                return {"items": [page], "count": 1, "freshness": []}
+            if tool == "get_page":
+                return {"page": {"bodyText": "黃啟瑞 教授 現職：教授兼商學院院長"}}
+            return {"items": [], "count": 0, "freshness": []}
+
+        with patch.object(mcp_client, "call_tool", side_effect=fake), patch.object(core, "overview_terms", return_value=[]):
+            out = core._records_from_mcp("商學院院長是誰？", "商學院 院長", "cob")
+        self.assertTrue({"院長簡介", "行政團隊"} <= {k for _, k in calls})
+        self.assertLess(out.index("院長簡介"), out.index("外校商學院院長來訪"))
+
     def test_exclusive_keyword_moves_misrouted_question(self):
         """問題寫明只屬於某單位的明確關鍵詞、又沒寫到模型所選單位時，改歸到那個單位（碩專班選課 → 進修推廣部）。"""
         self.assertEqual(core.exclusive_keyword_office("碩士在職專班怎麼選課？", "oaa"), ("eec", "碩士在職專班"))
