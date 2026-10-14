@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 // ─── 多語言文字 ───────────────────────────────────────────────────────────────
 
@@ -532,6 +533,7 @@ function MessageBubble({ msg, lang, T, sessionId }) {
           <div className={`rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed break-words markdown-body ${T.bubbleAi}`}>
             {msg.content ? (
               <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
                 components={{
                   a: ({ node, ...props }) => (
                     <a {...props} target="_blank" rel="noopener noreferrer" className={T.sourceLink} />

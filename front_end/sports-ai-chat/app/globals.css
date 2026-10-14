@@ -40,7 +40,8 @@ body {
 .markdown-body h2 { font-size: 1.1em; }
 .markdown-body h3 { font-size: 1.05em; }
 .markdown-body strong { font-weight: 600; }
-.markdown-body table { border-collapse: collapse; margin: 0.5em 0; font-size: 0.95em; }
+.markdown-body table { display: block; width: max-content; border-collapse: collapse; margin: 0.5em 0; font-size: 0.95em; }
+.markdown-body th { background: #f3f4f6; font-weight: 600; text-align: left; }
 .markdown-body th, .markdown-body td { border: 1px solid #d1d5db; padding: 0.25em 0.6em; }
 .markdown-body code { background: #e5e7eb; border-radius: 4px; padding: 0.1em 0.3em; font-size: 0.9em; }
 .markdown-body hr { border-top: 1px solid #d1d5db; margin: 0.6em 0; }
@@ -48,4 +49,5 @@ body {
 /* Deep dark mode overrides (toggled by .dark class on root wrapper) */
 .dark .markdown-body code { background: #374151; }
 .dark .markdown-body th, .dark .markdown-body td { border-color: #4b5563; }
+.dark .markdown-body th { background: #1f2937; }
 .dark .markdown-body hr { border-color: #4b5563; }
