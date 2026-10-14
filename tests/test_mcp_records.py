@@ -285,6 +285,19 @@ class McpRecordTests(unittest.TestCase):
         self.assertFalse(any("研究發展處" in (k or "") for k in keywords))
         self.assertTrue({"簡介", "行政團隊", "成員介紹"} <= keywords)
 
+    def test_history_question_also_searches_history_pages(self):
+        """「商學院成立於哪一年」：模型關鍵字「成立 年份」不含「沿革」，另查〈歷史沿革〉。"""
+        calls = []
+
+        def fake(tool, args):
+            calls.append((tool, args.get("keyword")))
+            return {"items": [], "count": 0, "freshness": []}
+
+        with patch.object(mcp_client, "call_tool", side_effect=fake), patch.object(core, "overview_terms", return_value=[]):
+            core._records_from_mcp("商學院成立於哪一年？", "商學院 成立 年份", "cob")
+        keywords = {k for _, k in calls}
+        self.assertTrue({"沿革", "歷史"} <= keywords)
+
     def test_exclusive_keyword_moves_misrouted_question(self):
         """問題寫明只屬於某單位的明確關鍵詞、又沒寫到模型所選單位時，改歸到那個單位（碩專班選課 → 進修推廣部）。"""
         self.assertEqual(core.exclusive_keyword_office("碩士在職專班怎麼選課？", "oaa"), ("eec", "碩士在職專班"))
