@@ -4281,6 +4281,8 @@ _WHO_TITLE_RE = re.compile(r"現任|是誰")
 _GROUNDING_MIN_CHARS = 3
 # 姓氏開頭、但其實是單位或職稱的詞（「金融系」「高教處」「黃金組」）：不當人名找
 # （2026-10-14「金融系的系主任是誰」被當成找人名「金融系」，在商學院頁面找到而分錯單位）
+# 「鄧雅燕助教的學歷」：沒有「是誰」，但人名後面接職稱也是在問人（2026-10-14 被當不明主題擋下）
+_TITLED_NAME_RE = re.compile(r"([\u4e00-\u9fff]{2,3}?)(?:助理教授|副教授|教授|助教|老師|講師|系主任|所長|院長|主任|秘書|組長)")
 _NOT_A_NAME_RE = re.compile(r"[系所室處院館組會部科班長]$")
 _OFFICE_WORDS = {str(w) for words in OFFICE_KEYWORDS.values() for w in words}
 _title_index = None
@@ -4312,7 +4314,8 @@ def _grounding_contents():
 
 def known_person_office(query: str):
     """問「誰是 X」時，知識庫內容裡有 X（2–4 個中文字）就回傳 (處室, X)；否則 None。"""
-    if not _PERSON_QUESTION_RE.search(query or ""):
+    titled = [m.group(1) for m in _TITLED_NAME_RE.finditer(query or "") if m.group(1)[0] in _SURNAMES]
+    if not _PERSON_QUESTION_RE.search(query or "") and not titled:
         return None
     # 現任主管資料有這個人：以官方介紹頁的單位為準（同一人兼任多個單位時跨單位查）
     roster = official_name_in(query)
@@ -4322,8 +4325,10 @@ def known_person_office(query: str):
         return (dept if dept in DEPT_NAMES else None), roster[0]["name"]
     # 只比對像人名的詞（2–3 字、常見姓氏開頭）：「現任行政副校長是誰？學歷？」拆開後只剩「學歷」，
     # 不能拿來找人（2026-10-08 幻覺檢查發現會比對到研發長頁面）
-    names = [r for r in _GROUNDING_BREAK_RE.split(query) if 2 <= len(r) <= 3 and r[0] in _SURNAMES
-             and not _NOT_A_NAME_RE.search(r) and r not in _OFFICE_WORDS]
+    names = [r for r in _GROUNDING_BREAK_RE.split(query) if 2 <= len(r) <= 3 and r[0] in _SURNAMES]
+    # 單位名稱或其開頭（「金融系主任」切出的「金融」）不是人名
+    names = [r for r in dict.fromkeys(titled + names)
+             if not _NOT_A_NAME_RE.search(r) and not any(w.startswith(r) for w in _OFFICE_WORDS)]
     for name in sorted(names, key=len, reverse=True):
         depts = Counter()
         identity_depts = set()
