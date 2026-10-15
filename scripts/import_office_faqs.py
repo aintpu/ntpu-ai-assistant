@@ -100,6 +100,8 @@ def upload(env: str) -> None:
 
 
 def main():
+    # 2026-10-15：這些試算表是網路爬蟲轉成的，使用者要求移除並不再匯入（見 crawler_data/office_faq_manifest.json）
+    raise SystemExit("已停用：網路爬蟲轉成的 FAQ 試算表不再匯入（2026-10-15 使用者要求移除）。")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('source', type=Path)
     parser.add_argument('--upload', choices=['staging', 'production'], help='轉完後上傳到 MCP')

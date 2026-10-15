@@ -7,7 +7,9 @@ from knowledge_source_audit import OFFICE_SPECS, audit_all
 class KnowledgeSourceCoverageTests(unittest.TestCase):
     def test_every_supported_office_inventory_item_has_readable_body(self):
         results = audit_all()
-        self.assertEqual({result.office for result in results}, set(OFFICE_SPECS))
+        from knowledge_source_audit import FAQ_OFFICES, faq_offices_with_files
+        expected = {o for o in OFFICE_SPECS if o not in FAQ_OFFICES or o in faq_offices_with_files()}
+        self.assertEqual({result.office for result in results}, expected)
         failures = {
             result.office: {
                 "missing": result.missing_titles,

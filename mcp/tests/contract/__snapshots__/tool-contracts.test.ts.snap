@@ -2215,7 +2215,7 @@ extracted=false 表示只有檔名與連結（例如掃描檔尚未辨識），�
       "readOnlyHint": true,
     },
     "description": "搜尋各處室提供的常見問答（例如怎麼申請、找誰、要準備什麼）。
-收錄處室：alumni（校友服務中心）、cic（資訊中心）、edusp（高教深耕計畫辦公室）、eec（進修暨推廣部）、library（圖書館）、oa（主計室）、oga（總務處）、oia（國際事務處）、op（人事室）、ord（研究發展處）、os（秘書室）、president（校長室）、sustainable（永續發展辦公室）、vice-president-academic（學術副校長室）、vice-president-administration（行政副校長室）、vice-president-financial（財務暨永續發展副校長室）。
+收錄處室：oga（總務處）、op（人事室）、ord（研究發展處）。
 每筆附處室提供日期（sourceDate），原檔有來源網址時也會附上。
 資料是人工整理檔（provenance.sourceType=manual_verified、trustLevel=verified），不是排程即時抓取官網的結果；
 回答時請說明這一點。標示來源時：provenance.sourceUrl 有值就附上這個官方連結；
@@ -2238,24 +2238,11 @@ sourceUrl 為 null 表示沒有官方連結，請只用 sourceName 以文字標�
           "type": "integer",
         },
         "unit": {
-          "description": "處室代碼：alumni（校友服務中心）、cic（資訊中心）、edusp（高教深耕計畫辦公室）、eec（進修暨推廣部）、library（圖書館）、oa（主計室）、oga（總務處）、oia（國際事務處）、op（人事室）、ord（研究發展處）、os（秘書室）、president（校長室）、sustainable（永續發展辦公室）、vice-president-academic（學術副校長室）、vice-president-administration（行政副校長室）、vice-president-financial（財務暨永續發展副校長室）",
+          "description": "處室代碼：oga（總務處）、op（人事室）、ord（研究發展處）",
           "enum": [
-            "alumni",
-            "cic",
-            "edusp",
-            "eec",
-            "library",
-            "oa",
             "oga",
-            "oia",
             "op",
             "ord",
-            "os",
-            "president",
-            "sustainable",
-            "vice-president-academic",
-            "vice-president-administration",
-            "vice-president-financial",
           ],
           "type": "string",
         },

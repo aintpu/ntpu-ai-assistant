@@ -147,22 +147,13 @@ const REGULATION_FULL_TEXT: { unit: string; file: string; owners: string[] }[] =
   { unit: "cge", file: "crawler_data/ge_regulations_extra.md", owners: ["通識教育中心"] },
 ];
 
-/** 各處室常見問答檔 → 處室代碼。 */
+/**
+ * 各處室常見問答檔 → 處室代碼。
+ * 2026-10-15 使用者要求移除網路爬蟲轉成的 FAQ（13 個單位整份、研發處 175 題），只留研發處提供的 19 題與總務處、人事室的整理檔；
+ * 移除的紀錄依一般規則標記為已移除，D1 的版本紀錄保留。
+ */
 const FAQ_FILES: { file: string; unit: string }[] = [
   { file: "crawler_data/ord_faq.md", unit: "ord" },
-  { file: "crawler_data/oa_faq.md", unit: "oa" },
-  { file: "crawler_data/lib_faq.md", unit: "library" },
-  { file: "crawler_data/cic_faq.md", unit: "cic" },
-  { file: "crawler_data/oia_faq.md", unit: "oia" },
-  { file: "crawler_data/eec_faq.md", unit: "eec" },
-  { file: "crawler_data/alu_faq.md", unit: "alumni" },
-  { file: "crawler_data/sus_faq.md", unit: "sustainable" },
-  { file: "crawler_data/edusp_faq.md", unit: "edusp" },
-  { file: "crawler_data/os_faq.md", unit: "os" },
-  { file: "crawler_data/pres_faq.md", unit: "president" },
-  { file: "crawler_data/vpa_faq.md", unit: "vice-president-academic" },
-  { file: "crawler_data/vpad_faq.md", unit: "vice-president-administration" },
-  { file: "crawler_data/vpf_faq.md", unit: "vice-president-financial" },
   { file: "crawler_data/hr_content.md", unit: "op" },
   { file: "crawler_data/oga_content.md", unit: "oga" },
 ];
