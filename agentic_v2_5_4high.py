@@ -1735,7 +1735,8 @@ _GENERIC_NEWS_WORDS = ("最新", "最近", "近期", "公告", "消息", "新聞
 # 只放處室名稱與常見簡稱；「借書」「交換生」這類業務關鍵字仍保留。
 _OFFICE_NAME_WORDS = tuple(sorted(
     set(DEPT_NAMES.values()) | {"研發處", "國際處", "進修部", "校友中心", "深耕辦公室", "通識中心", "人事處", "總務處",
-                                "教務處", "學務處", "學生事務處", "體育室", "圖書館", "語言中心", "資訊中心", "主計室", "秘書室"}
+                                "教務處", "學務處", "學生事務處", "體育室", "圖書館", "語言中心", "資訊中心", "主計室", "秘書室",
+                                "進修推廣部", "進推部", "國際事務處", "高教深耕辦公室", "永續辦公室", "人事室"}
     # 學院、系所的簡稱（企管系、資管所、商院…）：2026-10-15「企管系最新消息」把「企管系」當主題詞查，
     # 最新的公告沒寫「企管系」三個字而被濾掉，只剩 9 月的舊公告
     | {w for _zh, _en, words in MCP_ONLY_OFFICES.values() for w in words if re.fullmatch(r"(北大)?[\u4e00-\u9fff]{1,6}[系所院]", w)},
@@ -2154,6 +2155,9 @@ HEAD_PAGE_TERMS = ("行政團隊", "師資")
 # 問系所師資（有哪些老師、教授、師資陣容）：〈專任師資〉〈師資陣容〉頁面寫得最完整，「教師徵聘」公告會擠掉它們
 # （2026-10-15「企管系有什麼師資陣容」只拿到徵聘公告與〈歷史沿革〉）
 _FACULTY_QUESTION_RE = re.compile(r"師資|教授|老師|教師|專任|兼任|faculty|professor", re.I)
+# 問表單（XX 表、申請書、在哪下載）：處室檔案庫的〈表單〉頁列出檔名與下載連結，同時寫到這些詞的公告會擠掉它
+# （2026-10-15「進修推廣部的休學申請表在哪」：檔案庫有〈休退學申請書〉，前幾筆卻是減修公告）
+_FORM_QUESTION_RE = re.compile(r"[表單]|申請書|下載|表格|格式|form", re.I)
 _HEAD_PAGE_BONUS = 4
 
 
@@ -2186,11 +2190,12 @@ def overview_terms(question: str, terms: list) -> list:
 # 問題原文切詞：除了模型挑的關鍵字，每題也用問題本身的詞查（使用者 2026-10-15 要求同一題結果一致；
 # 曾因模型一次挑「成立 年份」、一次挑「成立 沿革」而時有時無）。沒有斷詞套件，以虛詞與標點切開、去掉單位名稱。
 _QUESTION_BREAK_RE = re.compile(
-    r"[^\u4e00-\u9fffA-Za-z0-9]+|請問|一下|關於|如何|怎麼|怎樣|為什麼|多少|多久|幾天|幾點|哪裡|哪一|哪些|哪個|什麼|甚麼|是否|可以|"
+    r"[^\u4e00-\u9fffA-Za-z0-9]+|請問|一下|關於|如何|怎麼|怎樣|為什麼|多少|多久|幾天|幾點|在哪|哪裡|哪一|哪些|哪個|什麼|甚麼|是否|可以|"
     r"能不能|有沒有|目前|現在|國立臺北大學|臺北大學|台北大學|北大|本校|學校|是誰|誰是|[的了嗎呢吧啊呀喔於及誰]")
 _QUESTION_STOPWORDS = {"what", "who", "whom", "which", "when", "where", "why", "how", "the", "is", "are", "was", "of", "to",
                        "in", "on", "for", "and", "or", "a", "an", "do", "does", "can", "about", "at", "ntpu", "university"}
 QUESTION_TERMS_MAX = 3
+_TERM_ALIASES = (("休學", "休退學"), ("退學", "休退學"), ("申請表", "申請書"), ("申請書", "申請表"))
 
 
 def question_terms(text: str, exclude=()) -> list:
@@ -2214,7 +2219,17 @@ def question_terms(text: str, exclude=()) -> list:
     for w in sorted(dict.fromkeys(pieces), key=len, reverse=True):
         if w not in exclude and not any(w in e for e in exclude) and w not in out:
             out.append(w)
-    return out[:QUESTION_TERMS_MAX]
+    out = out[:QUESTION_TERMS_MAX]
+    # 官網檔名常換說法：「休學申請表」→「休退學申請書」。表單類詞另查去掉結尾的詞，休學／退學另查「休退學」
+    variants = []
+    for w in out:
+        if len(w) >= 3 and w[-1] in "表書單":
+            variants.append(w[:-1])
+        for word, alias in _TERM_ALIASES:
+            if word in w:
+                variants.append(alias)
+    out += [v for v in dict.fromkeys(variants) if len(v) >= 2 and v not in out and v not in exclude]
+    return out
 
 
 def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: bool = False, user_queries=()):
@@ -2279,6 +2294,9 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
     if head_q:
         extra += [t for t in (f"{head_q.group(1)}簡介", *HEAD_PAGE_TERMS) if t not in extra and t not in terms]
     faculty_q = dept is not None and _FACULTY_QUESTION_RE.search(f"{search_query} {keywords}")
+    form_q = dept is not None and _FORM_QUESTION_RE.search(next((q for q in user_queries if q), "") or search_query)
+    if form_q:
+        extra += [t for t in ("表單",) if t not in extra]
     if faculty_q:
         # 即使模型關鍵字已有「師資」也單獨查一次：第一輪是全部關鍵字一起查，不會單查「師資」
         extra += [t for t in ("師資",) if t not in extra]
@@ -2305,7 +2323,7 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
                     # 關鍵字出現在標題／問題的排前面（內文只是順帶提到的排後面）
                     heading = item.get("question") or item.get("title") or ""
                     entry[0] += sum(2 for t in attempt if t.lower() in heading.lower())
-                    if (head_q or faculty_q) and kind == "page" and len(entry) == 3:
+                    if (head_q or faculty_q or form_q) and kind == "page" and len(entry) == 3:
                         entry[0] += _HEAD_PAGE_BONUS
                         entry.append(True)  # 頁面加分每筆只加一次
                     elif overview and len(entry) == 3:

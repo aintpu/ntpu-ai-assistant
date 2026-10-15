@@ -90,15 +90,20 @@ class McpRecordTests(unittest.TestCase):
             self.assertFalse(core.mcp_records_available("lib"))
         self.assertTrue(core.mcp_records_available("lib"))
 
+    def test_removed_faq_units_do_not_query_faqs(self):
+        for dept in ("oa", "lib", "cic", "oia", "eec", "alu", "sus", "edusp", "os", "vpa", "vpad", "vpf"):
+            self.assertIsNone(mcp_client.DEPT_TO_MCP_RECORD_UNITS[dept][1], dept)
+
     def test_uses_mcp_faqs_and_records_sources(self):
         fake = FakeMcp({("search_faqs", "續借"): [_faq(1, "圖書如何續借？", url="https://library.ntpu.edu.tw/faq/1")]})
         with patch.object(mcp_client, "call_tool", side_effect=fake):
-            out = core.tool_search_database("圖書館的書要怎麼續借", dept="lib", keywords="續借")
+            # 2026-10-15 圖書館已沒有 FAQ（爬蟲轉的已移除）：改用仍有 FAQ 的總務處
+            out = core.tool_search_database("圖書館的書要怎麼續借", dept="oga", keywords="續借")
         self.assertIn("圖書如何續借？", out)
         self.assertIn("回答：LIB-001", out)
         self.assertIn("https://library.ntpu.edu.tw/faq/1", out)
-        self.assertIn(("search_faqs", {"keyword": "續借", "unit": "library", "limit": 20}), fake.calls)
-        self.assertIn(("search_regulations", {"keyword": "續借", "unit": "library", "limit": 20}), fake.calls)
+        self.assertIn(("search_faqs", {"keyword": "續借", "unit": "oga", "limit": 20}), fake.calls)
+        self.assertIn(("search_regulations", {"keyword": "續借", "unit": "oga", "limit": 20}), fake.calls)
         self.local_mock.assert_not_called()
         self.assertEqual(core.get_last_data_updated_at(), SYNC)
         self.assertEqual([c["title"] for c in core._source_ctx.candidates], ["圖書如何續借？"])
@@ -355,6 +360,8 @@ class McpRecordTests(unittest.TestCase):
         self.assertEqual(core.question_terms("學校畢業門檻有哪些？", []), ["畢業門檻"])
         self.assertEqual(core.question_terms("碩士在職專班怎麼選課？", []), ["碩士在職專班", "選課"])
         self.assertEqual(core.question_terms("有效期限多久", []), ["有效期限"])
+        # 官網檔名換說法：休學申請表 → 休退學申請書
+        self.assertEqual(core.question_terms("進修推廣部的休學申請表在哪？", []), ["休學申請表", "休學申請", "休退學", "申請書"])
         calls = []
 
         def fake(tool, args):
