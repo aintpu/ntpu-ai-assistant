@@ -2149,7 +2149,41 @@ def overview_terms(question: str, terms: list) -> list:
     return out[:OVERVIEW_MAX_TERMS]
 
 
-def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: bool = False):
+# 問題原文切詞：除了模型挑的關鍵字，每題也用問題本身的詞查（使用者 2026-10-15 要求同一題結果一致；
+# 曾因模型一次挑「成立 年份」、一次挑「成立 沿革」而時有時無）。沒有斷詞套件，以虛詞與標點切開、去掉單位名稱。
+_QUESTION_BREAK_RE = re.compile(
+    r"[^\u4e00-\u9fffA-Za-z0-9]+|請問|一下|關於|如何|怎麼|怎樣|為什麼|多少|多久|幾天|幾點|哪裡|哪一|哪些|哪個|什麼|甚麼|是否|可以|"
+    r"能不能|有沒有|目前|現在|國立臺北大學|臺北大學|台北大學|北大|本校|學校|是誰|誰是|[的了嗎呢吧啊呀喔於及誰]")
+_QUESTION_STOPWORDS = {"what", "who", "whom", "which", "when", "where", "why", "how", "the", "is", "are", "was", "of", "to",
+                       "in", "on", "for", "and", "or", "a", "an", "do", "does", "can", "about", "at", "ntpu", "university"}
+QUESTION_TERMS_MAX = 3
+
+
+def question_terms(text: str, exclude=()) -> list:
+    """從問題原文切出 2–8 字的詞（不含單位名稱與已有的關鍵字），最多 QUESTION_TERMS_MAX 個，長的優先。"""
+    pieces = []
+    for run in _QUESTION_BREAK_RE.split(text or ""):
+        for word in sorted(_OFFICE_NAME_WORDS, key=len, reverse=True):
+            run = run.replace(word, " ")
+        for w in run.split():
+            if w.lower() in _QUESTION_STOPWORDS or len(w) < 2:
+                continue
+            if w.isascii():
+                pieces.append(w)
+                continue
+            w = w.rstrip("有是要會")  # 「畢業門檻有（哪些）」「院長是（誰）」
+            if len(w) < 2:
+                continue
+            # 長片語（「宿舍住宿管理規定」）原文不一定整串出現：另取前後各 4 字
+            pieces += [w[:8]] + ([w[:4], w[-4:]] if len(w) > 6 else [])
+    out = []
+    for w in sorted(dict.fromkeys(pieces), key=len, reverse=True):
+        if w not in exclude and not any(w in e for e in exclude) and w not in out:
+            out.append(w)
+    return out[:QUESTION_TERMS_MAX]
+
+
+def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: bool = False, user_queries=()):
     """從 MCP 查法規與常見問答（人工整理檔，有版本紀錄）。
 
     MCP 是關鍵字比對：先用全部關鍵字一起查，查不到再逐一用單一關鍵字查，
@@ -2210,8 +2244,15 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
     head_q = _HEAD_TITLE_RE.search(search_query) if dept is not None and _WHO_RE.search(search_query) else None
     if head_q:
         extra += [t for t in (f"{head_q.group(1)}簡介", *HEAD_PAGE_TERMS) if t not in extra and t not in terms]
+    # 問題原文的詞一起查（不經過模型，同一題每次都一樣），與模型的關鍵字合併排序
+    asked = next((q for q in user_queries if q), "")
+    own = question_terms(asked, terms + extra)
+    if own:
+        extra += own
+        if len(own) > 1:
+            attempts.insert(1, own)
     if extra:
-        print(f"[MCP] 總覽題，另查子主題：{extra}")
+        print(f"[MCP] 另查：{extra}")
     rounds = [attempts[:1] + [[t] for t in extra], attempts[1:]]
     for round_attempts in rounds:
         jobs = [(t, a) for a in round_attempts for t in targets]
@@ -2280,12 +2321,13 @@ _ANSWER_RULE = ("請根據以下文件內容回答，優先使用原文重點，
                 "不可說成內容已確認正確。\n\n")
 
 
-def _search_in(search_query: str, dept, previous_source_docs, keywords: str, overview: bool = False):
+def _search_in(search_query: str, dept, previous_source_docs, keywords: str, overview: bool = False,
+               user_queries=()):
     """在一個處室（dept=None 為全校已收錄資料）查詢。回傳 (給模型的內容, 證據是否足夠)。"""
     mcp_ok = mcp_client.records_enabled() if dept is None else mcp_records_available(dept)
     if keywords and mcp_ok:
         try:
-            from_mcp = _records_from_mcp(search_query, keywords, dept, overview)
+            from_mcp = _records_from_mcp(search_query, keywords, dept, overview, user_queries)
             if from_mcp:
                 return from_mcp, True
         except mcp_client.McpUnavailable as exc:
@@ -2352,9 +2394,9 @@ def tool_search_database(search_query: str, dept: str = None,
         _collect_source_docs(official_docs)
     # 總覽題以使用者原話判斷（工具的查詢句常只剩關鍵字，例如「國立臺北大學 畢業門檻」）
     overview = is_overview_question(*user_queries, search_query)
-    text, ok = _search_in(search_query, dept, previous_source_docs, keywords, overview)
+    text, ok = _search_in(search_query, dept, previous_source_docs, keywords, overview, user_queries)
     if dept and (not ok or _is_person_query(search_query, *user_queries)):
-        global_text, global_ok = _search_in(search_query, None, None, keywords, overview)
+        global_text, global_ok = _search_in(search_query, None, None, keywords, overview, user_queries)
         if global_ok and ok:
             text += "\n\n---\n\n【全校其他單位的相關資料】\n" + global_text
         elif global_ok:

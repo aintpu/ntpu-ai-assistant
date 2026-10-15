@@ -349,6 +349,22 @@ class McpRecordTests(unittest.TestCase):
         self.assertIn("朝陽科技大學", out)
         self.assertLess(out.count("公告"), 1300)
 
+    def test_question_terms_are_searched_alongside_model_keywords(self):
+        """問題原文的詞（程式切詞，不經過模型）也一起查：模型挑「成立 年份」時仍會查「成立」。"""
+        self.assertEqual(core.question_terms("商學院成立於哪一年？", []), ["成立"])
+        self.assertEqual(core.question_terms("學校畢業門檻有哪些？", []), ["畢業門檻"])
+        self.assertEqual(core.question_terms("碩士在職專班怎麼選課？", []), ["碩士在職專班", "選課"])
+        self.assertEqual(core.question_terms("有效期限多久", []), ["有效期限"])
+        calls = []
+
+        def fake(tool, args):
+            calls.append(args.get("keyword"))
+            return {"items": [], "count": 0, "freshness": []}
+
+        with patch.object(mcp_client, "call_tool", side_effect=fake), patch.object(core, "overview_terms", return_value=[]):
+            core._records_from_mcp("國立臺北大學商學院的歷史", "年份 商學院", "cob", user_queries=("宿舍住宿管理規定",))
+        self.assertTrue({"宿舍住宿管理規定", "宿舍住宿", "管理規定"} <= set(calls))
+
     def test_exclusive_keyword_moves_misrouted_question(self):
         """問題寫明只屬於某單位的明確關鍵詞、又沒寫到模型所選單位時，改歸到那個單位（碩專班選課 → 進修推廣部）。"""
         self.assertEqual(core.exclusive_keyword_office("碩士在職專班怎麼選課？", "oaa"), ("eec", "碩士在職專班"))
