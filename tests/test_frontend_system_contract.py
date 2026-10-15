@@ -11,7 +11,7 @@ class FrontendSystemContractTests(unittest.TestCase):
     def test_about_brand_links_return_to_home(self):
         html = (FRONTEND / "public" / "about.html").read_text(encoding="utf-8")
         self.assertEqual(
-            html.count('<a class="brand" href="https://aia.ntpu.ai/">'),
+            html.count('<a class="brand" href="https://aia.ntpu.edu.tw/">'),
             2,
         )
 

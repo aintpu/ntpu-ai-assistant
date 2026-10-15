@@ -73,12 +73,12 @@ class SystemFAQMatch:
 
 
 _SYSTEM_CUES = (
-    "這個系統", "本系統", "這網站", "這個網站", "aia.ntpu.ai", "智慧問答",
+    "這個系統", "本系統", "這網站", "這個網站", "aia.ntpu.edu.tw", "aia.ntpu.ai", "智慧問答",
     "你可以", "你能", "你會", "你有", "你知道", "你了解", "你的資料", "你的回答", "你是",
     "服務範圍", "支援哪些", "支援什麼", "怎麼使用", "怎麼用", "登入",
     "註冊", "資料來源", "知識庫", "更新一次", "更新頻率", "對話內容",
     "隱私", "追問", "上一題", "chatgpt", "回答不了", "回報錯誤",
-    "this system", "this site", "aia.ntpu.ai", "what can you", "can you",
+    "this system", "this site", "aia.ntpu.edu.tw", "aia.ntpu.ai", "what can you", "can you",
     "do you", "your data", "your source", "how do i use", "how often", "updated",
     "can i ask", "in english", "sign in", "login",
     "register", "privacy", "follow-up", "follow up", "chatgpt", "knowledge base",
