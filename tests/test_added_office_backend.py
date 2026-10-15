@@ -50,6 +50,16 @@ class AddedOfficeBackendTests(unittest.TestCase):
         for name in core.DEPT_NAMES.values():
             self.assertIn(name, core._BLOCKED_MSG)
 
+    def test_vice_president_questions_map_to_current_officials(self):
+        roster = [{"unit": u, "name": n} for u, n in (("president", "林道通"), ("vice-president-academic", "陳宥杉"),
+                  ("vice-president-administration", "張玉山"), ("vice-president-financial", "朱炫璉"), ("os", "胡龍騰"))]
+        with patch.object(core, "current_officials_roster", return_value=roster):
+            names = lambda q: [o["name"] for o in core.current_officials_for(q)]  # noqa: E731
+            self.assertEqual(names("副校長有哪些"), ["陳宥杉", "張玉山", "朱炫璉"])
+            self.assertEqual(names("財務副校長是誰"), ["朱炫璉"])
+            self.assertEqual(names("校長和副校長是誰"), ["林道通", "陳宥杉", "張玉山", "朱炫璉"])
+            self.assertEqual(names("Who is the vice president for academic affairs at NTPU?"), ["陳宥杉"])
+
     def test_unnamed_vice_president_query_searches_each_vice_president_office(self):
         index = core.OPEIndex()
         with patch.object(index, '_try_load_cache', return_value=False), \
@@ -63,23 +73,18 @@ class AddedOfficeBackendTests(unittest.TestCase):
             evidence.return_value.sufficient = True
             evidence.return_value.to_dict.return_value = {}
             context = core.tool_search_database('副校長有哪些', dept='pres')
-            self.assertEqual([c.kwargs['dept'] for c in retrieve.call_args_list],
-                             ['vpa', 'vpad', 'vpf'])
-            for name in ('陳宥杉', '張玉山', '朱炫璉'):
-                self.assertIn(name, context)
-            self.assertNotIn('林道通', context)
+            # 2026-10-15 移除爬蟲轉成的副校長室 FAQ 後，現任副校長姓名改由 MCP 現任主管資料提供（另有測試）
+            self.assertEqual([c.kwargs['dept'] for c in retrieve.call_args_list][:3], ['vpa', 'vpad', 'vpf'])
             retrieve.reset_mock()
             context = core.tool_search_database('校長和副校長是誰', dept='pres')
             # 問人：各副校長室之後也查全校已收錄資料（老師建議 一-2-(2)，不只查校長室、副校長室 FAQ）
             self.assertEqual([c.kwargs['dept'] for c in retrieve.call_args_list],
                              ['pres', 'vpa', 'vpad', 'vpf', None])
-            for name in ('林道通', '陳宥杉', '張玉山', '朱炫璉'):
-                self.assertIn(name, context)
+            # 姓名來自 MCP 現任主管資料（本測試不連 MCP）；這裡只驗證檢索範圍
             # 只問校長：檢索沒撈到「現任校長是誰」時仍固定帶入。
             retrieve.reset_mock()
             context = core.tool_search_database('北大校長是誰', dept='pres')
             self.assertEqual([c.kwargs['dept'] for c in retrieve.call_args_list], ['pres', None])
-            self.assertIn('林道通', context)
             self.assertNotIn('陳宥杉', context)
 
 

@@ -191,8 +191,14 @@ def audit_faq_office(office: str) -> AuditResult:
                        tuple(missing), tuple(unreadable))
 
 
+def faq_offices_with_files() -> set:
+    """有 FAQ 檔的單位（2026-10-15 移除網路爬蟲轉成的 FAQ 後只剩研發處）；其他 FAQ_OFFICES 單位只用官網資料。"""
+    return set(json.loads((DATA / "office_faq_manifest.json").read_text(encoding="utf-8")))
+
+
 def audit_all() -> list[AuditResult]:
-    return [audit_office(office) for office in OFFICE_SPECS]
+    with_files = faq_offices_with_files()
+    return [audit_office(office) for office in OFFICE_SPECS if office not in FAQ_OFFICES or office in with_files]
 
 
 if __name__ == "__main__":

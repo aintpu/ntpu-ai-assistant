@@ -14,8 +14,9 @@ from office_catalog import FAQ_OFFICES
 from system_faq import QueryDomain, SystemFAQRetriever, should_route_system
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED = dict(ord=194, oa=70, lib=187, cic=101, oia=85, eec=111,
-                alu=57, sus=42, edusp=26, os=61, vpa=6, vpad=6, vpf=5, pres=6)
+# 2026-10-15 移除網路爬蟲轉成的 FAQ：只剩研發處提供的 19 題；其他單位仍是 FAQ_OFFICES 裡的單位，只是沒有 FAQ 檔
+EXPECTED = dict(ord=19)
+FAQ_UNITS = {"ord", "oa", "lib", "cic", "oia", "eec", "alu", "sus", "edusp", "os", "vpa", "vpad", "vpf", "pres"}
 
 
 def unavailable(*args, **kwargs):
@@ -36,7 +37,8 @@ class AddedOfficeTests(unittest.TestCase):
                          H3_RE=re.compile(r'^###\s+(.+?)\s*$', re.M))
         exec(compile(ast.Module(body=functions, type_ignores=[]), '<parser>', 'exec'), namespace)
         manifest = json.loads((ROOT / 'crawler_data/office_faq_manifest.json').read_text())
-        self.assertEqual(sum(EXPECTED.values()), 957)
+        self.assertEqual(sum(EXPECTED.values()), 19)
+        self.assertEqual(set(manifest), set(EXPECTED))
         for code, count in EXPECTED.items():
             with self.subTest(code=code):
                 path = ROOT / 'crawler_data' / f'{code}_faq.md'
@@ -50,7 +52,7 @@ class AddedOfficeTests(unittest.TestCase):
                 self.assertTrue(all('來源網址：' not in r['answer'] for r in faqs))
 
     def test_catalog_contract_and_state(self):
-        self.assertEqual(set(FAQ_OFFICES), set(EXPECTED))
+        self.assertEqual(set(FAQ_OFFICES), FAQ_UNITS)
         self.assertEqual(len(VALID_OFFICES), 27)
         for code, (zh, en, _) in FAQ_OFFICES.items():
             with self.subTest(code=code):

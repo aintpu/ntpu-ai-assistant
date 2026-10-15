@@ -51,7 +51,9 @@ describe("real crawler_data files", () => {
   });
 
   // 只有停用清單（crawler_data/retired_faqs.json）裡的 FAQ 會記入隔離區
-  const RETIRED = Object.keys(retiredFaqs.retired).length;
+  // 停用清單裡、但檔案已整份移除的 FAQ（2026-10-15 移除爬蟲轉成的 FAQ）不會出現，也不會記入隔離區
+  const faqTexts = (MANUAL_MARKDOWN as string[]).filter((f) => f.endsWith("_faq.md")).map((f) => readFileSync(join(REPO_ROOT, f), "utf8"));
+  const RETIRED = Object.keys(retiredFaqs.retired).filter((id) => faqTexts.some((t) => t.includes(`FAQ 編號：${id}`))).length;
 
   it("ingests every manual source completely; only retired FAQs are quarantined", () => {
     expect(summary.errors).toEqual([]);
@@ -75,8 +77,9 @@ describe("real crawler_data files", () => {
   });
 
   it("keeps every FAQ question", () => {
-    expect(count(`SELECT COUNT(*) n FROM entities WHERE entity_type='faq'`)).toBe(1057 - RETIRED);
-    expect(count(`SELECT COUNT(DISTINCT source_unit) n FROM entities WHERE entity_type='faq'`)).toBe(16);
+    // 2026-10-15 移除網路爬蟲轉成的 FAQ：研發處提供的 Q&A 19 題＋人事室 40＋總務處 60
+    expect(count(`SELECT COUNT(*) n FROM entities WHERE entity_type='faq'`)).toBe(119 - RETIRED);
+    expect(count(`SELECT COUNT(DISTINCT source_unit) n FROM entities WHERE entity_type='faq'`)).toBe(3);
   });
 
   it("keeps file names with parentheses and spaces intact (docx and pdf stay separate, links still open)", () => {
@@ -95,12 +98,6 @@ describe("real crawler_data files", () => {
     const answers = db.rows<{ a: string }>(`SELECT json_extract(payload_json,'$.answer') a FROM entities WHERE entity_type='faq'`);
     expect(answers.every((r) => r.a.trim().length > 0)).toBe(true);
     expect(answers.filter((r) => /^(FAQ 編號|來源網址|來源日期)：/m.test(r.a))).toEqual([]);
-    // 回答第一行就是「適用對象：」的那一題（進修推廣部場地借用），回答要完整保留。
-    const venue = db.rows<{ a: string }>(
-      `SELECT json_extract(payload_json,'$.answer') a FROM entities
-       WHERE entity_type='faq' AND json_extract(payload_json,'$.question') = '臺北校區場地怎麼申請借用？'`,
-    );
-    expect(venue[0]?.a.startsWith("適用對象：")).toBe(true);
   });
 
   it("re-running the same files the next day changes nothing and creates no versions", () => {

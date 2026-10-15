@@ -166,8 +166,8 @@ describe("manual FAQs", () => {
   it("stores each office's questions under its own unit, with stable generated ids when the file has none", async () => {
     inbox.set("crawler_data/oga_content.md", faqMd([{ q: "設備故障怎麼報修？", a: "請使用線上報修系統。", id: "GA-OPS-001" }]));
     const missing = await run(["office-faqs"]);
-    // 其他 13 個處室的檔案還沒上傳：來源不完整，已上傳的照樣寫入。
-    expect(missing.status).toBe("partial");
+    // 2026-10-15 移除爬蟲轉成的 13 個處室 FAQ 後，FAQ 來源只剩研發處、人事室、總務處三個檔案，都已上傳
+    expect(missing.status).toBe("success");
     const keys = db.rows<{ stable_key: string }>(`SELECT stable_key FROM entities WHERE entity_type='faq' ORDER BY stable_key`).map((r) => r.stable_key);
     expect(keys).toContain("ord:ORD-HQ-002");
     expect(keys).toContain("oga:GA-OPS-001");

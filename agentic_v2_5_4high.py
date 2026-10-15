@@ -196,9 +196,11 @@ CRAWLER_SOURCES = [
     ("oga", os.path.join(BASE_DIR, "crawler_data", "oga_content.md")),
 ]
 # 2026-10-02 新增單位：沿用 FAQ Markdown 解析與逐題來源 URL。
+# 2026-10-15 使用者要求移除網路爬蟲轉成的 FAQ（13 個單位整份、研發處 175 題）：沒有 FAQ 檔的單位只用官網公告與內容頁。
 CRAWLER_SOURCES.extend(
-    (code, os.path.join(BASE_DIR, "crawler_data", f"{code}_faq.md"))
+    (code, path)
     for code in FAQ_OFFICES
+    if os.path.exists(path := os.path.join(BASE_DIR, "crawler_data", f"{code}_faq.md"))
 )
 
 # 純法規全文來源（整份檔案為 ## 標題 + ### Page N）
@@ -1949,9 +1951,12 @@ OFFICIALS_MAX_DOCS = 4  # 比對到太多筆（例如只問「主任是誰」）
 
 def current_officials_for(*queries) -> list:
     """第一個像在問人或現任職務的問題，查現任主管資料；沒有、太多筆（不明確）或查詢失敗時回空清單。"""
-    query = next((q for q in queries if q and is_position_question(q)), "")
+    query = next((q for q in queries if q and (is_position_question(q) or "副校長" in q)), "")
     if not query:
         return []
+    vp = _vice_president_officials(query)
+    if vp is not None:
+        return vp
     try:
         res = mcp_client.call_tool("get_current_officials", {"keyword": query.strip()[:100]})
     except mcp_client.McpUnavailable as exc:
@@ -1962,6 +1967,29 @@ def current_officials_for(*queries) -> list:
         return []
     _note_data_updated_at(mcp_client.sync_time(res.get("freshness")))
     return items
+
+
+# 問副校長：MCP 的關鍵字比對不認得簡稱（「財務副校長」曾對到校長），也不會因「副校長有哪些」列出三位。
+# 原本靠副校長室 FAQ 補上；2026-10-15 移除爬蟲轉成的 FAQ 後，改以現任主管資料的單位固定對應。
+_VP_UNITS = (("學術副校長", "vice-president-academic"), ("行政副校長", "vice-president-administration"),
+             ("財務暨永續發展副校長", "vice-president-financial"), ("財務副校長", "vice-president-financial"),
+             ("永續發展副校長", "vice-president-financial"),
+             ("academic affairs", "vice-president-academic"), ("administrative affairs", "vice-president-administration"),
+             ("finance", "vice-president-financial"), ("sustainable development", "vice-president-financial"))
+
+
+def _vice_president_officials(query: str):
+    """問題提到副校長時回傳對應的現任副校長（沒指明哪一位就三位都給；也問校長時一併給）；沒提到回 None。"""
+    if "副校長" not in query and "vice president" not in query.lower():
+        return None
+    roster = current_officials_roster()
+    if not roster:
+        return None
+    named = {unit for word, unit in _VP_UNITS if word in query.lower()}
+    units = named or {unit for _, unit in _VP_UNITS}
+    if re.search(r"(?<!副)校長", query) or "president" in query.lower().replace("vice president", ""):
+        units = units | {"president"}
+    return [o for o in roster if o.get("unit") in units]
 
 
 def current_official_docs(search_query: str, user_queries=()) -> List[Document]:
