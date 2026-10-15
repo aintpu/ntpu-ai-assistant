@@ -71,6 +71,16 @@ export class FakeStrapi {
     this.requests.push(request);
     const body = await request.text();
     this.bodies.push(body);
+    if (body.includes("documents(")) {
+      // 檔案庫：每個處室一個表單檔案
+      const site = /site:\\"([a-z_]+)\\"/.exec(body)?.[1] ?? "";
+      const start = Number(/start:(\d+)/.exec(body)?.[1] ?? 0);
+      const documents = start === 0 ? [{ _id: `d-${site}`, name: `${site} 申請表`, tags: ["表單"], updatedAt: "2026-09-01T00:00:00.000Z", file: { url: "/uploads/form.odt", ext: ".odt" } }] : [];
+      return new Response(JSON.stringify({ data: { documents } }), {
+        status: 200,
+        headers: { "content-type": "application/json; charset=utf-8" },
+      });
+    }
     if (body.includes("sections(")) {
       const names = [...body.matchAll(/\\"(\/[a-z0-9/-]+)\\"/g)].map((m) => m[1]!);
       const found = names.flatMap((n) => (this.sections[n] ? [this.sections[n]] : []));

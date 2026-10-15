@@ -41,6 +41,76 @@ const MIS_PAGES = [
 ];
 
 /**
+ * 圖書館網站的內容頁（library.ntpu.edu.tw；使用者 2026-10-15 指定，取代移除的爬蟲轉 FAQ）。
+ * 單頁取自首頁選單：借閱規則、開放時間、空間與設備、各身分借閱權限、館際合作、樓層介紹、館長與組織等；
+ * 列表型（開放時間、常見問題、相關法規、各式表單）翻完列表再逐則抓內文。外部系統連結（/link/…）不收。
+ */
+const LIBRARY_SINGLE_PAGES = [
+  "fd4e9f3429db4a6fb8f9a4cb26b9274d",
+  "8aec38592a47423ea889ce358762f865",
+  "b2c46be603ab41b4b8babca5d69aadc6",
+  "21ac84fc9b4945f68998bb5ef9d0b2d4",
+  "0c3ddeae137844d991eac647a6f4d121",
+  "1630129901ef4b528576d3a136582a02",
+  "b41b53dd60cf4441a069529b5466153e",
+  "b3836bdaec03425f8ffd3c0ad8c24fda",
+  "736fa3f35c1a4a8caccc539671c94589",
+  "33342a58069c4f7fa32b14bc079b1bfc",
+  "6d4a9613568a4fa9a4fa899fe0b1ab83",
+  "0fcd1317260c42c0b5b3fd6397989c79",
+  "dd17c43b653d4bbba02281909af63859",
+  "78b2aac67f8d4c54a071f3f0475836b9",
+  "b0bf8499909944c9b3f1abf08e739be4",
+  "d6282ed90f0d46a799f835ce3600d5f0",
+  "ddf9ffd4966b469ea23423c1b8cfd51c",
+  "207ce8e9f11b4d09ba3f24b37ce21788",
+  "bedda86f07984933b439f5b73d03a835",
+  "85c4fa2101074cd1bb86e59e027f18b1",
+  "51d3090bd89f476ca6e65e7c76138a1b",
+  "b16ace5700364ee1a0791cdb5bf4b54e",
+  "61edb5a72a304083bdcdd8305ee935fa",
+  "419d08293ec446e8ae86e36b191d50fb",
+  "ace45961de134aa5ae9e918d5cd3db04",
+  "4ed5aadc5c8c4bc9ab74d3fd057e9c3c",
+  "e2c1316e9c444511b2e6bbccfdd28b58",
+  "9be8736d17114c5581ed9b02068da4e4",
+  "1058880890f4405bbffecc43e6ff1981",
+  "7c2208bfec60423c8c4f711d079adff1",
+  "3acd478db09443fb8a0f414a358c7299",
+  "08f7f2d93ec841508bc48988ba0b2787",
+  "7f5072653a8c4692bb4795b47a8f9797",
+  "0e0fbe73cbba4ef58cd875d76343a2dd",
+  "0b999a83942b4b92862a1e2c9dd6e741",
+  "a27eceb4199c483c9306c72b54a24996",
+  "9584bc98a1e94e3ab9d99bb3b966ace9",
+  "1d2af99e5f6043cb9c923788b0171a71",
+  "d6cef9871e634fd69100335537129963",
+  "cd4e061fe91243a89c9fa1bf9002fa10",
+].map((svc) => `/singlehtml/${svc}`);
+const LIBRARY_MULTI_PAGES = [
+  "361d98eec29048a8baa2df27b7673c4b",
+  "37ecc48011a94b21a77bfd394a48df26",
+  "7cd1ff4702524c089cdae86d4e767f37",
+  "016ee800075c424e8030f707b3a9a981",
+  "5adf649a597c4f46bc5b6bb444ff683f",
+  "6241fbf8c6614ce6b1ee22f8c2b67c76",
+  "04623f72c6b54ffba47859b03239aeef",
+  "725d0cf3b3ca46efa0741e0ad85590ce",
+  "0d95ef9f9be545359d5fee4250f3fe56",
+  "bcb2d0066d554e258d9ccfa488b17d5d",
+  "f617e82f7e754a74a92d248579b1b698",
+  "ebc38a81fcf849a884c27bcaf319e005",
+].map((svc) => `/multiplehtml/${svc}`);
+const LIBRARY_LISTS = [
+  "70dcb2e4549c413eb3d533f3b1e54dbe",
+  "84fe7b52141e4ba99b4a00f1ee32f17e",
+  "f6ee8a61ea1e46e9b6627172c180ed04",
+  "0c2cd767e5b44818b07c633eb5ea40ba",
+];
+const LIBRARY_PAGES = [...LIBRARY_SINGLE_PAGES, ...LIBRARY_MULTI_PAGES];
+const LIBRARY_ENTRYPOINTS = [...LIBRARY_PAGES, ...LIBRARY_LISTS.flatMap((svc) => [`/multiplehtml/${svc}`, `/singlehtml/${svc}`])];
+
+/**
  * 全部公告來源的個資過濾模式。使用者 2026-10-03 決定全部放行（官網本來就公開）。
  * 改成 "student-ids" 只擋含學號的名單（掃描約 13 則），"all" 連姓名名單也擋（約 77 則）。
  */
@@ -328,6 +398,16 @@ const ATTACHMENT_FETCH: FetchPolicy = {
   minIntervalMs: 500,
 };
 
+/**
+ * 學校官網各處室的檔案庫（表單、法規、會議紀錄、統計等；strapi documents）。
+ * 使用者 2026-10-15 指定這 12 個處室（取代移除的爬蟲轉 FAQ 裡出自「表單下載」「法規」等頁面的內容）。
+ */
+const DOCUMENT_SITES: { unit: string; site: string }[] = [
+  { unit: "ord", site: "ord" }, { unit: "osa", site: "osa" }, { unit: "oaa", site: "oaa" }, { unit: "oga", site: "oga" },
+  { unit: "oa", site: "oa" }, { unit: "cic", site: "cic" }, { unit: "oia", site: "oia" }, { unit: "eec", site: "eec" },
+  { unit: "alumni", site: "alumni" }, { unit: "edusp", site: "edusp" }, { unit: "os", site: "os" }, { unit: "op", site: "op" },
+];
+
 const strapiOrigin = {
   origin: "https://api-carrier.ntpu.edu.tw",
   allowedPathPrefixes: ["/strapi"],
@@ -368,6 +448,23 @@ const WEB_SOURCES: SourceDefinition[] = [
       ...strapiOrigin,
       parser: "strapi-sections",
       adapter: { kind: "strapi-sections", pagePaths },
+      entityType: "page",
+      enabled: true,
+      fetch: STRAPI_FETCH,
+      freshness: DAILY,
+    }),
+  ),
+  ...DOCUMENT_SITES.map(
+    ({ unit, site }): SourceDefinition => ({
+      id: `${unit}-documents`,
+      sourceUnit: unit,
+      sourceType: "official_api",
+      trustLevel: "official",
+      homepageUrl: `https://new.ntpu.edu.tw/${site}`,
+      newsUrlBase: `https://new.ntpu.edu.tw/${site}`,
+      ...strapiOrigin,
+      parser: "strapi-documents",
+      adapter: { kind: "strapi-documents", siteKey: `${site}_ntpu`, sitePath: site },
       entityType: "page",
       enabled: true,
       fetch: STRAPI_FETCH,
@@ -518,6 +615,25 @@ const WEB_SOURCES: SourceDefinition[] = [
     freshness: DAILY,
   },
   ...COLLEGE_DEPTS.flatMap(collegeDeptSources),
+  {
+    // 圖書館網站的內容頁（借閱規則、開放時間、空間設備、館際合作等）
+    id: "library-web-pages",
+    sourceUnit: "library",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://library.ntpu.edu.tw/",
+    newsUrlBase: "https://library.ntpu.edu.tw",
+    origin: "https://library.ntpu.edu.tw",
+    allowedPathPrefixes: LIBRARY_ENTRYPOINTS,
+    entrypoints: LIBRARY_ENTRYPOINTS,
+    queryRules: Object.fromEntries(LIBRARY_LISTS.map((svc) => [`/singlehtml/${svc}`, { cntId: /^[0-9a-f]{8,32}$/ }])),
+    parser: "html-pages",
+    adapter: { kind: "html-pages", site: "library", pages: LIBRARY_PAGES, lists: LIBRARY_LISTS },
+    entityType: "page",
+    enabled: true,
+    fetch: HTML_FETCH,
+    freshness: DAILY,
+  },
   {
     // 資訊管理研究所網站（www.mis.ntpu.edu.tw，WordPress；使用者 2026-10-13 指定加入）。
     // 文章列表用 wp-sitemap（REST API 需要登入）；約 224 則，每次最多抓 60 則內文。

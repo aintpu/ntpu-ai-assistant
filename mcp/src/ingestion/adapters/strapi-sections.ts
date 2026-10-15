@@ -17,8 +17,11 @@ const PAGE_SIZE = 100;
 const MAX_PAGES = 20;
 /** 少於這個字數的頁面多半是官網動態帶入內容的空殼（例如教務處「考試」頁只有 2 個字），不收錄。 */
 export const MIN_PAGE_CHARS = 50;
-/** 首頁輪播、頁尾與已停用的頁面。 */
-const NON_CONTENT_PATH = /\/(home\d*|foot)$|\(deprecated\)/;
+/**
+ * 處室首頁的輪播（/osa/home1）、頁尾與已停用的頁面。各組首頁（/osa/indigenous/home1、/ord/research-management/home1）
+ * 是該組的介紹與業務連結，要收（2026-10-15 學務處原住民族學生資源中心、研發處各組介紹因此漏掉）。
+ */
+const NON_CONTENT_PATH = /^\/[^/]+\/(home\d*|foot)$|\/foot$|\(deprecated\)/;
 
 /** strapi sections 回傳的原始欄位（未驗證）。刻意不查 editors（含承辦人信箱）。 */
 interface StrapiSection {
@@ -59,7 +62,9 @@ export function normalizePage(row: StrapiSection, source: SourceDefinition): Ada
   const path = typeof row.name === "string" ? row.name.trim() : "";
   const html = typeof row.content === "string" ? row.content : "";
   const updatedRaw = typeof row.updatedAt === "string" ? row.updatedAt : "";
-  let lastSegment = path.split("/").filter(Boolean).pop() ?? "";
+  const segments = path.split("/").filter(Boolean);
+  // 各組首頁（/osa/indigenous/home1）沒有標題：以組的路徑段當標題（「indigenous 首頁」），不用「home1」
+  let lastSegment = /^home\d*$/.test(segments.at(-1) ?? "") && segments.length > 2 ? `${segments.at(-2)} 首頁` : (segments.at(-1) ?? "");
   try {
     lastSegment = decodeURIComponent(lastSegment);
   } catch {

@@ -38,10 +38,12 @@ describe("site pages (strapi sections by prefix)", () => {
         row(3, "/osa/exam", "<p>考試</p>"), // 空殼頁
         row(4, "/osa/home2"),
         row(5, "/osa/apply(deprecated)"),
+        row(6, "/osa/indigenous/home1", long, null), // 各組首頁要收（沒有標題）
       ]),
       ctx(),
     );
-    expect(out.records.map((r) => r.id)).toEqual([row(1, "")._id]);
+    expect(out.records.map((r) => r.id)).toEqual([row(1, "")._id, row(6, "")._id]);
+    expect(out.records[1]!.title).toBe("indigenous 首頁");
     expect(out.skipped).toBe(4);
     expect(out.listComplete).toBe(true);
     expect("考試".length).toBeLessThan(MIN_PAGE_CHARS);

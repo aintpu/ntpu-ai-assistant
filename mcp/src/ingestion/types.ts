@@ -41,6 +41,15 @@ export interface StrapiSectionsConfig {
   pathPrefix?: string;
 }
 
+/** 學校官網各處室的檔案庫（strapi documents）：依分類標籤整理成頁面。 */
+export interface StrapiDocumentsConfig {
+  kind: "strapi-documents";
+  /** documents 的 site 值，例如 oa_ntpu。 */
+  siteKey: string;
+  /** 官網路徑的處室段，例如 oa（分類頁 https://new.ntpu.edu.tw/oa/files?tag=…）。 */
+  sitePath: string;
+}
+
 /**
  * 公告附件的內容：從已收錄公告的附件清單取得檔案，抽出文字（PDF、ODF、DOCX）或以看圖模型辨識（圖片）。
  * 每次執行處理一小批，其餘留到下一次；含個人資料的檔案只記入隔離區，內容不公開。
@@ -120,6 +129,14 @@ export type HtmlPagesConfig =
     }
   | {
       kind: "html-pages";
+      site: "library";
+      /** 內容頁路徑（/singlehtml/<svc> 或只有一則內容的 /multiplehtml/<svc>），都必須列在 entrypoints。 */
+      pages: string[];
+      /** 列表型服務（常見問題、相關法規等）：翻完列表再逐則抓內文 singlehtml/<svc>?cntId=。 */
+      lists: string[];
+    }
+  | {
+      kind: "html-pages";
       site: "mis";
       /** 頁面路徑（例如 /admissions/），都必須列在 entrypoints。 */
       paths: string[];
@@ -136,6 +153,7 @@ export interface InlineNewsConfig {
 export type AdapterConfig =
   | StrapiPublicationsConfig
   | StrapiSectionsConfig
+  | StrapiDocumentsConfig
   | HtmlNewsConfig
   | AttachmentsConfig
   | StrapiOfficialsConfig
