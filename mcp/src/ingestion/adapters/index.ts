@@ -6,12 +6,14 @@ import { inlineNewsAdapter } from "./inline-news";
 import { manualFaqAdapter, manualRegulationCatalogAdapter, manualRegulationsAdapter } from "./manual";
 import { strapiPublicationsAdapter } from "./strapi-publications";
 import { strapiOfficialsAdapter } from "./strapi-officials";
+import { strapiDocumentsAdapter } from "./strapi-documents";
 import { strapiSectionsAdapter } from "./strapi-sections";
 import type { Adapter } from "./types";
 
 const ADAPTERS: Record<SourceDefinition["parser"], Adapter> = {
   "strapi-publications": strapiPublicationsAdapter,
   "strapi-sections": strapiSectionsAdapter,
+  "strapi-documents": strapiDocumentsAdapter,
   "html-news": htmlNewsAdapter,
   "html-pages": htmlPagesAdapter,
   "inline-news": inlineNewsAdapter,
