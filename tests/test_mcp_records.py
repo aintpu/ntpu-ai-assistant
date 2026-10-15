@@ -195,9 +195,9 @@ class McpRecordTests(unittest.TestCase):
         self.assertIn("學生請假辦法", out)
         self.local_mock.assert_not_called()
 
-    def test_language_center_has_no_page_unit(self):
-        # lc 沒有官網內容頁來源；傳進 search_pages 會讓工具回錯誤
-        self.assertNotIn("lc", mcp_client.DEPT_TO_MCP_PAGE_UNIT)
+    def test_language_center_searches_its_site_pages(self):
+        # 2026-10-15 MCP 加入語言中心網站的內容頁（lc-site-pages）
+        self.assertEqual(mcp_client.DEPT_TO_MCP_PAGE_UNIT["lc"], "lc")
 
     def test_falls_back_to_single_keywords_and_ranks_by_matches(self):
         fake = FakeMcp({

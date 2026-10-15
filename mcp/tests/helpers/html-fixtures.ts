@@ -113,6 +113,10 @@ export class FakeSites {
       return item ? html(libraryDetailHtml(item)) : new Response("not found", { status: 404 });
     }
     if (url.hostname === "lc.ntpu.edu.tw") {
+      // 語言中心內容頁（lc-site-pages）：同一個版型
+      if (!url.pathname.startsWith("/web/news/")) {
+        return html(`<div class="titStyle1"><h2>語言中心頁面</h2></div><div class="containerIn">${"語言中心課程與檢定說明。".repeat(10)}</div><div class="content">頁尾</div>`);
+      }
       if (url.pathname === "/web/news/news.jsp") {
         const page = Number(url.searchParams.get("npage") ?? 1);
         const totalPages = Math.max(1, Math.ceil(this.lc.length / 6));

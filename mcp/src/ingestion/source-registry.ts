@@ -111,6 +111,23 @@ const LIBRARY_PAGES = [...LIBRARY_SINGLE_PAGES, ...LIBRARY_MULTI_PAGES];
 const LIBRARY_ENTRYPOINTS = [...LIBRARY_PAGES, ...LIBRARY_LISTS.flatMap((svc) => [`/multiplehtml/${svc}`, `/singlehtml/${svc}`])];
 
 /**
+ * 語言中心網站的內容頁（lc.ntpu.edu.tw；使用者 2026-10-15 指定）：中心簡介、師資、行政團隊、課程、學分學程、
+ * 學術英文、表單下載、法規、資源、活動與常見問答。取自網站選單；活動成果相簿（照片為主）不收。
+ */
+const LC_DM = (path: string, ids: string[]) => ids.map((dm_id) => ({ path, query: { dm_id } }));
+const LC_PAGES = [
+  ...["/web/about/about.jsp", "/web/about/administration.jsp", "/web/course/course.jsp", "/web/course/introduce.jsp",
+    "/web/course/credit.jsp", "/web/academic/academic.jsp", "/web/download/download.jsp", "/web/resource/borrow.jsp",
+    "/web/resource/test.jsp", "/web/resource/consult.jsp", "/web/resource/other.jsp", "/web/resource/link.jsp",
+    "/web/activity/study.jsp", "/web/activity/service.jsp", "/web/activity/activity.jsp"].map((path) => ({ path })),
+  ...LC_DM("/web/about/team.jsp", ["DM1638120159514", "DM1638120174411", "DM1639551746500", "DM1780468340011"]),
+  ...LC_DM("/web/regulations/regulations.jsp", ["DM1637553191335", "DM1637553182150", "DM1641267928283"]),
+  ...LC_DM("/web/qa/qa.jsp", ["DM1755504838053", "DM1656298629123", "DM1656297319601", "DM1657091808548",
+    "DM1656309266272", "DM1657096030048", "DM1637294131973"]),
+];
+const LC_PATHS = [...new Set(LC_PAGES.map((p) => p.path))];
+
+/**
  * 全部公告來源的個資過濾模式。使用者 2026-10-03 決定全部放行（官網本來就公開）。
  * 改成 "student-ids" 只擋含學號的名單（掃描約 13 則），"all" 連姓名名單也擋（約 77 則）。
  */
@@ -617,6 +634,27 @@ const WEB_SOURCES: SourceDefinition[] = [
     freshness: DAILY,
   },
   ...COLLEGE_DEPTS.flatMap(collegeDeptSources),
+  {
+    // 語言中心網站的內容頁（課程、檢定、免修、法規、表單等）
+    id: "lc-site-pages",
+    sourceUnit: "lc",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://lc.ntpu.edu.tw/home.jsp?lang=tw",
+    newsUrlBase: "https://lc.ntpu.edu.tw",
+    origin: "https://lc.ntpu.edu.tw",
+    allowedPathPrefixes: LC_PATHS,
+    entrypoints: LC_PATHS,
+    queryRules: Object.fromEntries(
+      ["/web/about/team.jsp", "/web/regulations/regulations.jsp", "/web/qa/qa.jsp"].map((p) => [p, { dm_id: /^DM\d{10,16}$/ }]),
+    ),
+    parser: "html-pages",
+    adapter: { kind: "html-pages", site: "lc", pages: LC_PAGES },
+    entityType: "page",
+    enabled: true,
+    fetch: HTML_FETCH,
+    freshness: DAILY,
+  },
   {
     // 圖書館網站的內容頁（借閱規則、開放時間、空間設備、館際合作等）
     id: "library-web-pages",

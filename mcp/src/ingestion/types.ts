@@ -129,6 +129,12 @@ export type HtmlPagesConfig =
     }
   | {
       kind: "html-pages";
+      site: "lc";
+      /** 頁面（路徑＋查詢參數，例如 /web/qa/qa.jsp?dm_id=…）；路徑必須在 entrypoints，參數依 queryRules。 */
+      pages: { path: string; query?: Record<string, string> }[];
+    }
+  | {
+      kind: "html-pages";
       site: "library";
       /** 內容頁路徑（/singlehtml/<svc> 或只有一則內容的 /multiplehtml/<svc>），都必須列在 entrypoints。 */
       pages: string[];

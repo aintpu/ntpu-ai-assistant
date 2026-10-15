@@ -185,6 +185,15 @@ export function librarySiteFor(svc: string): HtmlSite {
 
 export const librarySite = librarySiteFor(LIBRARY_SVC);
 
+/** 語言中心內容頁（lc.ntpu.edu.tw/web/…jsp）：標題 div.titStyle1 h2、內文是標題後面的 div.containerIn（div.content 是頁尾）。 */
+export function parseLcPage(html: string): { title: string; bodyHtml: string } {
+  const root = dom(html);
+  const title = clean(required(root.querySelector("div.titStyle1 h2"), "div.titStyle1 h2").text);
+  const body = required(root.querySelector("div.right div.containerIn") ?? root.querySelector("div.containerIn"), "div.containerIn");
+  for (const el of body.querySelectorAll("script, style")) el.remove();
+  return { title, bodyHtml: body.innerHTML };
+}
+
 /** 圖書館內容頁（singlehtml／只有一則內容的 multiplehtml）：標題 h2.h2-page-title、內文 article。 */
 export function parseLibraryPage(html: string): { title: string; bodyHtml: string } {
   const root = dom(html);
