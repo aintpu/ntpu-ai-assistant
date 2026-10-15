@@ -107,10 +107,12 @@ function required<T>(value: T | null | undefined, what: string): T {
 
 const LIBRARY_SVC = "3c152b26c59f4dba96939df64e2edd2f";
 
-export const librarySite: HtmlSite = {
+/** 圖書館 ewpt 的一個服務（svcId）：列表 multiplehtml/<svc>（表單 POST 翻頁）、內文 singlehtml/<svc>?cntId=。 */
+export function librarySiteFor(svc: string): HtmlSite {
+  return {
   origin: "https://library.ntpu.edu.tw",
-  listPath: `/multiplehtml/${LIBRARY_SVC}`,
-  detailPath: `/singlehtml/${LIBRARY_SVC}`,
+  listPath: `/multiplehtml/${svc}`,
+  detailPath: `/singlehtml/${svc}`,
 
   listRequest(page) {
     // 列表翻頁用表單 POST；每頁固定 10 筆（pageSize 參數會被忽略）。
@@ -120,7 +122,7 @@ export const librarySite: HtmlSite = {
       pageSize: "10",
       orderField: "ONLINETIME",
       orderType: "desc",
-      svcId: LIBRARY_SVC,
+      svcId: svc,
       categoryCode: "",
     });
     return {
@@ -151,7 +153,7 @@ export const librarySite: HtmlSite = {
       const link = row.querySelector('td[data-title="標題："] a');
       if (!link) continue;
       const href = stripSession(link.getAttribute("href") ?? "");
-      const id = new RegExp(`/singlehtml/${LIBRARY_SVC}\\?(?:[^#]*&)?cntId=([0-9a-f]{32})`).exec(href)?.[1];
+      const id = new RegExp(`/singlehtml/${svc}\\?(?:[^#]*&)?cntId=([0-9a-f]{8,32})`).exec(href)?.[1];
       if (!id) {
         external++;
         continue;
@@ -179,6 +181,17 @@ export const librarySite: HtmlSite = {
     return { title, date, bodyHtml: article.innerHTML, attachments };
   },
 };
+}
+
+export const librarySite = librarySiteFor(LIBRARY_SVC);
+
+/** 圖書館內容頁（singlehtml／只有一則內容的 multiplehtml）：標題 h2.h2-page-title、內文 article。 */
+export function parseLibraryPage(html: string): { title: string; bodyHtml: string } {
+  const root = dom(html);
+  const title = clean(required(root.querySelector("h2.h2-page-title"), "h2.h2-page-title").text);
+  const article = required(root.querySelector("article"), "article");
+  return { title, bodyHtml: article.innerHTML };
+}
 
 // ── 語言中心 lc.ntpu.edu.tw（JSP，伺服器端產生 HTML）────────────────────────────────
 

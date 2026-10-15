@@ -3,8 +3,8 @@ import { IngestionError, safeMessage } from "../../shared/errors";
 import { PageSchema } from "../../shared/schemas";
 import { htmlToText } from "../html-text";
 import type { SourceDefinition } from "../types";
-import { COLLEGE_SITES, type CollegeSiteKey, clean, misSite, parseCollegeGroup, parseMisPage } from "./html-sites";
-import type { Adapter, AdapterRecord, RejectedRecord, Step } from "./types";
+import { COLLEGE_SITES, type CollegeSiteKey, clean, librarySiteFor, misSite, parseCollegeGroup, parseLibraryPage, parseMisPage } from "./html-sites";
+import type { Adapter, AdapterRecord, RejectedRecord, Step, StepOutcome } from "./types";
 import { decodeUtf8 } from "./types";
 
 /** 少於這個字數的分頁多半是空殼或只有圖片，不收錄。 */
@@ -125,6 +125,84 @@ function misStep(source: SourceDefinition, path: string, last: boolean): Step {
   };
 }
 
+const LIBRARY_ORIGIN = "https://library.ntpu.edu.tw";
+/** 列表型服務的名稱：內文標題前面加上分類（例如「常見問題：借閱」），避免只看標題不知道是哪一類。 */
+export const LIBRARY_LIST_NAMES: Record<string, string> = {
+  "70dcb2e4549c413eb3d533f3b1e54dbe": "開放時間",
+  "84fe7b52141e4ba99b4a00f1ee32f17e": "常見問題",
+  f6ee8a61ea1e46e9b6627172c180ed04: "相關法規",
+  "0c2cd767e5b44818b07c633eb5ea40ba": "各式表單",
+};
+/** 圖書館列表最多翻幾頁（相關法規目前 3 頁）。 */
+const LIBRARY_MAX_LIST_PAGES = 20;
+
+function pageRecord(source: SourceDefinition, id: string, path: string, title: string, bodyHtml: string, base: string): StepOutcome {
+  const body = htmlToText(bodyHtml);
+  if (body.length < MIN_CHARS) return { parsed: 1, records: [], rejected: [], skipped: 1 };
+  const parsed = PageSchema.safeParse({
+    id,
+    unit: source.sourceUnit,
+    path,
+    title,
+    // 頁面上的「發布日期」是第一次上架日，不是修改時間：留空，不以抓取時間冒充（老師建議 四-2）
+    updatedAt: "",
+    bodyText: body,
+    links: linksOf(bodyHtml, base),
+    sourceUrl: `${LIBRARY_ORIGIN}${path}`,
+  });
+  if (!parsed.success) {
+    return { parsed: 1, records: [], rejected: [{ id, reason: safeMessage(parsed.error).slice(0, 200), countsTowardDrift: true }], skipped: 0 };
+  }
+  const p = parsed.data;
+  return {
+    parsed: 1,
+    records: [{ id: p.id, payload: p, title: p.title, searchText: [p.title, p.bodyText].join("\n"), sourceUrl: p.sourceUrl, publishedAt: null }],
+    rejected: [],
+    skipped: 0,
+  };
+}
+
+/** 圖書館單一內容頁：編號 lib + svc。 */
+function libraryPageStep(source: SourceDefinition, path: string, last: boolean): Step {
+  const svc = path.split("/").pop()!;
+  return {
+    request: { target: path, path, method: "GET" },
+    fatal: false,
+    async handle(bytes) {
+      const page = parseLibraryPage(decodeUtf8(bytes));
+      return { ...pageRecord(source, `lib${svc}`, path, page.title, page.bodyHtml, `${LIBRARY_ORIGIN}${path}`), listComplete: last };
+    },
+  };
+}
+
+/** 圖書館列表型服務（常見問題、相關法規、各式表單、開放時間）：翻完列表，每則內文一筆，編號 libc + cntId。 */
+function libraryListStep(source: SourceDefinition, svc: string, page: number, category: string): Step {
+  const site = librarySiteFor(svc);
+  return {
+    request: site.listRequest(page),
+    fatal: false,
+    async handle(bytes) {
+      const list = site.parseList(decodeUtf8(bytes));
+      const outcome: StepOutcome = { parsed: list.items.length, records: [], rejected: [], skipped: list.external };
+      outcome.next = list.items.map((item) => ({
+        request: site.detailRequest(item.id),
+        fatal: false,
+        async handle(detailBytes: Uint8Array) {
+          const detail = parseLibraryPage(decodeUtf8(detailBytes));
+          const path = `/singlehtml/${svc}?cntId=${item.id}`;
+          const title = detail.title && detail.title !== category ? `${category}：${detail.title}` : clean(item.title) || detail.title;
+          return pageRecord(source, `libc${item.id}`, path, title, detail.bodyHtml, `${LIBRARY_ORIGIN}${path}`);
+        },
+      }));
+      if (page < list.totalPages) {
+        if (page + 1 > LIBRARY_MAX_LIST_PAGES) throw new IngestionError("PARSER_DRIFT", "library list has too many pages");
+        outcome.next.push(libraryListStep(source, svc, page + 1, category));
+      }
+      return outcome;
+    },
+  };
+}
+
 /**
  * 內容頁網站：商學院與所屬學系（page.php，每組抓一次、依分頁切成多筆）與
  * 資管所（www.mis.ntpu.edu.tw 的 WordPress 固定頁面，一頁一筆）。請求間隔依來源設定。
@@ -133,6 +211,17 @@ export const htmlPagesAdapter: Adapter = {
   start(source) {
     const cfg = source.adapter;
     if (cfg.kind !== "html-pages") throw new IngestionError("INTERNAL_ERROR", "wrong adapter");
+    if (cfg.site === "library") {
+      const all = [...cfg.pages, ...cfg.lists.map((svc) => `/multiplehtml/${svc}`)];
+      if (cfg.pages.length === 0 || all.length > 100 || !all.every((p) => source.entrypoints.includes(p))) {
+        throw new IngestionError("URL_NOT_ALLOWED", `invalid library pages for ${source.id}`);
+      }
+      // 列表放前面（會再產生內文請求），單頁最後一筆標記列表走完
+      return [
+        ...cfg.lists.map((svc) => libraryListStep(source, svc, 1, LIBRARY_LIST_NAMES[svc] ?? "")),
+        ...cfg.pages.map((p, i) => libraryPageStep(source, p, i === cfg.pages.length - 1)),
+      ];
+    }
     if (cfg.site === "mis") {
       const paths = cfg.paths;
       if (paths.length === 0 || paths.length > 60 || !paths.every((p) => source.entrypoints.includes(p))) {
