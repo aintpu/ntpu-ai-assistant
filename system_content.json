@@ -5,7 +5,7 @@
   "service": {
     "name_zh": "NTPU AI 智慧問答助理",
     "name_en": "NTPU AI Assistant",
-    "home_url": "https://aia.ntpu.ai/",
+    "home_url": "https://aia.ntpu.edu.tw/",
     "supported_offices_zh": [
       "體育室",
       "通識教育中心",
@@ -79,7 +79,7 @@
       "answer_zh": "目前可查詢 體育室、通識教育中心、語言中心、教務處、學務處、人事室、總務處、研究發展處、主計室、圖書館、資訊中心、國際事務處、進修暨推廣部、校友中心、永續辦公室、高等教育深耕計畫辦公室、秘書室、學術副校長室、行政副校長室、財務暨永續發展副校長室、校長室、商學院、資訊管理研究所、企業管理學系、金融與合作經營學系、會計學系、統計學系，共 27 個單位的公告、規定、常見問題、官網內容頁、公告附件與現任主管資料。23 個單位的官網公告每天自動同步；法規與常見問答為人工整理收錄，各單位資料範圍不同。你也可以詢問本系統的使用方式、資料來源、限制與隱私提醒。",
       "answer_en": "Ask about announcements, regulations, or FAQs from these 27 units: Physical Education Office, Center for General Education, Language Center, Office of Academic Affairs, Office of Student Affairs, Personnel Office, Office of General Affairs, Office of Research and Development, Accounting Office, Library, Computer and Information Center, Office of International Affairs, Division of Continuing and Extension Education, Alumni Center, Sustainability Office, Higher Education Sprout Project Office, Secretariat, Office of the Vice President for Academic Affairs, Office of the Vice President for Administrative Affairs, Office of the Vice President for Finance and Sustainable Development, Office of the President, College of Business, Graduate Institute of Information Management, Department of Business Administration, Department of Finance and Cooperative Management, Department of Accountancy, Department of Statistics. Official announcements from 23 units sync daily; regulations and FAQs are curated manually, and coverage varies by unit. You may also ask about the system's usage, data sources, limitations, and privacy reminders.",
       "keywords": ["回答", "問題", "功能", "服務範圍", "capabilities", "support", "scope"],
-      "source": {"type": "system", "title_zh": "系統說明：服務範圍", "title_en": "System Guide: Coverage", "url": "https://aia.ntpu.ai/about#scope"}
+      "source": {"type": "system", "title_zh": "系統說明：服務範圍", "title_en": "System Guide: Coverage", "url": "https://aia.ntpu.edu.tw/about#scope"}
     },
     {
       "id": "system-offices",
@@ -91,7 +91,7 @@
       "answer_zh": "目前支援 27 個單位：體育室、通識教育中心、語言中心、教務處、學務處、人事室、總務處、研究發展處、主計室、圖書館、資訊中心、國際事務處、進修暨推廣部、校友中心、永續辦公室、高等教育深耕計畫辦公室、秘書室、學術副校長室、行政副校長室、財務暨永續發展副校長室、校長室、商學院、資訊管理研究所、企業管理學系、金融與合作經營學系、會計學系、統計學系。包含校方列出的 19 個處室、原有通識教育中心、語言中心，以及商學院與所屬的資訊管理研究所、企業管理學系、金融與合作經營學系、會計學系、統計學系（資料來自各自的網站）。其中 23 個單位的官網公告每天自動同步；研發處、人事室、總務處另有人工整理的常見問答；另收錄各處室官網內容頁、17 個單位官網檔案庫（表單、法規、會議紀錄等）、公告附件與現任主管資料。可查內容依已收錄資料而定，資訊以每題來源日期及官網最新公告為準。",
       "answer_en": "27 units are currently supported: Physical Education Office, Center for General Education, Language Center, Office of Academic Affairs, Office of Student Affairs, Personnel Office, Office of General Affairs, Office of Research and Development, Accounting Office, Library, Computer and Information Center, Office of International Affairs, Division of Continuing and Extension Education, Alumni Center, Sustainability Office, Higher Education Sprout Project Office, Secretariat, Office of the Vice President for Academic Affairs, Office of the Vice President for Administrative Affairs, Office of the Vice President for Finance and Sustainable Development, Office of the President, College of Business, Graduate Institute of Information Management, Department of Business Administration, Department of Finance and Cooperative Management, Department of Accountancy, Department of Statistics. These include the university's 19 listed offices plus the existing General Education and Language centers, the College of Business, and its Graduate Institute of Information Management and four departments. Official announcements from 23 units sync daily, and Research and Development, Personnel, and General Affairs also have curated FAQs; office web pages, the file libraries of 17 units (forms, regulations, minutes), announcement attachments, and current officials are also included. Available topics depend on collected materials; check each source date and the latest official announcements.",
       "keywords": ["處室", "單位", "七處室", "六處室", "office", "department", "coverage", "21個單位", "19個處室"],
-      "source": {"type": "system", "title_zh": "系統說明：服務範圍", "title_en": "System Guide: Coverage", "url": "https://aia.ntpu.ai/about#scope"}
+      "source": {"type": "system", "title_zh": "系統說明：服務範圍", "title_en": "System Guide: Coverage", "url": "https://aia.ntpu.edu.tw/about#scope"}
     },
     {
       "id": "system-how-to-use",
@@ -103,7 +103,7 @@
       "answer_zh": "直接在輸入框用自然語言描述問題即可；若知道處室、身分、學制、年度或規定名稱，一併提供會更容易找到正確資料。回答後建議打開來源連結核對官方原文，也可以針對同一主題繼續追問。",
       "answer_en": "Type your question in natural language. Including the office, your role, program, year, or policy name helps retrieve the right material. Open the source link to verify the official text, and you may continue with follow-up questions on the same topic.",
       "keywords": ["使用", "怎麼用", "提問", "how to", "usage", "ask"],
-      "source": {"type": "system", "title_zh": "系統說明：如何使用", "title_en": "System Guide: How to Use", "url": "https://aia.ntpu.ai/about#usage"}
+      "source": {"type": "system", "title_zh": "系統說明：如何使用", "title_en": "System Guide: How to Use", "url": "https://aia.ntpu.edu.tw/about#usage"}
     },
     {
       "id": "system-login",
@@ -112,10 +112,10 @@
       "question_en": "Do I need to sign in?",
       "aliases_zh": ["需要登入嗎", "要學校帳號嗎", "不用登入可以用嗎", "需要註冊嗎"],
       "aliases_en": ["Is login required?", "Do I need a university account?", "Do I need to register?"],
-      "answer_zh": "目前使用 aia.ntpu.ai 不需要登入或註冊，也不需要安裝應用程式。請勿在對話中輸入密碼、身分證字號、學號或其他敏感個人資料。",
-      "answer_en": "aia.ntpu.ai currently requires no sign-in, registration, or app installation. Do not enter passwords, ID numbers, student numbers, or other sensitive personal data in the chat.",
+      "answer_zh": "目前使用 aia.ntpu.edu.tw 不需要登入或註冊，也不需要安裝應用程式。請勿在對話中輸入密碼、身分證字號、學號或其他敏感個人資料。",
+      "answer_en": "aia.ntpu.edu.tw currently requires no sign-in, registration, or app installation. Do not enter passwords, ID numbers, student numbers, or other sensitive personal data in the chat.",
       "keywords": ["登入", "帳號", "註冊", "login", "sign in", "account"],
-      "source": {"type": "system", "title_zh": "系統說明：如何使用", "title_en": "System Guide: How to Use", "url": "https://aia.ntpu.ai/about#usage"}
+      "source": {"type": "system", "title_zh": "系統說明：如何使用", "title_en": "System Guide: How to Use", "url": "https://aia.ntpu.edu.tw/about#usage"}
     },
     {
       "id": "system-language",
@@ -127,7 +127,7 @@
       "answer_zh": "可以。介面可切換中文或英文，也可直接用中文或英文提問。由於多數校務原始資料是中文，重要規定仍建議打開來源連結核對原文。",
       "answer_en": "Yes. The interface can be switched between Chinese and English, and you can ask in either language. Because most original university documents are in Chinese, verify important rules through the linked source text.",
       "keywords": ["英文", "語言", "雙語", "English", "language", "bilingual"],
-      "source": {"type": "system", "title_zh": "系統說明：系統特色", "title_en": "System Guide: Features", "url": "https://aia.ntpu.ai/about#features"}
+      "source": {"type": "system", "title_zh": "系統說明：系統特色", "title_en": "System Guide: Features", "url": "https://aia.ntpu.edu.tw/about#features"}
     },
     {
       "id": "system-sources",
@@ -139,7 +139,7 @@
       "answer_zh": "資料分三類：各處室官網公告、官網內容頁與公告附件（PDF、文件抽出的文字與圖片辨識）由排程每天自動抓取；校長、副校長與一級主管的現任資料每天確認姓名仍載明於官方介紹頁；法規全文、法規彙整表與各處室常見問答由人工整理後上傳。都經驗證、保存原始檔與版本紀錄，再透過 MCP 服務（aia.mcp.ntpu.ai）查詢。回答會附上官方來源連結與支持回答的原文片段；沒有官方連結的資料只標示來源名稱。系統自我說明則連到本系統說明頁。",
       "answer_en": "There are three kinds of data: office announcements, office web pages, and announcement attachments (text extracted from PDFs and documents, plus image OCR) are fetched daily; current President, Vice Presidents, and first-level heads are checked daily against their official profile pages; full-text regulations, the regulation catalog, and office FAQs are curated and uploaded. All are validated, archived, and versioned, then queried through the MCP service (aia.mcp.ntpu.ai). Answers include official source links and the supporting original passage; items without a link name the source in text. Questions about this system link to this about page.",
       "keywords": ["資料來源", "知識庫", "官方", "source", "data", "knowledge base"],
-      "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.ai/about#architecture"}
+      "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.edu.tw/about#architecture"}
     },
     {
       "id": "system-accuracy",
@@ -151,7 +151,7 @@
       "answer_zh": "不一定。回答由 AI 根據檢索到的資料整理，仍可能誤解、不完整或使用到較舊內容。涉及學分、資格、期限、權益或人事規定時，請以來源連結中的官方公告、正式函文與承辦單位確認為準。",
       "answer_en": "Not always. Answers are generated from retrieved material and may still be misunderstood, incomplete, or outdated. For credits, eligibility, deadlines, rights, or personnel rules, rely on the linked official notice or document and confirm with the responsible office.",
       "keywords": ["正確", "準確", "幻覺", "可靠", "accuracy", "correct", "trust"],
-      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
+      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.edu.tw/about#notice"}
     },
     {
       "id": "system-updates",
@@ -163,7 +163,7 @@
       "answer_zh": "各處室官網公告、內容頁與公告附件每天自動同步一次（每個來源約 20 小時重新抓取），回答用到這些資料時，下方會顯示「系統最後抓取時間」（只代表系統最近讀取過，不代表內容已人工確認）；來源卡片也會分開標示來源修訂與系統抓取時間。法規與常見問答則在人工整理檔更新後上傳。資料並非即時，最新公告、緊急資訊與正式期限請以各處室官網為準。",
       "answer_en": "Official office announcements, web pages, and attachments sync automatically once a day (each source is re-fetched about every 20 hours), and answers using them show a data update time. Regulations and FAQs are uploaded when the curated files are updated. The data is not real time; check official office sites for the latest or urgent information and deadlines.",
       "keywords": ["更新", "即時", "多久", "頻率", "update", "real time", "frequency"],
-      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
+      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.edu.tw/about#notice"}
     },
     {
       "id": "system-privacy",
@@ -175,7 +175,7 @@
       "answer_zh": "系統無法登入校務系統，也不能存取或查詢個人成績、學籍、帳務或其他非公開資料；只能說明公開的查詢規定與辦理方式。系統會用 conversation ID 與結構化狀態維持同一對話的追問脈絡，並會產生操作與品質改善所需的服務日誌：提問、回答與查詢流程會長期保存在系統紀錄中，寫入前已遮罩電話、Email、身分證號等個人資料。問題與必要上下文會傳給設定的 AI 服務以產生回答。請勿輸入密碼、身分證字號、學號、金融資訊或其他敏感個資。",
       "answer_en": "The system cannot sign in to university systems or access personal grades, student records, billing, or other non-public data; it can only explain public lookup rules and procedures. It uses a conversation ID and structured state to keep follow-up context, and service logs (questions, answers, and the lookup trace are kept long-term, with phone numbers, emails, and ID numbers masked before saving) may be produced for operation and quality improvement. Your question and necessary context are sent to the configured AI service to generate an answer. Do not enter passwords, ID or student numbers, financial information, or other sensitive personal data.",
       "keywords": ["隱私", "個資", "保存", "對話紀錄", "個人成績", "個人學籍", "帳務", "privacy", "personal data", "student record", "grades", "saved"],
-      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
+      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.edu.tw/about#notice"}
     },
     {
       "id": "system-followups",
@@ -187,7 +187,7 @@
       "answer_zh": "可以。同一個對話會保存結構化的主題、處室與前次來源，短追問會先改寫成完整問題再檢索。若你換了主題，系統會重新判斷處室；若指代不清，系統可能先請你補充。開啟新對話後不會沿用舊對話脈絡。",
       "answer_en": "Yes. Within one conversation, structured topic, office, and previous-source state is retained, and short follow-ups are rewritten into standalone questions before retrieval. A topic change triggers routing again; unclear references may prompt a clarification. Starting a new chat does not reuse the old context.",
       "keywords": ["追問", "上一題", "記得", "對話", "follow-up", "remember", "conversation"],
-      "source": {"type": "system", "title_zh": "系統說明：如何使用", "title_en": "System Guide: How to Use", "url": "https://aia.ntpu.ai/about#usage"}
+      "source": {"type": "system", "title_zh": "系統說明：如何使用", "title_en": "System Guide: How to Use", "url": "https://aia.ntpu.edu.tw/about#usage"}
     },
     {
       "id": "system-no-answer",
@@ -199,7 +199,7 @@
       "answer_zh": "常見原因包括：問題不屬於目前27 個單位或系統說明範圍、官方資料尚未匯入、問題條件不足，或檢索到的證據不足以安全回答。你可以補上處室、身分、學制、年度或規定名稱；若仍沒有資料，系統會明確說明目前不支援，而不自行猜測。",
       "answer_en": "Common reasons include: the topic is outside the 21 supported units and system guide, the official material has not been indexed, the question lacks key details, or retrieved evidence is insufficient. Add the office, role, program, year, or policy name. If evidence is still unavailable, the system should clearly say it is not currently supported rather than guess.",
       "keywords": ["回答不了", "查不到", "不支援", "沒答案", "cannot answer", "unsupported", "no answer"],
-      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
+      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.edu.tw/about#notice"}
     },
     {
       "id": "system-vs-chatgpt",
@@ -211,7 +211,7 @@
       "answer_zh": "本系統是以北大27 個單位公開資料為範圍的校務 RAG 服務：先檢索 repository 建立的校務知識庫，再由模型整理並附來源。一般 ChatGPT 的知識與用途更廣，但不一定使用本系統已整理的校務資料、處室路由與來源格式。兩者都可能出錯，正式規定仍以官方文件為準。",
       "answer_en": "This is an NTPU administrative RAG service scoped to public materials from 27 units: it retrieves from the curated university knowledge base before a model composes an answer with sources. General ChatGPT is broader, but does not necessarily use this system's curated office data, routing, or source format. Both can be wrong; official documents remain authoritative.",
       "keywords": ["ChatGPT", "差別", "不同", "聊天機器人", "difference", "chatbot"],
-      "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.ai/about#architecture"}
+      "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.edu.tw/about#architecture"}
     },
     {
       "id": "system-how-rag-works",
@@ -223,7 +223,7 @@
       "answer_zh": "校務問題會先判斷所屬處室，再改寫成適合檢索的完整查詢。問現任職務或人名時先查現任主管資料，再查各系所師資等官網頁面；公告、官網內容頁、附件、法規與常見問答透過 MCP 服務以關鍵字查詢，處室內證據不足時補查全校資料；仍不足時改用 FAISS 向量搜尋與 BM25 關鍵詞搜尋，經融合與重排序後交給模型整理；文件以全文交給模型（單份過長才挑選相關段落）。回答後再檢查人物、職務、時間與數字是否都有原文支持，證據不足或衝突時說明無法確認；最後附上來源與原文片段。SYSTEM 問題則直接從本系統 FAQ 回答，不進入 27 個單位的檢索。",
       "answer_en": "For administrative questions, the system first selects an office and rewrites the question into a retrieval-ready query. Questions about current officials or people check the current-officials data first, then faculty and staff pages; announcements, web pages, attachments, regulations, and FAQs are looked up by keyword through the MCP service, widening to all units when the office has too little evidence, then falling back to FAISS vector search plus BM25 keyword search, fuses and reranks candidates, and lets the model compose an answer from the full documents (only very long ones are trimmed to relevant passages). It should answer only when evidence is sufficient and include sources. SYSTEM questions are answered directly from this system FAQ instead of the 22-unit retrieval.",
       "keywords": ["BM25", "FAISS", "MCP", "RAG", "architecture", "retrieval", "搜尋", "檢索", "流程"],
-      "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.ai/about#architecture"}
+      "source": {"type": "system", "title_zh": "系統說明：系統架構", "title_en": "System Guide: Architecture", "url": "https://aia.ntpu.edu.tw/about#architecture"}
     },
     {
       "id": "system-voice-image",
@@ -235,7 +235,7 @@
       "answer_zh": "目前介面支援麥克風語音輸入與圖片上傳。語音會先轉成文字再走一般問答流程；圖片由視覺模型分析，目前不會自動與27 個單位 RAG 文件合併，因此圖片中的重要校務資訊仍應核對官方來源。",
       "answer_en": "The interface supports microphone input and image uploads. Voice is transcribed before entering the normal question flow. Images are analyzed by a vision model and are not automatically combined with 22-unit RAG documents, so important administrative information in an image should still be checked against official sources.",
       "keywords": ["語音", "圖片", "麥克風", "voice", "image", "microphone"],
-      "source": {"type": "system", "title_zh": "系統說明：系統特色", "title_en": "System Guide: Features", "url": "https://aia.ntpu.ai/about#features"}
+      "source": {"type": "system", "title_zh": "系統說明：系統特色", "title_en": "System Guide: Features", "url": "https://aia.ntpu.edu.tw/about#features"}
     },
     {
       "id": "system-feedback",
@@ -247,7 +247,7 @@
       "answer_zh": "可使用回答下方的讚或倒讚回饋，選擇資訊錯誤、過時、答非所問、過於籠統或來源有誤等原因，也可補充不含個資的說明。涉及正式權益時，請同時向原權責處室確認。",
       "answer_en": "Use the thumbs-up or thumbs-down control below an answer. You can mark incorrect, outdated, off-topic, vague, or bad-source issues and add a note without personal data. For matters affecting formal rights, also confirm with the responsible office.",
       "keywords": ["回饋", "錯誤", "回報", "倒讚", "feedback", "report", "wrong"],
-      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.ai/about#notice"}
+      "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.edu.tw/about#notice"}
     }
   ]
 }

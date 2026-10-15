@@ -59,9 +59,12 @@ export function withSecurityHeaders(response, contentSecurityPolicy = DEFAULT_CO
   });
 }
 
+/** 正式網址：學校網域 aia.ntpu.edu.tw 為主，aia.ntpu.ai 繼續可用。 */
+const PRODUCTION_HOSTS = new Set(["aia.ntpu.edu.tw", "aia.ntpu.ai"]);
+
 export function redirectProductionHttp(request) {
   const url = new URL(request.url);
-  if (url.protocol !== "http:" || url.hostname !== "aia.ntpu.ai") {
+  if (url.protocol !== "http:" || !PRODUCTION_HOSTS.has(url.hostname)) {
     return null;
   }
   url.protocol = "https:";

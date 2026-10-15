@@ -23,6 +23,13 @@
     {
       "pattern": "aia.ntpu.ai",
       "custom_domain": true
+    },
+    // 學校網域（主網址，2026-10-15 起）：資訊中心以 CNAME 指到 aia.ntpu.ai；ntpu.edu.tw 不在本帳號，
+    // 經 ntpu.ai zone 的 Custom Hostnames（Cloudflare for SaaS）接進來，再以 Worker 路由交給本 Worker。
+    // 與同 zone 既有的 ai.ntpu.edu.tw/* 路由（其他服務）互不影響。
+    {
+      "pattern": "aia.ntpu.edu.tw/*",
+      "zone_name": "ntpu.ai"
     }
   ],
 

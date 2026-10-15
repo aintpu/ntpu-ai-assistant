@@ -37,9 +37,9 @@ MCP 在下一輪抓取時更新（約 5 小時內）；機器人本機索引要�
 
 | 用途 | 網址 |
 |---|---|
-| 正式網站 | <https://aia.ntpu.ai> |
-| 系統說明 | <https://aia.ntpu.ai/about> |
-| API 健康檢查 | <https://aia.ntpu.ai/api/health>（淺層，不喚醒容器） |
+| 正式網站 | <https://aia.ntpu.edu.tw> |
+| 系統說明 | <https://aia.ntpu.edu.tw/about> |
+| API 健康檢查 | <https://aia.ntpu.edu.tw/api/health>（淺層，不喚醒容器） |
 
 ## 主要功能
 
@@ -213,7 +213,7 @@ Repository 目前包含：
 | Backend | Cloudflare Container（`standard-1`） |
 | Conversation State | SQLite-backed Durable Object storage |
 | Runtime Secret | Cloudflare Worker Secret `OPENAI_API_KEY` |
-| Custom domain | `aia.ntpu.ai` |
+| 網域 | 主網址 `aia.ntpu.edu.tw`（學校 DNS CNAME → ntpu.ai 的 Custom Hostname ＋ Worker 路由）；`aia.ntpu.ai`（Worker custom domain）繼續可用 |
 
 push `main` 後由 GitHub Actions 預建 FAISS、建置 Next.js static export，再執行
 `wrangler deploy`。CI 預建索引使用獨立的 GitHub Actions secret。

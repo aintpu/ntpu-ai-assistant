@@ -4662,7 +4662,7 @@ def classify_department(query: str, history: list = None) -> str:
 app = FastAPI(title="NTPU AI Assistant API")
 allowed_origins = [
     origin.strip()
-    for origin in os.getenv("ALLOWED_ORIGINS", "https://aia.ntpu.ai").split(",")
+    for origin in os.getenv("ALLOWED_ORIGINS", "https://aia.ntpu.edu.tw,https://aia.ntpu.ai").split(",")
     if origin.strip()
 ]
 app.add_middleware(

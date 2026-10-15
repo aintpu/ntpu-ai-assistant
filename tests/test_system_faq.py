@@ -34,7 +34,7 @@ class SystemFAQTests(unittest.TestCase):
             for key in ("question_zh", "question_en", "answer_zh", "answer_en"):
                 self.assertTrue(faq[key], f"{faq['id']} missing {key}")
             self.assertEqual(faq["source"]["type"], "system")
-            self.assertTrue(faq["source"]["url"].startswith("https://aia.ntpu.ai/about#"))
+            self.assertTrue(faq["source"]["url"].startswith("https://aia.ntpu.edu.tw/about#"))
 
     def test_primary_system_questions_route_to_expected_faq(self):
         cases = {
