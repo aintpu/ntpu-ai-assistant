@@ -179,7 +179,7 @@ describe("MCP endpoint", () => {
     expect(page.page.bodyText).toBe("校長簡介：致力推動永續發展。");
     const all = (await call("search_pages", { limit: 20 })).body.result.structuredContent;
     // 校長室與三個副校長室共 5 頁（商學院與所屬系所網站的內容頁另外計）
-    expect(all.items.filter((p: { unit: string }) => !["business", "mis", "dba", "coop", "acc", "stat"].includes(p.unit)).length).toBe(5);
+    expect(all.items.filter((p: { unit: string; title: string }) => !["business", "mis", "dba", "coop", "acc", "stat"].includes(p.unit) && !p.title.startsWith("檔案庫")).length).toBe(5);
     const vp = (await call("search_pages", { unit: "vice-president-financial" })).body.result.structuredContent;
     expect(vp.items[0].links).toBeUndefined();
     const full = (await call("get_page", { id: vp.items[0].id })).body.result.structuredContent;
