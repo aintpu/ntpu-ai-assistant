@@ -96,6 +96,7 @@ DEPT_TO_MCP_PAGE_UNIT = {
     "vpad": "vice-president-administration",
     "vpf": "vice-president-financial",
     "cob": "business",  # 商學院網站的內容頁
+    "lc": "lc",  # 語言中心網站的內容頁（2026-10-15 加入 lc-site-pages）
     "mis": "mis",  # 資管所網站的固定頁面
     "dba": "dba", "coop": "coop", "acc": "acc", "stat": "stat",  # 商學院所屬學系網站的內容頁
 }

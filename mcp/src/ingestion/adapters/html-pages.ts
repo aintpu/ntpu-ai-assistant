@@ -3,7 +3,7 @@ import { IngestionError, safeMessage } from "../../shared/errors";
 import { PageSchema } from "../../shared/schemas";
 import { htmlToText } from "../html-text";
 import type { SourceDefinition } from "../types";
-import { COLLEGE_SITES, type CollegeSiteKey, clean, librarySiteFor, misSite, parseCollegeGroup, parseLibraryPage, parseMisPage } from "./html-sites";
+import { COLLEGE_SITES, type CollegeSiteKey, clean, librarySiteFor, misSite, parseCollegeGroup, parseLcPage, parseLibraryPage, parseMisPage } from "./html-sites";
 import type { Adapter, AdapterRecord, RejectedRecord, Step, StepOutcome } from "./types";
 import { decodeUtf8 } from "./types";
 
@@ -203,6 +203,48 @@ function libraryListStep(source: SourceDefinition, svc: string, page: number, ca
   };
 }
 
+const LC_ORIGIN = "https://lc.ntpu.edu.tw";
+
+/** 語言中心內容頁：編號 lcp + 路徑與參數去掉符號後的雜湊。 */
+function lcPageStep(source: SourceDefinition, page: { path: string; query?: Record<string, string> }, last: boolean): Step {
+  const qs = page.query ? `?${new URLSearchParams(page.query)}` : "";
+  const full = `${page.path}${qs}`;
+  let h = 0x811c9dc5;
+  for (let i = 0; i < full.length; i++) h = Math.imul(h ^ full.charCodeAt(i), 0x01000193) >>> 0;
+  const id = `lcp${page.path.replace(/[^A-Za-z0-9]/g, "").slice(0, 40)}${h.toString(16).padStart(8, "0")}`;
+  return {
+    request: { target: full, path: page.path, method: "GET", ...(page.query ? { query: page.query } : {}) },
+    fatal: false,
+    async handle(bytes) {
+      const parsed = parseLcPage(decodeUtf8(bytes));
+      const body = htmlToText(parsed.bodyHtml);
+      if (body.length < MIN_CHARS) return { parsed: 1, records: [], rejected: [], skipped: 1, listComplete: last };
+      const result = PageSchema.safeParse({
+        id,
+        unit: source.sourceUnit,
+        path: full,
+        title: parsed.title,
+        // JSP 頁面沒有公開修改時間：留空，不以抓取時間冒充（老師建議 四-2）
+        updatedAt: "",
+        bodyText: body,
+        links: linksOf(parsed.bodyHtml, `${LC_ORIGIN}${page.path}`),
+        sourceUrl: `${LC_ORIGIN}${full}`,
+      });
+      if (!result.success) {
+        return { parsed: 1, records: [], rejected: [{ id, reason: safeMessage(result.error).slice(0, 200), countsTowardDrift: true }], skipped: 0, listComplete: last };
+      }
+      const p = result.data;
+      return {
+        parsed: 1,
+        records: [{ id: p.id, payload: p, title: p.title, searchText: [p.title, p.bodyText].join("\n"), sourceUrl: p.sourceUrl, publishedAt: null }],
+        rejected: [],
+        skipped: 0,
+        listComplete: last,
+      };
+    },
+  };
+}
+
 /**
  * 內容頁網站：商學院與所屬學系（page.php，每組抓一次、依分頁切成多筆）與
  * 資管所（www.mis.ntpu.edu.tw 的 WordPress 固定頁面，一頁一筆）。請求間隔依來源設定。
@@ -211,6 +253,12 @@ export const htmlPagesAdapter: Adapter = {
   start(source) {
     const cfg = source.adapter;
     if (cfg.kind !== "html-pages") throw new IngestionError("INTERNAL_ERROR", "wrong adapter");
+    if (cfg.site === "lc") {
+      if (cfg.pages.length === 0 || cfg.pages.length > 60 || !cfg.pages.every((p) => source.entrypoints.includes(p.path))) {
+        throw new IngestionError("URL_NOT_ALLOWED", `invalid lc pages for ${source.id}`);
+      }
+      return cfg.pages.map((p, i) => lcPageStep(source, p, i === cfg.pages.length - 1));
+    }
     if (cfg.site === "library") {
       const all = [...cfg.pages, ...cfg.lists.map((svc) => `/multiplehtml/${svc}`)];
       if (cfg.pages.length === 0 || all.length > 100 || !all.every((p) => source.entrypoints.includes(p))) {
