@@ -174,7 +174,7 @@ FILE_INDEX_PATH = os.path.join(BASE_DIR, "file_index.json")
 CORRECTIONS_PATH = os.path.join(BASE_DIR, "corrections.md")
 
 # 多處室資料來源（dept 代碼, 爬蟲檔路徑）
-from office_catalog import FAQ_OFFICES, FAQ_OFFICE_NAMES, MCP_ONLY_OFFICE_NAMES, OFFICE_SEARCH_GROUPS
+from office_catalog import FAQ_OFFICES, FAQ_OFFICE_NAMES, MCP_ONLY_OFFICES, MCP_ONLY_OFFICE_NAMES, OFFICE_SEARCH_GROUPS
 import mcp_client
 
 DEPT_NAMES = {"ope": "體育室", "ge": "通識教育中心", "lc": "語言中心",
@@ -1712,7 +1712,7 @@ def tool_get_schedule(year: int = None) -> str:
     return build_answer_from_docs(cand[:1], "zh-TW", "最新體育課程/課表", "")
 
 MCP_NEWS_LIMIT = 6
-MCP_NEWS_FULL_TEXT = 3  # 前幾則另外取全文（search 只回 200 字摘要）
+MCP_NEWS_FULL_TEXT = MCP_NEWS_LIMIT  # 每則都取全文（search 只回 200 字摘要；使用者 2026-10-14 要求全部讀取）
 
 
 def _format_news_block(date: str, title: str, preview: str, url: str = "") -> str:
@@ -1733,7 +1733,10 @@ _GENERIC_NEWS_WORDS = ("最新", "最近", "近期", "公告", "消息", "新聞
 # 只放處室名稱與常見簡稱；「借書」「交換生」這類業務關鍵字仍保留。
 _OFFICE_NAME_WORDS = tuple(sorted(
     set(DEPT_NAMES.values()) | {"研發處", "國際處", "進修部", "校友中心", "深耕辦公室", "通識中心", "人事處", "總務處",
-                                "教務處", "學務處", "學生事務處", "體育室", "圖書館", "語言中心", "資訊中心", "主計室", "秘書室"},
+                                "教務處", "學務處", "學生事務處", "體育室", "圖書館", "語言中心", "資訊中心", "主計室", "秘書室"}
+    # 學院、系所的簡稱（企管系、資管所、商院…）：2026-10-15「企管系最新消息」把「企管系」當主題詞查，
+    # 最新的公告沒寫「企管系」三個字而被濾掉，只剩 9 月的舊公告
+    | {w for _zh, _en, words in MCP_ONLY_OFFICES.values() for w in words if re.fullmatch(r"(北大)?[\u4e00-\u9fff]{1,6}[系所院]", w)},
     key=len, reverse=True))
 
 
@@ -1800,7 +1803,7 @@ def _latest_news_from_mcp(keyword: str, dept: str = None):
     for item, body in zip(items, bodies):
         url = (item.get("provenance") or {}).get("sourceUrl") or ""
         date = _taipei_date(item.get("publishedAt") or "")
-        preview = unquote(body[:800])
+        preview = unquote(body[:DOC_MAX_CHARS])
         docs.append(Document(page_content=preview, metadata={
             "title": item.get("title", ""), "url": url, "type": "news", "date": date,
             "dept": dept or "", "source_id": f"mcp:announcement:{item.get('unit')}:{item.get('id')}",
@@ -1855,7 +1858,7 @@ def tool_get_latest_news(keyword: str = "", dept: str = None) -> str:
     for d in docs:
         t = d.metadata.get("title", "")
         dt = d.metadata.get("date", "未註明日期")
-        preview = unquote(d.page_content[:800])
+        preview = unquote(d.page_content[:DOC_MAX_CHARS])
         out_lines.append(f"【日期】：{dt}\n【標題】：{t}\n【公告內容摘要】：\n{preview}\n")
     return "\n---\n".join(out_lines) if out_lines else "查無最新消息。"
 
@@ -2120,6 +2123,9 @@ _NO_ATTACHMENT_UNITS = {"business", "mis", "dba", "coop", "acc", "stat"}
 _HEAD_TITLE_RE = re.compile(r"(院長|所長|系主任|主任|處長|館長|執行長|主管)")
 _WHO_RE = re.compile(r"是誰|誰是|哪位|現任|who|姓名", re.I)
 HEAD_PAGE_TERMS = ("行政團隊", "師資")
+# 問系所師資（有哪些老師、教授、師資陣容）：〈專任師資〉〈師資陣容〉頁面寫得最完整，「教師徵聘」公告會擠掉它們
+# （2026-10-15「企管系有什麼師資陣容」只拿到徵聘公告與〈歷史沿革〉）
+_FACULTY_QUESTION_RE = re.compile(r"師資|教授|老師|教師|專任|兼任|faculty|professor", re.I)
 _HEAD_PAGE_BONUS = 4
 
 
@@ -2244,6 +2250,10 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
     head_q = _HEAD_TITLE_RE.search(search_query) if dept is not None and _WHO_RE.search(search_query) else None
     if head_q:
         extra += [t for t in (f"{head_q.group(1)}簡介", *HEAD_PAGE_TERMS) if t not in extra and t not in terms]
+    faculty_q = dept is not None and _FACULTY_QUESTION_RE.search(f"{search_query} {keywords}")
+    if faculty_q:
+        # 即使模型關鍵字已有「師資」也單獨查一次：第一輪是全部關鍵字一起查，不會單查「師資」
+        extra += [t for t in ("師資",) if t not in extra]
     # 問題原文的詞一起查（不經過模型，同一題每次都一樣），與模型的關鍵字合併排序
     asked = next((q for q in user_queries if q), "")
     own = question_terms(asked, terms + extra)
@@ -2267,7 +2277,7 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
                     # 關鍵字出現在標題／問題的排前面（內文只是順帶提到的排後面）
                     heading = item.get("question") or item.get("title") or ""
                     entry[0] += sum(2 for t in attempt if t.lower() in heading.lower())
-                    if head_q and kind == "page" and len(entry) == 3:
+                    if (head_q or faculty_q) and kind == "page" and len(entry) == 3:
                         entry[0] += _HEAD_PAGE_BONUS
                         entry.append(True)  # 頁面加分每筆只加一次
                     elif overview and len(entry) == 3:
