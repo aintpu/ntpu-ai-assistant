@@ -96,6 +96,14 @@ export class FakeSites {
     const url = new URL(request.url);
     this.requests.push(`${request.method} ${url.pathname}${url.search}`);
     if (url.hostname === "library.ntpu.edu.tw") {
+      // 圖書館內容頁（library-web-pages）：列表型服務回一則，其餘單頁都回同一個版型
+      if (!url.pathname.endsWith(LIB_SVC) && /^\/(single|multiple)html\//.test(url.pathname)) {
+        const svc = url.pathname.split("/").pop()!;
+        if (url.pathname.startsWith("/multiplehtml/") && request.method === "POST") {
+          return html(`<p>總共 1 頁</p><table class="table-list"><tbody><tr><td data-title="標題："><a href="/singlehtml/${svc}?cntId=${"c".repeat(32)}" title="條目">條目</a></td></tr></tbody></table>`);
+        }
+        return html(`<h2 class="h2-page-title">圖書館頁面</h2><article>${"圖書館服務說明。".repeat(10)}</article>`);
+      }
       if (url.pathname === `/multiplehtml/${LIB_SVC}`) {
         const page = Number(new URLSearchParams(await request.text()).get("page") ?? 1);
         const totalPages = Math.max(1, Math.ceil(this.library.length / 10));

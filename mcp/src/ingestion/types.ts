@@ -120,6 +120,14 @@ export type HtmlPagesConfig =
     }
   | {
       kind: "html-pages";
+      site: "library";
+      /** 內容頁路徑（/singlehtml/<svc> 或只有一則內容的 /multiplehtml/<svc>），都必須列在 entrypoints。 */
+      pages: string[];
+      /** 列表型服務（常見問題、相關法規等）：翻完列表再逐則抓內文 singlehtml/<svc>?cntId=。 */
+      lists: string[];
+    }
+  | {
+      kind: "html-pages";
       site: "mis";
       /** 頁面路徑（例如 /admissions/），都必須列在 entrypoints。 */
       paths: string[];
