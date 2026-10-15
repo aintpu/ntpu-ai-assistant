@@ -387,9 +387,9 @@ class McpRecordTests(unittest.TestCase):
             self.assertFalse(core.mcp_records_available(dept), dept)
         with patch.object(mcp_client, "call_tool", side_effect=FakeMcp({})) as tool:
             core.tool_search_database("選課", dept="ge", keywords="選課")
-        # 通識中心本身不查 MCP；本機證據不足時補查全校，那時才不指定處室查 MCP
-        self.assertFalse([c for c in tool.call_args_list if "unit" in c.args[1]])
+        # 通識中心以本機為主（先查本機），再補查 MCP 的官網頁面、檔案庫與法規（2026-10-15）
         self.assertEqual(self._local_depts(), ["ge", None])
+        self.assertTrue([c for c in tool.call_args_list if c.args[1].get("unit") == "cge"])
 
     def test_missing_keywords_or_switch_off_never_calls_mcp(self):
         with patch.object(mcp_client, "call_tool") as tool:
