@@ -72,6 +72,16 @@ DEPT_TO_MCP_RECORD_UNITS = {
 }
 
 
+# 本機資料比較完整的處室（體育室總檔、通識中心內容與法規全文、語言中心）：仍以本機檢索為主，
+# 再補查 MCP 的官網內容頁、檔案庫與法規目錄，兩邊合併給模型（2026-10-15 這三個單位原本完全不查 MCP，
+# 「體育室場地借用申請表在哪下載」因此找不到檔案庫裡的申請表）。(法規 unit, FAQ unit)
+DEPT_TO_MCP_SUPPLEMENT_UNITS = {
+    "ope": ("ope", None),
+    "ge": ("cge", None),
+    "lc": ("lc", None),
+}
+
+
 # AIA 的處室代碼 → MCP 官網內容頁（search_pages）的 unit。只列 MCP 有登記頁面來源的單位；
 # 傳入沒有頁面的 unit（例如 lc）會讓工具回錯誤，所以不能直接沿用公告的對應表。
 DEPT_TO_MCP_PAGE_UNIT = {

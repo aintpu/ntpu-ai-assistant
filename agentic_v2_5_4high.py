@@ -2247,7 +2247,7 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
     if dept is None:
         units = (_ALL_UNITS, _ALL_UNITS)
     else:
-        units = mcp_client.DEPT_TO_MCP_RECORD_UNITS.get(dept)
+        units = mcp_client.DEPT_TO_MCP_RECORD_UNITS.get(dept) or mcp_client.DEPT_TO_MCP_SUPPLEMENT_UNITS.get(dept)
     if not units or not terms:
         return None
     reg_unit, faq_unit = units
@@ -2421,10 +2421,22 @@ def _search_in(search_query: str, dept, previous_source_docs, keywords: str, ove
     hits = unique_hits
     evidence = check_evidence_sufficiency(search_query, hits)
     _record_evidence(evidence.to_dict())
-    if not hits or not evidence.sufficient:
+    local = ""
+    if hits and evidence.sufficient:
+        _collect_source_docs(hits)
+        local = _ANSWER_RULE + build_context_snippets(hits)
+    # 本機為主的處室（體育室、通識中心、語言中心）另補 MCP 的官網內容頁、檔案庫與法規目錄
+    if keywords and dept in mcp_client.DEPT_TO_MCP_SUPPLEMENT_UNITS and mcp_client.records_enabled():
+        try:
+            extra = _records_from_mcp(search_query, keywords, dept, overview, user_queries)
+        except mcp_client.McpUnavailable as exc:
+            print(f"[MCP] 補查失敗，只用本機資料：{exc}")
+            extra = None
+        if extra:
+            return (f"{local}\n\n---\n\n{extra}" if local else extra), True
+    if not local:
         return "", False
-    _collect_source_docs(hits)
-    return _ANSWER_RULE + build_context_snippets(hits), True
+    return local, True
 
 
 def _is_person_query(*queries) -> bool:
