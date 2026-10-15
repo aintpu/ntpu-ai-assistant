@@ -425,6 +425,8 @@ const DOCUMENT_SITES: { unit: string; site: string }[] = [
   { unit: "alumni", site: "alumni" }, { unit: "edusp", site: "edusp" }, { unit: "os", site: "os" }, { unit: "op", site: "op" },
   // 2026-10-15 補上體育室、通識教育中心
   { unit: "ope", site: "ope" }, { unit: "cge", site: "cge" },
+  // 學校官網上的商學院、圖書館、永續辦公室檔案庫（各自網站之外另放的檔案）
+  { unit: "business", site: "business" }, { unit: "library", site: "library" }, { unit: "sustainable", site: "sustainable" },
 ];
 
 const strapiOrigin = {
