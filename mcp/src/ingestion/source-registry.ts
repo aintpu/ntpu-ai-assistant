@@ -400,12 +400,14 @@ const ATTACHMENT_FETCH: FetchPolicy = {
 
 /**
  * 學校官網各處室的檔案庫（表單、法規、會議紀錄、統計等；strapi documents）。
- * 使用者 2026-10-15 指定這 12 個處室（取代移除的爬蟲轉 FAQ 裡出自「表單下載」「法規」等頁面的內容）。
+ * 使用者 2026-10-15 指定這些處室（取代移除的爬蟲轉 FAQ 裡出自「表單下載」「法規」等頁面的內容）。
  */
 const DOCUMENT_SITES: { unit: string; site: string }[] = [
   { unit: "ord", site: "ord" }, { unit: "osa", site: "osa" }, { unit: "oaa", site: "oaa" }, { unit: "oga", site: "oga" },
   { unit: "oa", site: "oa" }, { unit: "cic", site: "cic" }, { unit: "oia", site: "oia" }, { unit: "eec", site: "eec" },
   { unit: "alumni", site: "alumni" }, { unit: "edusp", site: "edusp" }, { unit: "os", site: "os" }, { unit: "op", site: "op" },
+  // 2026-10-15 補上體育室、通識教育中心
+  { unit: "ope", site: "ope" }, { unit: "cge", site: "cge" },
 ];
 
 const strapiOrigin = {

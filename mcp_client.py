@@ -42,24 +42,26 @@ DEPT_TO_MCP_UNIT = {
 # MCP 全部都有」的處室，避免切過去少資料：
 # - 體育室、通識（cge_content.md）、語言中心（lc_content.md）有 MCP 沒收的檔案，不在這裡。
 # - 校長室要固定帶入「現任校長」並跨副校長室檢索（OFFICE_SEARCH_GROUPS），維持本機。
+# 2026-10-15 移除網路爬蟲轉成的 FAQ：主計室、圖書館、資訊中心、國際處、進修推廣部、校友中心、永續辦公室、高教深耕、
+# 秘書室與三個副校長室已沒有 FAQ（search_faqs 指定這些 unit 會回錯誤），FAQ 欄填 None
 DEPT_TO_MCP_RECORD_UNITS = {
     "oaa": ("oaa", None),
     "osa": ("osa", None),
     "hr": ("op", "op"),
     "oga": ("oga", "oga"),
     "ord": ("ord", "ord"),
-    "oa": ("oa", "oa"),
-    "lib": ("library", "library"),
-    "cic": ("cic", "cic"),
-    "oia": ("oia", "oia"),
-    "eec": ("eec", "eec"),
-    "alu": ("alumni", "alumni"),
-    "sus": (None, "sustainable"),
-    "edusp": ("edusp", "edusp"),
-    "os": ("os", "os"),
-    "vpa": (None, "vice-president-academic"),
-    "vpad": (None, "vice-president-administration"),
-    "vpf": (None, "vice-president-financial"),
+    "oa": ("oa", None),
+    "lib": ("library", None),
+    "cic": ("cic", None),
+    "oia": ("oia", None),
+    "eec": ("eec", None),
+    "alu": ("alumni", None),
+    "sus": (None, None),
+    "edusp": ("edusp", None),
+    "os": ("os", None),
+    "vpa": (None, None),
+    "vpad": (None, None),
+    "vpf": (None, None),
     # 商學院沒有法規全文與 FAQ 檔；登記在這裡是為了讓檢索走 MCP（公告、內容頁、附件）
     "cob": (None, None),
     "mis": (None, None),
