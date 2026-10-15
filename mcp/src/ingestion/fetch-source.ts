@@ -94,6 +94,12 @@ export async function fetchSource(
   const requestedUrl = url.toString();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), policy.timeoutMs);
+  // new Request() 會另建跟隨的 signal，Node 偶爾回收掉它而收不到 abort（CI 上 T-008 偶發卡 5 秒）：
+  // 另外直接監聽 controller，逾時就不再等 fetch
+  const timedOut = new Promise<never>((_, reject) =>
+    controller.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true }),
+  );
+  timedOut.catch(() => {});
 
   try {
     let response: Response;
@@ -110,7 +116,7 @@ export async function fetchSource(
         ...(method === "POST" && request.body ? { body: request.body } : {}),
       };
       try {
-        response = await deps.fetch(new Request(url, init));
+        response = await Promise.race([deps.fetch(new Request(url, init)), timedOut]);
       } catch (err) {
         if (controller.signal.aborted) {
           throw new IngestionError("FETCH_TIMEOUT", `timed out after ${policy.timeoutMs}ms`);
