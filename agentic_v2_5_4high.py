@@ -2146,7 +2146,7 @@ ORG_PAGE_TERMS = ("簡介", "行政團隊", "成員介紹", "組織")
 # （2026-10-14 同一題「商學院成立於哪一年」，關鍵字「成立 年份」查不到、「成立 沿革」查得到）。
 _HISTORY_QUESTION_RE = re.compile(r"成立|創立|創校|創設|設立|哪一年|何時|歷史|沿革|由來|前身")
 HISTORY_PAGE_TERMS = ("沿革", "歷史")
-_NO_ATTACHMENT_UNITS = {"business", "mis", "dba", "coop", "acc", "stat"}
+_NO_ATTACHMENT_UNITS = {"business", "mis", "dba", "coop", "acc", "stat", "lsm", "giib", "dma"}
 # 問單位主管是誰：〈院長簡介〉〈行政團隊〉等官網頁面寫明現任，公告裡的「院長」多半是活動或來訪報導
 # （2026-10-14「商學院院長是誰」：「院長」出現在 129 則公告，前幾筆都是外校院長來訪，回答無法確認）。
 _HEAD_TITLE_RE = re.compile(r"(院長|所長|系主任|主任|處長|館長|執行長|主管)")
@@ -2695,7 +2695,7 @@ SYSTEM_STYLE = (
     "這些單位目前不是完整法規全文或即時公告，請依檢索證據及每題官方來源回答。\n"
     "- 國立臺北大學商學院相關業務（學院簡介、系所與研究中心介紹、師資、學生專區、獎助學金、學程、國際交流、產學合作、最新消息等）\n"
     "- 國立臺北大學資訊管理研究所相關業務（所簡介、沿革、師資、招生、修業規則、課程、學術研究、實習徵才、捐款、產學合作、最新消息等）\n"
-    "- 國立臺北大學企業管理學系、金融與合作經營學系、會計學系、統計學系相關業務（系所簡介、師資、課程、招生、修業規定、獎學金、系友、最新消息等）\n"
+    "- 國立臺北大學企業管理學系、金融與合作經營學系、會計學系、統計學系、休閒運動管理學系、國際企業研究所、數位行銷進修學士學位學程相關業務（系所簡介、師資、課程、招生、修業規定、獎學金、系友、最新消息等）\n"
     "- 體育、運動、健身相關的一般知識\n"
 
     "【對話情境判斷】\n"
@@ -4545,6 +4545,13 @@ def ground_scope_in_data(scope, raw_query: str):
     return ScopeDecision("IN_SCOPE", office, 0.8, f"知識庫有含「{term}」的{where}。")
 
 
+def _named_office(query: str):
+    """問題裡明確寫到的單位（關鍵詞至少 3 字，例如「資管所」「會計系」）；寫到不只一個單位或沒寫回 None。"""
+    found = {office for office, words in OFFICE_KEYWORDS.items() if office in DEPT_NAMES
+             for w in words if len(str(w)) >= 3 and str(w) in (query or "")}
+    return found.pop() if len(found) == 1 else None
+
+
 SCOPE_REVOTES = 2  # 模型判 OUT_OF_SCOPE 時再問幾次（取多數決）
 
 
@@ -4611,6 +4618,10 @@ def decide_scope(standalone_query: str, context: dict, raw_query: str):
     if person and not any(detect_service_entity_conflict(q) or detect_explicit_unsupported_intent(q)
                           for q in (raw_query, standalone_query)):
         office, name = person
+        # 問題寫明了單位（「資管所林孝倫老師」）：以問題寫的單位為準，不用人名查到的單位（同一人可能在多個系所任教）
+        named = _named_office(raw_query)
+        if named and named != office:
+            return ScopeDecision("IN_SCOPE", named, 0.85, f"問題寫明{DEPT_NAMES[named]}，查「{name}」。")
         where = f"{DEPT_NAMES[office]}文件" if office else "多個單位的文件（跨單位查詢）"
         return ScopeDecision("IN_SCOPE", office, 0.85, f"知識庫有寫明「{name}」身分的{where}。")
     if scope.status == "IN_SCOPE":

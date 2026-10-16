@@ -35,6 +35,7 @@ DEPT_TO_MCP_UNIT = {
     "cob": "business",  # 商學院網站（www.aacsb.ntpu.edu.tw）的最新消息
     "mis": "mis",  # 資管所網站（www.mis.ntpu.edu.tw）的最新消息
     "dba": "dba", "coop": "coop", "acc": "acc", "stat": "stat",  # 商學院所屬學系網站的最新消息
+    "lsm": "lsm", "giib": "giib", "dma": "dma",
 }
 
 
@@ -69,6 +70,9 @@ DEPT_TO_MCP_RECORD_UNITS = {
     "coop": (None, None),
     "acc": (None, None),
     "stat": (None, None),
+    "lsm": (None, None),
+    "giib": (None, None),
+    "dma": (None, None),
 }
 
 
@@ -109,6 +113,7 @@ DEPT_TO_MCP_PAGE_UNIT = {
     "lc": "lc",  # 語言中心網站的內容頁（2026-10-15 加入 lc-site-pages）
     "mis": "mis",  # 資管所網站的固定頁面
     "dba": "dba", "coop": "coop", "acc": "acc", "stat": "stat",  # 商學院所屬學系網站的內容頁
+    "lsm": "lsm", "giib": "giib", "dma": "dma",
 }
 
 

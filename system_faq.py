@@ -49,6 +49,9 @@ class QueryDomain(str, Enum):
     COOP = "COOP"  # 金融與合作經營學系（只有 MCP 資料）
     ACC = "ACC"  # 會計學系（只有 MCP 資料）
     STAT = "STAT"  # 統計學系（只有 MCP 資料）
+    LSM = "LSM"  # 休閒運動管理學系（只有 MCP 資料）
+    GIIB = "GIIB"  # 國際企業研究所（只有 MCP 資料）
+    DMA = "DMA"  # 數位行銷進修學士學位學程（只有 MCP 資料）
     OTHER = "OTHER"
 
 

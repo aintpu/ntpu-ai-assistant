@@ -372,6 +372,10 @@ export const COLLEGE_SITES = {
   stat: { origin: "https://www.stat.ntpu.edu.tw", idParam: "id", idPrefix: "s", pagePrefix: "statp", listPath: "/index.php", firstNumber: 1 },
   // 會計系的最新消息沒有內文頁（見 parseAccNews），只有內容頁走這裡
   acc: { origin: "https://www.acc.ntpu.edu.tw", idParam: "id", idPrefix: "a", pagePrefix: "accp", listPath: "/news.php", firstNumber: 1 },
+  // 2026-10-16 加入：休閒運動管理學系（最新消息同會計系，在列表頁）、國際企業研究所、數位行銷進修學士學位學程
+  lsm: { origin: "https://lsm.ntpu.edu.tw", idParam: "id", idPrefix: "l", pagePrefix: "lsmp", listPath: "/news.php", firstNumber: 1 },
+  giib: { origin: "https://giib.ntpu.edu.tw", idParam: "id", idPrefix: "g", pagePrefix: "giibp", listPath: "/index.php", firstNumber: 1 },
+  dma: { origin: "https://www.dma.ntpu.edu.tw", idParam: "id", idPrefix: "m", pagePrefix: "dmap", listPath: "/index.php", firstNumber: 1 },
 } as const satisfies Record<string, CollegeSiteSpec>;
 
 export type CollegeSiteKey = keyof typeof COLLEGE_SITES;
@@ -411,12 +415,17 @@ export function parseCollegeGroup(html: string, group: number, pagePrefix: strin
     id: /\bid="([^"]+)"/.exec(m[0])?.[1] ?? "",
   }));
   const footer = raw.search(/<footer\b|id="footer"/);
+  // 沒有分頁按鈕的組（休閒運動管理學系每組只有一頁）：以左側選單目前所在的項目當標題
+  const active = /class="active"[^>]*>\s*<a[^>]*>([^<]{1,40})</.exec(raw)?.[1];
+  const fallbackTitle = active ? clean(active) : "";
   const pages: SitePage[] = [];
+  // 按鈕被註解掉、也不是預設顯示的分頁看不到，不收（同 visibleHtml）
+  const hidden = (pane: (typeof opens)[number]) => Boolean(pane.id) && !/\bactive\b/.test(pane.cls) && !labels.has(pane.id);
+  const visibleCount = opens.filter((p) => !hidden(p)).length;
   opens.forEach((pane, index) => {
-    // 按鈕被註解掉、也不是預設顯示的分頁看不到，不收（同 visibleHtml）
-    if (pane.id && !/\bactive\b/.test(pane.cls) && !labels.has(pane.id)) return;
+    if (hidden(pane)) return;
     const next = opens[index + 1]?.index ?? (footer > pane.end ? footer : raw.length);
-    const label = labels.get(pane.id) || `第 ${index + 1} 頁`;
+    const label = labels.get(pane.id) || (visibleCount === 1 && fallbackTitle) || `第 ${index + 1} 頁`;
     pages.push({
       key: `${pagePrefix}${String(group).padStart(3, "0")}t${String(index + 1).padStart(2, "0")}`,
       title: label,
@@ -556,6 +565,8 @@ export const HTML_SITES = {
   "dba-php": collegeSite(COLLEGE_SITES.dba),
   "coop-php": collegeSite(COLLEGE_SITES.coop),
   "stat-php": collegeSite(COLLEGE_SITES.stat),
+  "giib-php": collegeSite(COLLEGE_SITES.giib),
+  "dma-php": collegeSite(COLLEGE_SITES.dma),
   "mis-wp": misSite,
 } as const;
 

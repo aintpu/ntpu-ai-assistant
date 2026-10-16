@@ -53,7 +53,7 @@ class AddedOfficeTests(unittest.TestCase):
 
     def test_catalog_contract_and_state(self):
         self.assertEqual(set(FAQ_OFFICES), FAQ_UNITS)
-        self.assertEqual(len(VALID_OFFICES), 27)
+        self.assertEqual(len(VALID_OFFICES), 30)
         for code, (zh, en, _) in FAQ_OFFICES.items():
             with self.subTest(code=code):
                 self.assertEqual(OFFICE_NAMES[code], zh)
