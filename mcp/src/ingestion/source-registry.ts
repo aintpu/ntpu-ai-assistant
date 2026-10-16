@@ -141,35 +141,44 @@ const PERSONAL_DATA_GUARD: PersonalDataGuard = "off";
 const COLLEGE_DEPTS: {
   unit: string;
   origin: string;
-  news: { site: "dba-php" | "coop-php" | "stat-php"; idParam: "id" | "nid" } | "inline";
-  pages: "dba" | "coop" | "acc" | "stat";
+  news: { site: "dba-php" | "coop-php" | "stat-php" | "giib-php" | "dma-php"; idParam: "id" | "nid" } | { inline: "acc" | "lsm"; listIds: string; tareas: string[] };
+  pages: "dba" | "coop" | "acc" | "stat" | "lsm" | "giib" | "dma";
   groups: number[];
 }[] = [
   { unit: "dba", origin: "https://www.dba.ntpu.edu.tw", news: { site: "dba-php", idParam: "nid" }, pages: "dba", groups: [1, 2, 3, 4, 6, 100, 236, 252, 281, 288] },
   { unit: "coop", origin: "https://coop.ntpu.edu.tw", news: { site: "coop-php", idParam: "id" }, pages: "coop", groups: [4, 5, 6, 97, 150, 158] },
-  { unit: "acc", origin: "https://www.acc.ntpu.edu.tw", news: "inline", pages: "acc", groups: [1, 2, 3, 4, 6, 7, 9, 10, 136, 170] },
+  { unit: "acc", origin: "https://www.acc.ntpu.edu.tw", news: { inline: "acc", listIds: "69", tareas: ["69", "70", "71", "72"] }, pages: "acc", groups: [1, 2, 3, 4, 6, 7, 9, 10, 136, 170] },
   { unit: "stat", origin: "https://www.stat.ntpu.edu.tw", news: { site: "stat-php", idParam: "id" }, pages: "stat", groups: [4, 5, 6, 9, 97, 98, 141, 147, 150, 158, 162, 188, 194] },
-];
-
-const ACC_NEWS_PAGES = [
-  { path: "/news.php", query: { id: "0", ids: "69" } },
-  ...["69", "70", "71", "72"].map((tarea) => ({ path: "/r_news.php", query: { tarea } })),
+  // 2026-10-16 加入（使用者指定）。空殼組與最新消息列表（數位行銷 page 141）不收
+  { unit: "lsm", origin: "https://lsm.ntpu.edu.tw", news: { inline: "lsm", listIds: "1", tareas: ["1", "2", "3", "4", "5"] }, pages: "lsm", groups: [1, 2, 3, 5, 32, 33, 34, 35, 60] },
+  { unit: "giib", origin: "https://giib.ntpu.edu.tw", news: { site: "giib-php", idParam: "id" }, pages: "giib", groups: [1, 4, 5, 6, 9, 98] },
+  { unit: "dma", origin: "https://www.dma.ntpu.edu.tw", news: { site: "dma-php", idParam: "id" }, pages: "dma", groups: [1, 4, 5, 6, 97, 98] },
 ];
 
 function collegeDeptSources(d: (typeof COLLEGE_DEPTS)[number]): SourceDefinition[] {
   const common = { sourceUnit: d.unit, sourceType: "official_web" as const, trustLevel: "official" as const, origin: d.origin, enabled: true, fetch: HTML_FETCH, freshness: DAILY };
   const news: SourceDefinition =
-    d.news === "inline"
+    "inline" in d.news
       ? {
           ...common,
           id: `${d.unit}-announcements`,
-          homepageUrl: `${d.origin}/news.php?id=0&ids=69`,
+          homepageUrl: `${d.origin}/news.php?id=0&ids=${d.news.listIds}`,
           newsUrlBase: `${d.origin}/news.php`,
           allowedPathPrefixes: ["/news.php", "/r_news.php"],
           entrypoints: ["/news.php", "/r_news.php"],
-          queryRules: { "/news.php": { id: /^0$/, ids: /^69$/ }, "/r_news.php": { tarea: /^(69|70|71|72)$/ } },
+          queryRules: {
+            "/news.php": { id: /^0$/, ids: new RegExp(`^${d.news.listIds}$`) },
+            "/r_news.php": { tarea: new RegExp(`^(${d.news.tareas.join("|")})$`) },
+          },
           parser: "inline-news",
-          adapter: { kind: "inline-news", site: "acc", pages: ACC_NEWS_PAGES },
+          adapter: {
+            kind: "inline-news",
+            site: d.news.inline,
+            pages: [
+              { path: "/news.php", query: { id: "0", ids: d.news.listIds } },
+              ...d.news.tareas.map((tarea) => ({ path: "/r_news.php", query: { tarea } })),
+            ],
+          },
           entityType: "announcement",
         }
       : {
@@ -330,6 +339,9 @@ export const UNIT_NAMES: Record<string, string> = {
   coop: "金融與合作經營學系",
   acc: "會計學系",
   stat: "統計學系",
+  lsm: "休閒運動管理學系",
+  giib: "國際企業研究所",
+  dma: "數位行銷進修學士學位學程",
 };
 
 /**

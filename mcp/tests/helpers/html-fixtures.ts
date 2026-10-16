@@ -139,7 +139,7 @@ export class FakeSites {
         return html(main(`<ul class="nav nav-tabs"><li class="active"><a href="#t1">第 ${g} 組</a></li></ul><div class="tab-pane active" id="t1">${"商學院介紹內容。".repeat(10)}</div>`));
       }
     }
-    if (["www.dba.ntpu.edu.tw", "coop.ntpu.edu.tw", "www.stat.ntpu.edu.tw", "www.acc.ntpu.edu.tw"].includes(url.hostname)) {
+    if (["www.dba.ntpu.edu.tw", "coop.ntpu.edu.tw", "www.stat.ntpu.edu.tw", "www.acc.ntpu.edu.tw", "lsm.ntpu.edu.tw", "giib.ntpu.edu.tw", "www.dma.ntpu.edu.tw"].includes(url.hostname)) {
       // 商學院所屬學系：首頁連到最新一則（企管系 nid 從 1000001 起編）；會計系最新消息直接在列表頁
       const main = (inner: string) => `<html><body><div role="main" class="main">${inner}</div></body></html>`;
       const nid = url.hostname.startsWith("www.dba");

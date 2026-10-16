@@ -71,7 +71,7 @@ export interface AttachmentsConfig {
 /** 伺服器端產生的 HTML 公告網站：列表頁翻頁，再逐則抓內文。 */
 export interface HtmlNewsConfig {
   kind: "html-news";
-  site: "library-ewpt" | "lc-jsp" | "aacsb-php" | "dba-php" | "coop-php" | "stat-php" | "mis-wp";
+  site: "library-ewpt" | "lc-jsp" | "aacsb-php" | "dba-php" | "coop-php" | "stat-php" | "giib-php" | "dma-php" | "mis-wp";
   /** 每次執行最多抓幾則內文；其餘留到下一次（避免超過單次執行的子請求上限）。 */
   maxDetailsPerRun: number;
   /** 內文多久沒重新驗證就要重抓。 */
@@ -123,7 +123,7 @@ export type ManualAdapterConfig = ManualRegulationsConfig | ManualRegulationCata
 export type HtmlPagesConfig =
   | {
       kind: "html-pages";
-      site: "aacsb" | "dba" | "coop" | "acc" | "stat";
+      site: "aacsb" | "dba" | "coop" | "acc" | "stat" | "lsm" | "giib" | "dma";
       /** page.php?id= 的組別編號。 */
       groups: number[];
     }
@@ -151,7 +151,7 @@ export type HtmlPagesConfig =
 /** 最新消息全文直接顯示在列表頁、沒有內文頁的網站（會計系）：只收列表上看得到的公告。 */
 export interface InlineNewsConfig {
   kind: "inline-news";
-  site: "acc";
+  site: "acc" | "lsm";
   /** 要抓的列表頁路徑，都必須列在 entrypoints；查詢參數依 queryRules。 */
   pages: { path: string; query?: Record<string, string> }[];
 }
