@@ -22,12 +22,16 @@ sys.path.insert(0, ROOT)
 DATA = os.path.join(ROOT, "crawler_data")
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-from office_catalog import FAQ_OFFICES  # noqa: E402
+from office_catalog import FAQ_OFFICES, MCP_ONLY_OFFICES  # noqa: E402
 
 DEPT_NAMES = {
     "ope": "體育室", "ge": "通識教育中心", "lc": "語言中心", "oaa": "教務處", "osa": "學務處",
     "hr": "人事室", "oga": "總務處", **{code: spec[0] for code, spec in FAQ_OFFICES.items()},
+    # 2026-10-21 起涵蓋只有 MCP 資料的學院與系所
+    **{code: spec[0] for code, spec in MCP_ONLY_OFFICES.items()},
 }
+# 2026-10-15 移除的網路爬蟲轉 FAQ：由這些 FAQ 衍生的改寫題、追問題不再收（研發處 ORD-QA 為處室提供，保留）
+REMOVED_FAQ_ID = re.compile(r"^(OA|LIB|CIC|OIA|EEC|ALU|SUS|EDUSP|OS|PRES|VPA|VPAD|VPF)-|^ORD-(?!QA-)")
 # 核心處室：學生與教職員詢問量最大的行政單位（目標每處室 ≥100 題）。可依實際詢問量調整。
 CORE_DEPTS = ("oaa", "osa", "hr", "oga", "lib")
 TARGET_PER_DEPT = 30
@@ -191,6 +195,10 @@ def keep_generated(r) -> bool:
     """抽查發現的品質問題：應拒答題其實在問本校的事；追問題的答案沒有中文內容（例如只有英文法規名稱）。"""
     if r.get("type") == "skip":
         return False
+    src = r["origin"].split(":", 2)[2] if r["origin"].count(":") >= 2 else ""
+    if r["origin"].startswith(("generated:paraphrase:", "generated:followup:")) and REMOVED_FAQ_ID.match(src):
+        FILTERED["衍生自已移除的爬蟲 FAQ"] += 1
+        return False
     if r["type"] == "unanswerable" and r.get("refuse_kind") in ("external", "unrelated") and NTPU_RE.search(r["question"]):
         FILTERED["應拒答題提到本校"] += 1
         return False
@@ -202,15 +210,37 @@ def keep_generated(r) -> bool:
 
 def load_generated():
     """generate.py 產生的題目（略過出題失敗與品質過濾掉的題目）。"""
-    path = os.path.join(OUT_DIR, "generated.jsonl")
-    if not os.path.exists(path):
-        return []
-    rows = [json.loads(line) for line in open(path, encoding="utf-8")]
+    rows = []
+    for name in ("generated.jsonl", "official.jsonl"):  # official.jsonl：generate_official.py 由官網原文出的題目
+        path = os.path.join(OUT_DIR, name)
+        if os.path.exists(path):
+            rows += [json.loads(line) for line in open(path, encoding="utf-8")]
     return [r for r in rows if keep_generated(r)]
 
 
+def cap_unanswerable(items):
+    """應拒答題超過目標比例時，平均刪減模型產生的應拒答題（各類型輪流保留，人工整理的種子題不刪）。"""
+    limit = round(len(items) * TYPE_TARGETS["unanswerable"] / (1 - TYPE_TARGETS["unanswerable"] + TYPE_TARGETS["unanswerable"]))
+    refuse = [i for i in items if i["type"] == "unanswerable"]
+    if len(refuse) <= limit:
+        return items
+    seeds = [i for i in refuse if not i["origin"].startswith("generated:")]
+    gen = defaultdict(list)
+    for i in sorted((i for i in refuse if i["origin"].startswith("generated:")), key=lambda i: i["id"]):
+        gen[i.get("refuse_kind")].append(i)
+    keep, quota = [], max(0, limit - len(seeds))
+    while len(keep) < quota and any(gen.values()):
+        for kind in sorted(gen):
+            if gen[kind] and len(keep) < quota:
+                keep.append(gen[kind].pop(0))
+    dropped = len(refuse) - len(seeds) - len(keep)
+    FILTERED["應拒答題超過 10% 平均刪減"] += dropped
+    kept_ids = {id(i) for i in seeds + keep}
+    return [i for i in items if i["type"] != "unanswerable" or id(i) in kept_ids]
+
+
 def main():
-    items = collect_seed() + load_generated()
+    items = cap_unanswerable(collect_seed() + load_generated())
     seen = Counter(i["id"] for i in items)
     dup = defaultdict(int)
     for i in items:  # 同一編號出現多次時加流水號，確保 id 唯一
