@@ -8,26 +8,35 @@
 ## 產生方式
 
 ```bash
-# 1. （需要 OpenAI 金鑰）由模型補題，寫入 generated.jsonl；可中斷後續跑
-#    regs.json 為 MCP 法規匯出：wrangler d1 execute ntpu-aia-canonical --remote --json --command
-#    "SELECT source_unit, stable_key, title, payload_json, source_url FROM entities WHERE entity_type='regulation' AND status='active' AND source_unit IN ('oaa','osa','op','oga')"
-python evaluate/benchmark/generate.py --regs regs.json
-# 2. 合併種子題庫與 generated.jsonl，產生 benchmark.jsonl 與 coverage.md（不呼叫模型）
-python evaluate/benchmark/build_seed.py
+# 1. 從 MCP（D1）匯出 30 個單位的官網內容頁、法規全文與近一年公告到 cache/（不進 git）
+python3 evaluate/benchmark/generate_official.py --export
+# 2. （需要 OpenAI 金鑰）由官網原文出題，寫入 official.jsonl；可中斷後續跑，--extra lib=30 可額外加題
+python3 evaluate/benchmark/generate_official.py
+# 3. 依目前的原始題補改寫題、追問題與應拒答題，寫入 generated.jsonl
+python3 evaluate/benchmark/generate_variants.py
+# 4. 合併成 benchmark.jsonl 與 coverage.md（不呼叫模型）
+python3 evaluate/benchmark/build_seed.py
 ```
 
-目前共 **2,521 題**，21 個單位都達到題數目標，題型比例接近老師的建議。詳見 [coverage.md](coverage.md)。
+2026-10-21 重建：原本 938 題由網路爬蟲轉成的 FAQ 出題，這些 FAQ 已從系統移除（2026-10-15），改由 MCP 收錄的官網原文重新出題，
+並補上商學院、資管所與 7 個學系／學程。目前共 **1,876 題**，30 個單位都達到題數目標（核心處室 ≥100、其他 ≥30），
+題型比例符合老師的建議。詳見 [coverage.md](coverage.md)。
 
 | 來源 | 題數 | 標準答案 | 官方來源／資料日期 |
 |---|---|---|---|
-| 14 個單位的 FAQ（`crawler_data/*_faq.md`） | 938 | FAQ 原文回答 | 有 |
+| **官網原文題**（MCP 收錄的內容頁 484、公告 14） | 498 | 由原文出題；每題附 `evidence_quote`，程式確認逐字出現在原文才收 | 該頁網址；來源修訂日期（沒有則為系統最後確認日期） |
+| 法規題（教務 100、學務 100、人事 60、總務 40） | 300 | 由條文出題，須標註條次 | 法規名稱、官方檔案連結、更新日期 |
+| 研發處提供的 Q&A（PDF 1150922） | 19 | 原文回答 | 有 |
 | 人事室、總務處整理檔（`hr_content.md`、`oga_content.md`） | 100 | 原文回答 | 有來源網址；人事室沒有資料日期 |
 | 體育室、通識、語言中心歷次測試題（`evaluate/test_questions_v3/v4.json`） | 302 | 測試題的 ground truth | **沒有** |
-| 應拒答題（`scope_probe.py` 應擋題、golden set 查無題） | 14 | 「應拒答」或「應回答查無」 | 不適用 |
-| **模型產生**：法規題（教務 100、學務 100、人事 60、總務 40） | 300 | 由條文出題，須標註條次 | 法規名稱、官方檔案連結、更新日期 |
-| **模型產生**：口語化／改寫題 | 504 | 沿用原題 | 沿用原題；`paraphrase_of` 記錄原問題 |
-| **模型產生**：追問題 | 125 | 從原答案擷取 | 沿用原題；`history` 為第一輪問答 |
-| **模型產生**：應拒答題（外校、無關、個資、不當協助、本校但查無） | 238 | 依類型（`refuse_kind`） | 不適用 |
+| 口語化／改寫題 | 374 | 沿用原題 | 沿用原題；`paraphrase_of` 記錄原問題 |
+| 追問題 | 89 | 從原答案擷取 | 沿用原題；`history` 為第一輪問答 |
+| 應拒答題（模型 178、種子 16） | 194 | 依類型（`refuse_kind`） | 不適用 |
+
+已排除：衍生自已移除爬蟲 FAQ 的改寫與追問題 517 題；應拒答題超過 10% 的部分平均刪減。
+
+人工審核樣本：[review_sample.csv](review_sample.csv)（分層抽 100 題：高風險 40、其他 60，排除舊測試題），
+欄位附原文依據與來源網址，審核欄位留空待填。
 
 ## 每題欄位
 
@@ -45,7 +54,9 @@ python evaluate/benchmark/build_seed.py
 | `risk_level` | **風險等級**：`high`（答錯影響權益：學分、資格、期限、金錢、獎懲、學籍、差勤）／`medium`／`low`（聯絡方式、地點、簡介） |
 | `answerable` | **是否可回答**；`false` 代表應拒答或應回答查無 |
 | `origin` | 題目從哪個檔案轉來 |
-| `reviewed` | 是否經人工審核；種子題庫全部為 `false` |
+| `reviewed` | 是否經人工審核；目前全部為 `false` |
+| `evidence_quote` | 官網原文題的原文依據（逐字出現在來源原文） |
+| `source_kind` | 官網原文題的來源類型：`page` 內容頁、`announcement` 公告 |
 
 ## 分類規則（自動，需人工抽查）
 
@@ -61,6 +72,6 @@ python evaluate/benchmark/build_seed.py
 
 ## 下一步
 
-1. 人工抽查模型產生的題目與風險等級，審核後把 `reviewed` 設為 `true`（建議先抽查高風險題）。
+1. 人工審核 `review_sample.csv`（先看高風險題），把確認無誤的題目 `reviewed` 設為 `true`。
 2. 建立每月評估腳本：抽 100 題一般題、50 題高風險題，計算有據正確率與重大錯誤率。
-3. 「程序、資格、期限」目前 12%（目標 15%），可再由法規多出程序類題目。
+3. 體育室、通識、語言中心的 302 題舊測試題沒有官方來源，可改由 MCP 官網原文重出。

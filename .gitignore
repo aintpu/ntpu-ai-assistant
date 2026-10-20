@@ -62,3 +62,4 @@ cf/src/csp-hashes.generated.js
 # OS
 .DS_Store
 Thumbs.db
+evaluate/benchmark/cache/

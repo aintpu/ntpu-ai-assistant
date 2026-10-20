@@ -163,7 +163,8 @@ def gen_followups(adapter, pool, target, done):
     have = sum(1 for i in done if i["type"] == "followup")
     used = {i["origin"] for i in done}
     rng = random.Random(11)
-    cands = [i for i in pool if len(i["standard_answer"]) >= 150]
+    # 官網原文題的答案多半精簡：門檻 80 字（原 150 字只留得下 42 題可追問）
+    cands = [i for i in pool if len(i["standard_answer"]) >= 80]
     rng.shuffle(cands)
     for src in cands:
         if have >= target:
