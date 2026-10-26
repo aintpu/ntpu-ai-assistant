@@ -4545,10 +4545,16 @@ def ground_scope_in_data(scope, raw_query: str):
     return ScopeDecision("IN_SCOPE", office, 0.8, f"知識庫有含「{term}」的{where}。")
 
 
+_UNIT_NAME_RE = re.compile(r"(系|所|院|處|室|中心|館|部|學程)$")
+
+
 def _named_office(query: str):
     """問題裡明確寫到的單位（關鍵詞至少 3 字，例如「資管所」「會計系」）；寫到不只一個單位或沒寫回 None。"""
+    # 只看單位名稱（以系、所、院、處、室、中心、館、部、學程結尾），不看業務關鍵詞：
+    # 「金融系系主任…的電子郵件」的「電子郵件」是資訊中心的業務詞，不代表問題寫了資訊中心
     found = {office for office, words in OFFICE_KEYWORDS.items() if office in DEPT_NAMES
-             for w in words if len(str(w)) >= 3 and str(w) in (query or "")}
+             for w in (*words, DEPT_NAMES[office]) if len(str(w)) >= 3 and _UNIT_NAME_RE.search(str(w))
+             and str(w) in (query or "")}
     return found.pop() if len(found) == 1 else None
 
 
