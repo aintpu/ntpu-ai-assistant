@@ -24,6 +24,7 @@
 
 import json
 import os
+import re
 
 from openai import OpenAI
 
@@ -75,6 +76,79 @@ print(f"[LLM adapter] provider={PROVIDER}, big={MODEL_BIG}, small={MODEL_SMALL},
       f"classifier={CLASSIFIER_MODEL if classifier_client else MODEL_SMALL}")
 
 
+# ── 每題的模型用量（2026-10-26 使用者要求：統計 token 與費用）──────────────────────────
+# 一題問答會呼叫多次模型（改寫、範圍判斷、檢索、回答、證據檢查），平行的部分在 ThreadPoolExecutor 的執行緒裡：
+# 用 contextvars 存這題的累計，並讓執行緒池沿用呼叫端的 context，平行呼叫也算得到。
+import contextvars
+import threading
+from concurrent.futures import ThreadPoolExecutor as _TPE
+
+_usage_var = contextvars.ContextVar("llm_usage", default=None)
+_orig_submit = _TPE.submit
+
+
+def _submit_with_context(self, fn, /, *args, **kwargs):
+    return _orig_submit(self, contextvars.copy_context().run, fn, *args, **kwargs)
+
+
+_TPE.submit = _submit_with_context  # pool.map 也走 submit
+
+# 每百萬 token 的美元價格（輸入、輸出）；未設定時只記 token，不估費用。OpenRouter 的費用直接用回應裡的實際金額。
+# 例：PRICE_GPT_6_LUNA="1.25,10"（模型名稱的 - 與 . 換成 _、全大寫）
+def _price_of(model: str):
+    raw = os.getenv("PRICE_" + re.sub(r"[^A-Za-z0-9]", "_", model or "").upper(), "").strip()
+    try:
+        inp, out = (float(x) for x in raw.split(","))
+        return inp, out
+    except ValueError:
+        return None
+
+
+def start_usage():
+    """新的一題開始累計（每個請求開頭呼叫）。"""
+    _usage_var.set({"lock": threading.Lock(), "by_model": {}})
+
+
+def _record_usage(model, usage, provider):
+    meter = _usage_var.get()
+    if meter is None or usage is None:
+        return
+    p_in = int(getattr(usage, "prompt_tokens", 0) or 0)
+    p_out = int(getattr(usage, "completion_tokens", 0) or 0)
+    cost = getattr(usage, "cost", None)  # OpenRouter（usage.include）回傳實際金額
+    if cost is None:
+        price = _price_of(model)
+        cost = (p_in * price[0] + p_out * price[1]) / 1_000_000 if price else None
+    with meter["lock"]:
+        m = meter["by_model"].setdefault(model or "?", {"provider": provider, "calls": 0, "input_tokens": 0,
+                                                       "output_tokens": 0, "cost_usd": 0.0, "cost_known": True})
+        m["calls"] += 1
+        m["input_tokens"] += p_in
+        m["output_tokens"] += p_out
+        if cost is None:
+            m["cost_known"] = False
+        else:
+            m["cost_usd"] += float(cost)
+
+
+def usage_summary():
+    """這題的模型用量：各模型的呼叫次數、token、費用（未知價格的模型 cost_known=false）。"""
+    meter = _usage_var.get()
+    if meter is None:
+        return None
+    with meter["lock"]:
+        by_model = {k: dict(v, cost_usd=round(v["cost_usd"], 6)) for k, v in meter["by_model"].items()}
+    known = [v for v in by_model.values() if v["cost_known"]]
+    return {
+        "calls": sum(v["calls"] for v in by_model.values()),
+        "input_tokens": sum(v["input_tokens"] for v in by_model.values()),
+        "output_tokens": sum(v["output_tokens"] for v in by_model.values()),
+        "cost_usd": round(sum(v["cost_usd"] for v in known), 6),
+        "cost_complete": len(known) == len(by_model),
+        "by_model": by_model,
+    }
+
+
 def _build_kwargs(messages, model, tools, tool_choice, temperature,
                   max_tokens, reasoning_effort, stream, response_format=None):
     kwargs = {"model": model or MODEL_BIG, "messages": messages}
@@ -84,6 +158,7 @@ def _build_kwargs(messages, model, tools, tool_choice, temperature,
             kwargs["tool_choice"] = tool_choice
     if stream:
         kwargs["stream"] = True
+        kwargs["stream_options"] = {"include_usage": True}  # 最後一個 chunk 附 token 用量
     if response_format:
         kwargs["response_format"] = response_format
     if max_tokens:
@@ -115,6 +190,16 @@ def _create_retry(kwargs):
 def _create(messages, model=None, tools=None, tool_choice=None, temperature=None,
             max_tokens=None, reasoning_effort=None, stream=False,
             response_format=None):
+    rsp = _create_raw(messages, model, tools, tool_choice, temperature, max_tokens, reasoning_effort, stream,
+                      response_format)
+    if not stream:
+        _record_usage(model or MODEL_BIG, getattr(rsp, "usage", None), "openai")
+    return rsp
+
+
+def _create_raw(messages, model=None, tools=None, tool_choice=None, temperature=None,
+                max_tokens=None, reasoning_effort=None, stream=False,
+                response_format=None):
     kwargs = _build_kwargs(messages, model, tools, tool_choice, temperature,
                            max_tokens, reasoning_effort, stream, response_format)
     try:
@@ -129,7 +214,8 @@ def _create(messages, model=None, tools=None, tool_choice=None, temperature=None
             kwargs.pop("temperature", None)
             return _create_retry(kwargs)
         # GPT-6 系列只接受預設 temperature（2026-10-12：temperature=0 會回 400）
-        for bad in ("reasoning_effort", "max_completion_tokens", "tool_choice", "response_format", "temperature"):
+        for bad in ("reasoning_effort", "max_completion_tokens", "tool_choice", "response_format", "temperature",
+                    "stream_options"):
             if bad in msg and bad in kwargs:
                 val = kwargs.pop(bad)
                 if bad == "max_completion_tokens":
@@ -169,7 +255,9 @@ def classify_complete(messages, temperature=0, max_tokens=None, response_format=
         return complete(messages, temperature=temperature, max_tokens=max_tokens, response_format=response_format)
     if isinstance(messages, str):
         messages = [{"role": "user", "content": messages}]
-    kwargs = {"model": CLASSIFIER_MODEL, "messages": messages, "temperature": temperature}
+    # usage.include：OpenRouter 在回應裡附上這次呼叫的實際費用
+    kwargs = {"model": CLASSIFIER_MODEL, "messages": messages, "temperature": temperature,
+              "extra_body": {"usage": {"include": True}}}
     if max_tokens:
         kwargs["max_tokens"] = max_tokens
     if response_format:
@@ -182,6 +270,7 @@ def classify_complete(messages, temperature=0, max_tokens=None, response_format=
                 raise
             kwargs.pop("response_format")
             rsp = classifier_client.chat.completions.create(**kwargs, timeout=CLASSIFIER_TIMEOUT_SECONDS)
+        _record_usage(CLASSIFIER_MODEL, getattr(rsp, "usage", None), "openrouter")
         text = (rsp.choices[0].message.content or "").strip()
         if text:
             return text
@@ -220,6 +309,8 @@ def chat_events(messages, model=None, tools=None, tool_choice=None,
     content_parts = []
     calls = {}  # index -> {id, name, arguments 累積}
     for chunk in stream:
+        if getattr(chunk, "usage", None):
+            _record_usage(model, chunk.usage, "openai")  # stream_options.include_usage：最後一個 chunk
         if not chunk.choices:
             continue
         delta = chunk.choices[0].delta
