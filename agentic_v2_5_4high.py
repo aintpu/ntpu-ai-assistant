@@ -3417,6 +3417,7 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
         timings = get_last_timings()
         _log_event(
             "answer",
+            llm_usage=llm_adapter.usage_summary(),
             message_id=message_id,
             session_id=session_id or SESSION_ID,
             conversation_id=updated_state.conversation_id or session_id or SESSION_ID,
@@ -4133,6 +4134,7 @@ def prepare_conversation_turn(
 ) -> dict:
     """Execute Safety → Resolution → Standalone Query → Scope → Office."""
     _reset_timings()
+    llm_adapter.start_usage()  # 這題的模型用量從這裡開始累計
     state = ConversationState.from_value(conversation_state, conversation_id)
     safety = run_safety_guardrail(raw_query)
     if not safety["allowed"]:
