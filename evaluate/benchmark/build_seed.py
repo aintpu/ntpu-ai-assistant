@@ -183,7 +183,10 @@ def coverage_report(items):
 
 
 def collect_seed():
-    return from_faq_files() + from_legacy_tests() + unanswerable_seeds()
+    items = from_faq_files() + from_legacy_tests() + unanswerable_seeds()
+    kept = [i for i in items if not is_stale(i)]
+    FILTERED["時效已過（期限、活動日期早於 114 學年）"] += len(items) - len(kept)
+    return kept
 
 
 NTPU_RE = re.compile(r"臺北大學|台北大學|北大|本校|我們學校")
@@ -191,9 +194,28 @@ CJK_RE = re.compile(r"[\u4e00-\u9fff]")
 FILTERED = Counter()
 
 
+# 時效已過的題目（2026-10-21 首次月評估發現）：問報名、繳費、寄件、上傳、公布、活動日期等期限，
+# 標準答案的年份卻早於 114 學年（2025），官網更新後系統答新年度反被判錯。歷史事實（成立、通過、生效、開設）不在此列。
+STALE_Q_RE = re.compile(r"最晚|期限|截止|報名|繳費|郵寄|寄件|寄到|上傳|公布|舉行|舉辦|活動|行程|導生會議|回娘家|哪一天|幾月幾號|日期")
+HISTORY_Q_RE = re.compile(r"成立|通過|生效|開始|開設|沿革|歷史|起算|適用")
+STALE_BEFORE = 2025
+
+
+def is_stale(r) -> bool:
+    if not r.get("answerable") or not STALE_Q_RE.search(r["question"]) or HISTORY_Q_RE.search(r["question"]):
+        return False
+    a = r["standard_answer"]
+    years = [int(y) for y in re.findall(r"(20[12]\d)", a)] + \
+        [int(y) + 1911 for y in re.findall(r"(?<!\d)(1[01]\d)(?:學年|年)", a)]
+    return bool(years) and max(years) < STALE_BEFORE
+
+
 def keep_generated(r) -> bool:
     """抽查發現的品質問題：應拒答題其實在問本校的事；追問題的答案沒有中文內容（例如只有英文法規名稱）。"""
     if r.get("type") == "skip":
+        return False
+    if is_stale(r):
+        FILTERED["時效已過（期限、活動日期早於 114 學年）"] += 1
         return False
     src = r["origin"].split(":", 2)[2] if r["origin"].count(":") >= 2 else ""
     if r["origin"].startswith(("generated:paraphrase:", "generated:followup:")) and REMOVED_FAQ_ID.match(src):
@@ -239,8 +261,27 @@ def cap_unanswerable(items):
     return [i for i in items if i["type"] != "unanswerable" or id(i) in kept_ids]
 
 
+def apply_corrections(items):
+    """套用 corrections.json：原始題與由它衍生的改寫題、追問題一起修正或刪除。"""
+    path = os.path.join(OUT_DIR, "corrections.json")
+    if not os.path.exists(path):
+        return items
+    fixes = json.load(open(path, encoding="utf-8"))["corrections"]
+    out = []
+    for i in items:
+        base = re.sub(r"^(PARA|FOLLOW)-|-\d+$", "", i["id"]) if i["id"].startswith(("PARA-", "FOLLOW-")) else i["id"]
+        fix = fixes.get(i["id"]) or fixes.get(base)
+        if fix and fix.get("drop"):
+            FILTERED["人工確認刪除（corrections.json）"] += 1
+            continue
+        if fix and fix.get("standard_answer") and i["type"] != "followup":
+            i = dict(i, standard_answer=fix["standard_answer"], corrected=True)
+        out.append(i)
+    return out
+
+
 def main():
-    items = cap_unanswerable(collect_seed() + load_generated())
+    items = cap_unanswerable(apply_corrections(collect_seed() + load_generated()))
     seen = Counter(i["id"] for i in items)
     dup = defaultdict(int)
     for i in items:  # 同一編號出現多次時加流水號，確保 id 唯一

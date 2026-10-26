@@ -58,6 +58,8 @@ OFFICE_KEYWORDS = {
         "人事", "差勤", "刷卡", "請假", "事假", "病假", "身心調適假", "婚假",
         "產假", "陪產假", "喪假", "勞基法", "變形工時", "行政人員", "午休",
         "差假", "勤休", "特休", "特別休假", "休假天數", "補休",
+        # 勞基法相關（2026-10-26 月評估：「職業傷病給付從哪一天起算」被判為與校務無關）
+        "職業傷病", "職業災害", "職災", "傷病假", "加班費",
     ),
     "oga": (
         "總務", "營繕", "設備報修", "報修", "緊急修繕", "停電", "停水", "空調", "冷氣", "採購",
@@ -179,8 +181,11 @@ GENERIC_ENTITY_CANDIDATES = {
     "宿舍", "住宿", "規定", "辦法", "流程", "服務", "系統",
 }
 _CJK_ENTITY_RE = re.compile(
-    r"(?P<entity>[\u4e00-\u9fff]{2,24}(?:" + "|".join(ENTITY_SUFFIXES) + r"))"
+    r"(?P<entity>[\u4e00-\u9fff]{2,24}(?:" + "|".join(ENTITY_SUFFIXES) + r"))(?!生)"  # 「高中生」是學生，不是高中
 )
+# 候選名稱的前段含這些詞就不是機構名稱：「學生首次使用學校（電子郵件）」「哪間學校」「專科以上學校」「在地企業或醫院」
+# （2026-10-26 月評估：7 題本校問題因此被當成外校擋下）
+_NOT_ENTITY_STEM_RE = re.compile(r"什麼|哪些|使用|忘記|首次|提供|申請|哪間|哪所|哪一|哪個|以上|以下|在地|所有|一般|其他|各|或|和|與|及|的|在|到|去")
 _EN_ENTITY_RE = re.compile(
     r"(?P<entity>\b(?:[A-Za-z][A-Za-z0-9&.\-]*\s+){1,5}"
     r"(?:University|College|School|Company|Bank|Hospital|Government)\b)",
@@ -509,6 +514,17 @@ def _extract_entity_candidates(text: str) -> list[str]:
     for pattern in (_CJK_ENTITY_RE, _EN_ENTITY_RE):
         for match in pattern.finditer(text or ""):
             candidate = _clean_entity_candidate(match.group("entity"))
+            if pattern is _CJK_ENTITY_RE:
+                suffix = next((x for x in ENTITY_SUFFIXES if candidate.endswith(x)), "")
+                stem = candidate[: -len(suffix)] if suffix else candidate
+                if len(stem) < 2 or _NOT_ENTITY_STEM_RE.search(stem):
+                    # 長候選含一般用詞時，前段可能另有機構名稱（「政治大學有什麼學院」→「政治大學」）
+                    inner = next((m.group(0) for m in re.finditer(
+                        r"[\u4e00-\u9fff]{2,20}?(?:" + "|".join(ENTITY_SUFFIXES) + r")", match.group("entity")[: -len(suffix) or None])
+                        if not _NOT_ENTITY_STEM_RE.search(m.group(0)) and len(m.group(0)) > 3), "")
+                    if not inner:
+                        continue
+                    candidate = inner
             normalized = _normalize_entity_text(candidate)
             if not candidate or normalized in {
                 _normalize_entity_text(item) for item in GENERIC_ENTITY_CANDIDATES
