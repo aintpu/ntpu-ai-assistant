@@ -36,6 +36,7 @@ DEPT_TO_MCP_UNIT = {
     "mis": "mis",  # 資管所網站（www.mis.ntpu.edu.tw）的最新消息
     "dba": "dba", "coop": "coop", "acc": "acc", "stat": "stat",  # 商學院所屬學系網站的最新消息
     "lsm": "lsm", "giib": "giib", "dma": "dma",
+    "iemba": "iemba", "gmba": "gmba", "fintech": "fintech", "ebrc": "ebrc", "ccs": "ccs",
 }
 
 
@@ -73,6 +74,11 @@ DEPT_TO_MCP_RECORD_UNITS = {
     "lsm": (None, None),
     "giib": (None, None),
     "dma": (None, None),
+    "iemba": (None, None),
+    "gmba": (None, None),
+    "fintech": (None, None),
+    "ebrc": (None, None),
+    "ccs": (None, None),
 }
 
 
@@ -114,6 +120,7 @@ DEPT_TO_MCP_PAGE_UNIT = {
     "mis": "mis",  # 資管所網站的固定頁面
     "dba": "dba", "coop": "coop", "acc": "acc", "stat": "stat",  # 商學院所屬學系網站的內容頁
     "lsm": "lsm", "giib": "giib", "dma": "dma",
+    "iemba": "iemba", "gmba": "gmba", "fintech": "fintech", "ebrc": "ebrc", "ccs": "ccs",
 }
 
 

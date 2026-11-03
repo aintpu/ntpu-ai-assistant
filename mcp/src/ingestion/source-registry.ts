@@ -32,6 +32,9 @@ const HTML_FETCH: FetchPolicy = {
 /** 資管所 WordPress：文章列表是 sitemap（application/xml），其餘同 HTML_FETCH。 */
 const MIS_FETCH: FetchPolicy = { ...HTML_FETCH, methods: ["GET"], acceptedContentTypes: ["text/html", "application/xml"] };
 
+/** 企業永續發展研究中心：最新消息與成員名單在 /backend/data.json（application/json，約 150 KB）。 */
+const CCS_FETCH: FetchPolicy = { ...HTML_FETCH, methods: ["GET"], acceptedContentTypes: ["text/html", "application/json"] };
+
 /** 資管所固定頁面（wp-sitemap-posts-page-1.xml；不含首頁、最新消息等列表頁）。 */
 const MIS_PAGES = [
   "/about-mis/", "/description/", "/history/", "/professor/", "/faculty/", "/admissions/", "/studyrules/",
@@ -127,6 +130,52 @@ const LC_PAGES = [
 ];
 const LC_PATHS = [...new Set(LC_PAGES.map((p) => p.path))];
 
+/** 財務金融英語碩士學位學程 GMBA 的內容頁（www.gmba.ntpu.edu.tw；使用者 2026-11-03 指定）。 */
+const GMBA_CP = (path: string, ids: string[]) => ids.map((cp_id) => ({ path, query: { cp_id } }));
+const GMBA_PAGES = [
+  ...GMBA_CP("/web/about/about.jsp", [
+    "CP1611215157639",
+    "CP1611215444351",
+    "CP1611215469691",
+    "CP1611629613899",
+    "CP1613811142149",
+    "CP1634875810115",
+    "CP1702374777655",
+  ]),
+  // 同一頁有兩個 cp_id（admission CP1611216155420＝CP1611216119715、curriculum CP1611216058340＝CP1611215788073），只收一個
+  ...GMBA_CP("/web/admission/admission.jsp", ["CP1611216119715"]),
+  ...GMBA_CP("/web/curriculum/curriculum.jsp", [
+    "CP1611215788073",
+    "CP1633318293005",
+    "CP1634534873402",
+    "CP1634626973109",
+    "CP1736229674749",
+    "CP1736232495226",
+  ]),
+  { path: "/web/faculty/faculty.jsp" },
+  { path: "/web/alumni/alumni_intro.jsp" },
+  { path: "/web/resource/resource.jsp" },
+  { path: "/web/careers/careers.jsp" },
+  { path: "/web/contact/contact.jsp" },
+];
+const GMBA_PATHS = [...new Set(GMBA_PAGES.map((p) => p.path))];
+
+/** 電子商務研究中心（Google 協作平台 ebrc.gm.ntpu.edu.tw，只有三頁；2026-11-03 指定）。 */
+const EBRC_PAGES = [{ path: "/home", title: "電子商務研究中心簡介" }, { path: "/project-definition" }, { path: "/the-team" }];
+
+/**
+ * 企業永續發展研究中心（ccs.ntpu.edu.tw；2026-11-03 指定）：靜態頁＋前端讀 /backend/data.json。
+ * data.json 另外產生「組織成員名單」頁（team）與最新消息（news）。研究成果頁（academic-papers）的論文清單看起來是範例資料，不收。
+ */
+const CCS_DATA = "/backend/data.json";
+const CCS_PAGES = [
+  ..."about/about about/organization about/regulations contact/contact corporate-ai/ai-solutions corporate-ai/corporate-esg corporate-ai/esg-consulting corporate-ai/esg-engagement education/ai-education education/net-zero-certification education/sustainable-net-zero-manager esg-rating/financial-products esg-rating/index-series esg-rating/methodology research/investment-survey research/regional-project research/sustainable-literacy sustainable-finance/economic-activity-guide sustainable-finance/green-securities sustainable-finance/transition-plan"
+    .split(" ")
+    .map((p) => ({ path: `/pages/${p}.html` })),
+  { path: CCS_DATA, title: "組織成員名單" },
+];
+const CCS_PATHS = CCS_PAGES.map((p) => p.path);
+
 /**
  * 全部公告來源的個資過濾模式。使用者 2026-10-03 決定全部放行（官網本來就公開）。
  * 改成 "student-ids" 只擋含學號的名單（掃描約 13 則），"all" 連姓名名單也擋（約 77 則）。
@@ -141,8 +190,12 @@ const PERSONAL_DATA_GUARD: PersonalDataGuard = "off";
 const COLLEGE_DEPTS: {
   unit: string;
   origin: string;
-  news: { site: "dba-php" | "coop-php" | "stat-php" | "giib-php" | "dma-php"; idParam: "id" | "nid" } | { inline: "acc" | "lsm"; listIds: string; tareas: string[] };
-  pages: "dba" | "coop" | "acc" | "stat" | "lsm" | "giib" | "dma";
+  /** 網站放在子目錄時的路徑前綴（金融科技中心 /fintech）。 */
+  base?: string;
+  news:
+    | { site: "dba-php" | "coop-php" | "stat-php" | "giib-php" | "dma-php" | "iemba-php" | "fintech-php"; idParam: "id" | "nid" }
+    | { inline: "acc" | "lsm"; listIds: string; tareas: string[] };
+  pages: "dba" | "coop" | "acc" | "stat" | "lsm" | "giib" | "dma" | "iemba" | "fintech";
   groups: number[];
 }[] = [
   { unit: "dba", origin: "https://www.dba.ntpu.edu.tw", news: { site: "dba-php", idParam: "nid" }, pages: "dba", groups: [1, 2, 3, 4, 6, 100, 236, 252, 281, 288] },
@@ -153,10 +206,21 @@ const COLLEGE_DEPTS: {
   { unit: "lsm", origin: "https://lsm.ntpu.edu.tw", news: { inline: "lsm", listIds: "1", tareas: ["1", "2", "3", "4", "5"] }, pages: "lsm", groups: [1, 2, 3, 5, 32, 33, 34, 35, 60] },
   { unit: "giib", origin: "https://giib.ntpu.edu.tw", news: { site: "giib-php", idParam: "id" }, pages: "giib", groups: [1, 4, 5, 6, 9, 98] },
   { unit: "dma", origin: "https://www.dma.ntpu.edu.tw", news: { site: "dma-php", idParam: "id" }, pages: "dma", groups: [1, 4, 5, 6, 97, 98] },
+  // 2026-11-03 加入（使用者指定）。空殼組（IEMBA 2、6、9、10）與最新消息列表（金融科技中心 page 98）不收
+  { unit: "iemba", origin: "https://iemba.ntpu.edu.tw", news: { site: "iemba-php", idParam: "id" }, pages: "iemba", groups: [1, 3, 4, 7, 203, 233, 255] },
+  {
+    unit: "fintech",
+    origin: "https://www.aacsb.ntpu.edu.tw",
+    base: "/fintech",
+    news: { site: "fintech-php", idParam: "id" },
+    pages: "fintech",
+    groups: [1, 4, 5, 6, 97],
+  },
 ];
 
 function collegeDeptSources(d: (typeof COLLEGE_DEPTS)[number]): SourceDefinition[] {
   const common = { sourceUnit: d.unit, sourceType: "official_web" as const, trustLevel: "official" as const, origin: d.origin, enabled: true, fetch: HTML_FETCH, freshness: DAILY };
+  const b = d.base ?? "";
   const news: SourceDefinition =
     "inline" in d.news
       ? {
@@ -184,11 +248,11 @@ function collegeDeptSources(d: (typeof COLLEGE_DEPTS)[number]): SourceDefinition
       : {
           ...common,
           id: `${d.unit}-announcements`,
-          homepageUrl: `${d.origin}/`,
-          newsUrlBase: `${d.origin}/view.php`,
-          allowedPathPrefixes: ["/index.php", "/view.php"],
-          entrypoints: ["/index.php", "/view.php"],
-          queryRules: { "/view.php": { [d.news.idParam]: /^[A-Za-z0-9+/]{2,16}={0,2}$/ } },
+          homepageUrl: `${d.origin}${b}/`,
+          newsUrlBase: `${d.origin}${b}/view.php`,
+          allowedPathPrefixes: [`${b}/index.php`, `${b}/view.php`],
+          entrypoints: [`${b}/index.php`, `${b}/view.php`],
+          queryRules: { [`${b}/view.php`]: { [d.news.idParam]: /^[A-Za-z0-9+/]{2,16}={0,2}$/ } },
           parser: "html-news",
           adapter: {
             kind: "html-news",
@@ -202,11 +266,11 @@ function collegeDeptSources(d: (typeof COLLEGE_DEPTS)[number]): SourceDefinition
   const pages: SourceDefinition = {
     ...common,
     id: `${d.unit}-site-pages`,
-    homepageUrl: `${d.origin}/`,
-    newsUrlBase: `${d.origin}/page.php`,
-    allowedPathPrefixes: ["/page.php"],
-    entrypoints: ["/page.php"],
-    queryRules: { "/page.php": { id: /^\d{1,3}$/, ids: /^1$/ } },
+    homepageUrl: `${d.origin}${b}/`,
+    newsUrlBase: `${d.origin}${b}/page.php`,
+    allowedPathPrefixes: [`${b}/page.php`],
+    entrypoints: [`${b}/page.php`],
+    queryRules: { [`${b}/page.php`]: { id: /^\d{1,3}$/, ids: /^1$/ } },
     parser: "html-pages",
     adapter: { kind: "html-pages", site: d.pages, groups: d.groups },
     entityType: "page",
@@ -342,6 +406,11 @@ export const UNIT_NAMES: Record<string, string> = {
   lsm: "休閒運動管理學系",
   giib: "國際企業研究所",
   dma: "數位行銷進修學士學位學程",
+  iemba: "商學院在職專班 IEMBA",
+  gmba: "財務金融英語碩士學位學程 GMBA",
+  fintech: "金融科技暨綠色金融研究中心",
+  ebrc: "電子商務研究中心",
+  ccs: "企業永續發展研究中心",
 };
 
 /**
@@ -759,6 +828,106 @@ const WEB_SOURCES: SourceDefinition[] = [
     entityType: "announcement",
     enabled: true,
     fetch: HTML_FETCH,
+    freshness: DAILY,
+  },
+  {
+    // 財務金融英語碩士學位學程 GMBA（JSP）。最新消息約 80 則（12 則一頁）
+    id: "gmba-announcements",
+    sourceUnit: "gmba",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://www.gmba.ntpu.edu.tw/web/news/news.jsp",
+    newsUrlBase: "https://www.gmba.ntpu.edu.tw/web/news/news_in.jsp",
+    origin: "https://www.gmba.ntpu.edu.tw",
+    allowedPathPrefixes: ["/web/news/news.jsp", "/web/news/news_in.jsp"],
+    entrypoints: ["/web/news/news.jsp", "/web/news/news_in.jsp"],
+    queryRules: {
+      "/web/news/news.jsp": { npage: /^[1-9]\d{0,3}$/ },
+      "/web/news/news_in.jsp": { np_id: /^NP\d{13}$/ },
+    },
+    parser: "html-news",
+    adapter: {
+      kind: "html-news",
+      site: "gmba-jsp",
+      maxDetailsPerRun: 60,
+      reverifyAfterSeconds: 30 * 86_400,
+      personalDataGuard: PERSONAL_DATA_GUARD,
+    },
+    entityType: "announcement",
+    enabled: true,
+    fetch: { ...HTML_FETCH, methods: ["GET"] },
+    freshness: DAILY,
+  },
+  {
+    id: "gmba-site-pages",
+    sourceUnit: "gmba",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://www.gmba.ntpu.edu.tw/home.jsp",
+    newsUrlBase: "https://www.gmba.ntpu.edu.tw",
+    origin: "https://www.gmba.ntpu.edu.tw",
+    allowedPathPrefixes: GMBA_PATHS,
+    entrypoints: GMBA_PATHS,
+    queryRules: Object.fromEntries(
+      ["/web/about/about.jsp", "/web/admission/admission.jsp", "/web/curriculum/curriculum.jsp"].map((p) => [p, { cp_id: /^CP\d{13}$/ }]),
+    ),
+    parser: "html-pages",
+    adapter: { kind: "html-pages", site: "gmba", pages: GMBA_PAGES },
+    entityType: "page",
+    enabled: true,
+    fetch: { ...HTML_FETCH, methods: ["GET"] },
+    freshness: DAILY,
+  },
+  {
+    id: "ebrc-site-pages",
+    sourceUnit: "ebrc",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://ebrc.gm.ntpu.edu.tw/home",
+    newsUrlBase: "https://ebrc.gm.ntpu.edu.tw",
+    origin: "https://ebrc.gm.ntpu.edu.tw",
+    allowedPathPrefixes: EBRC_PAGES.map((p) => p.path),
+    entrypoints: EBRC_PAGES.map((p) => p.path),
+    parser: "html-pages",
+    adapter: { kind: "html-pages", site: "ebrc", pages: EBRC_PAGES },
+    entityType: "page",
+    enabled: true,
+    fetch: { ...HTML_FETCH, methods: ["GET"] },
+    freshness: DAILY,
+  },
+  {
+    id: "ccs-site-pages",
+    sourceUnit: "ccs",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://ccs.ntpu.edu.tw/",
+    newsUrlBase: "https://ccs.ntpu.edu.tw",
+    origin: "https://ccs.ntpu.edu.tw",
+    allowedPathPrefixes: CCS_PATHS,
+    entrypoints: CCS_PATHS,
+    parser: "html-pages",
+    adapter: { kind: "html-pages", site: "ccs", pages: CCS_PAGES },
+    entityType: "page",
+    enabled: true,
+    fetch: CCS_FETCH,
+    freshness: DAILY,
+  },
+  {
+    // 最新消息全文在 data.json，每則官方連結是 pages/news/news-detail.html?id=
+    id: "ccs-announcements",
+    sourceUnit: "ccs",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://ccs.ntpu.edu.tw/pages/news/news.html",
+    newsUrlBase: "https://ccs.ntpu.edu.tw/pages/news/news-detail.html",
+    origin: "https://ccs.ntpu.edu.tw",
+    allowedPathPrefixes: [CCS_DATA],
+    entrypoints: [CCS_DATA],
+    parser: "inline-news",
+    adapter: { kind: "inline-news", site: "ccs", pages: [{ path: CCS_DATA }] },
+    entityType: "announcement",
+    enabled: true,
+    fetch: CCS_FETCH,
     freshness: DAILY,
   },
 ];

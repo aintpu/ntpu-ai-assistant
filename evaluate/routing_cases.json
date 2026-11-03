@@ -686,6 +686,46 @@
         "coop"
       ],
       "note": "2026-10 月評估歸錯單位"
+    },
+    {
+      "id": "R86",
+      "question": "IEMBA 論文考試要注意什麼？",
+      "accept": [
+        "iemba"
+      ],
+      "note": "商學院碩士在職專班"
+    },
+    {
+      "id": "R87",
+      "question": "財務金融英語碩士學位學程的招生資訊",
+      "accept": [
+        "gmba"
+      ],
+      "note": "GMBA"
+    },
+    {
+      "id": "R88",
+      "question": "金融科技暨綠色金融研究中心的成員有誰？",
+      "accept": [
+        "fintech"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R89",
+      "question": "電子商務研究中心今年的工作計畫",
+      "accept": [
+        "ebrc"
+      ],
+      "note": ""
+    },
+    {
+      "id": "R90",
+      "question": "企業永續發展研究中心的 SEED 評鑑是什麼？",
+      "accept": [
+        "ccs"
+      ],
+      "note": "不可歸永續辦公室"
     }
   ]
 }

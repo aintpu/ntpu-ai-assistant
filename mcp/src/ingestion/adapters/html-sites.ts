@@ -256,6 +256,179 @@ export const lcSite: HtmlSite = {
   },
 };
 
+// ── 財務金融英語碩士學位學程 GMBA www.gmba.ntpu.edu.tw（JSP，與語言中心同一家廠商、版型不同；2026-11-03 加入）──
+// 列表 news.jsp?npage=（每頁 12 則）只顯示月、日；內文頁 news_in.jsp?np_id=NP + 建立時間（毫秒），日期取自編號。
+
+/**
+ * GMBA 內容頁與公告內文：標題 div.right_title h1、內文 div.text_area。
+ * 師資、校友、檔案下載是清單頁，沒有 text_area：改用右側區塊（去掉標題）。
+ */
+export function parseGmbaPage(html: string): { title: string; bodyHtml: string } {
+  const root = dom(html);
+  const title = clean(required(root.querySelector("div.right_title h1"), "div.right_title h1").text);
+  const area = root.querySelector("div.right div.text_area") ?? root.querySelector("div.text_area");
+  const right = root.querySelector("div.right");
+  const body = required(area ?? right, "div.text_area");
+  if (!area) for (const el of body.querySelectorAll("div.right_title")) el.remove();
+  for (const el of body.querySelectorAll("script, style")) el.remove();
+  return { title, bodyHtml: body.innerHTML };
+}
+
+/** NP1791882343315 → 台灣日期（編號是建立時間的毫秒數）。 */
+export function gmbaDate(id: string): string {
+  const ms = Number(/^NP(\d{13})$/.exec(id)?.[1]);
+  if (!ms) return "";
+  return new Date(ms + 8 * 3_600_000).toISOString().slice(0, 10);
+}
+
+export const gmbaSite: HtmlSite = {
+  origin: "https://www.gmba.ntpu.edu.tw",
+  listPath: "/web/news/news.jsp",
+  detailPath: "/web/news/news_in.jsp",
+
+  listRequest(page) {
+    return { target: `${this.listPath}?npage=${page}`, path: this.listPath, method: "GET", query: { npage: String(page) } };
+  },
+
+  detailRequest(id) {
+    return { target: `${this.detailPath}?np_id=${id}`, path: this.detailPath, method: "GET", query: { np_id: id } };
+  },
+
+  detailUrl(id) {
+    return `${this.origin}${this.detailPath}?np_id=${id}`;
+  },
+
+  parseList(html) {
+    const pages = [...html.matchAll(/goselectedpage\((\d+)\)/g)].map((m) => Number(m[1]));
+    const totalPages = Math.max(1, ...pages);
+    const items: ListItem[] = [];
+    let external = 0;
+    const lists = dom(html).querySelectorAll("div.list div.list_in");
+    required(lists.length ? lists : null, "div.list");
+    // 第一頁上方三則是 div.title 裡的連結，下方列表是整塊包在連結裡；上方三則也會出現在下方列表
+    const seen = new Set<string>();
+    for (const item of lists) {
+      const a = item.querySelector("a[href]");
+      const id = /news_in\.jsp\?(?:[^#]*&)?np_id=(NP\d{13})\b/.exec(a?.getAttribute("href") ?? "")?.[1];
+      if (!id) {
+        external++;
+        continue;
+      }
+      if (seen.has(id)) continue;
+      seen.add(id);
+      items.push({ id, title: clean(item.querySelector("div.title")?.text), date: gmbaDate(id) });
+    }
+    return { items, external, totalPages };
+  },
+
+  parseDetail(html, id) {
+    const { title, bodyHtml } = parseGmbaPage(html);
+    const files = dom(bodyHtml).querySelectorAll("a[href]").filter((a) => FILE_EXT.test(a.getAttribute("href") ?? ""));
+    const attachments = collectFiles(files, `${this.origin}${this.detailPath}`, (a) => a.text);
+    return { title, date: gmbaDate(id), bodyHtml, attachments };
+  },
+};
+
+/**
+ * Google 協作平台（電子商務研究中心 ebrc.gm.ntpu.edu.tw）：標題是 div[role=main] 的 h1，
+ * 內文是頁面上各個 section（第一個是標題、最後一個是頁尾的單位資訊）。
+ */
+export function parseGoogleSitesPage(html: string): { title: string; bodyHtml: string } {
+  const root = dom(html);
+  const main = required(root.querySelector('div[role="main"]'), "div[role=main]");
+  const title = clean(main.querySelector("h1")?.text) || clean(root.querySelector("title")?.text.split(" - ").pop());
+  const sections = required(root.querySelectorAll("section").length ? root.querySelectorAll("section") : null, "section");
+  for (const sec of sections) for (const el of sec.querySelectorAll("script, style")) el.remove();
+  return { title: required(title, "page title"), bodyHtml: sections.map((sec) => sec.innerHTML).join("\n") };
+}
+
+// ── 企業永續發展研究中心 ccs.ntpu.edu.tw（靜態 HTML＋前端讀 backend/data.json；2026-11-03 加入）──
+
+/** 靜態頁：標題取 <title> 的「 - 」或「 | 」之前，內文是 body 去掉頁首、頁尾、選單與程式。 */
+export function parseCcsPage(html: string): { title: string; bodyHtml: string } {
+  const root = dom(html);
+  const title = clean(required(root.querySelector("title"), "title").text.split(/ [-|] /)[0]);
+  // 部分頁面的 <body> 前有未關閉的標籤，解析後沒有 body：改用整份 html（head 裡只有 title 與 meta）
+  const body = required(root.querySelector("body") ?? root.querySelector("html"), "body");
+  for (const el of body.querySelectorAll("head, script, style, noscript, header, footer, nav, #header, #footer")) el.remove();
+  return { title: required(title, "title"), bodyHtml: body.innerHTML };
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** 純文字（\n 換行）→ 段落 HTML，交給 htmlToText 統一處理。 */
+function textToHtml(text: string): string {
+  return text
+    .split(/\n/)
+    .map((line) => `<p>${escapeHtml(line)}</p>`)
+    .join("");
+}
+
+function ccsData(json: string): Record<string, unknown> {
+  let data: unknown;
+  try {
+    data = JSON.parse(json);
+  } catch {
+    throw new IngestionError("PARSER_DRIFT", "page structure changed: data.json is not JSON");
+  }
+  return required(data && typeof data === "object" ? (data as Record<string, unknown>) : null, "data.json object");
+}
+
+const str = (v: unknown): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
+
+/** data.json 的 news：每則有 id、title、date（YYYY-MM-DD）、content（純文字）；內文頁 news-detail.html?id=。 */
+export function parseCcsNews(json: string): InlineNews[] {
+  const data = ccsData(json);
+  const news = required(Array.isArray(data.news) ? (data.news as unknown[]) : null, "data.json news");
+  const out: InlineNews[] = [];
+  for (const raw of news) {
+    const n = raw as Record<string, unknown>;
+    const number = Number(n.id);
+    const title = clean(str(n.title));
+    if (!Number.isInteger(number) || number <= 0 || number >= 10_000_000 || !title) continue;
+    const body = str(n.content) || str(n.excerpt);
+    out.push({
+      number,
+      title,
+      date: taiwanDate(str(n.date)),
+      bodyHtml: textToHtml(body),
+      url: `https://ccs.ntpu.edu.tw/pages/news/news-detail.html?id=${number}`,
+    });
+  }
+  return out;
+}
+
+const CCS_TEAM_GROUPS: [string, string][] = [
+  ["center_members", "中心成員"],
+  ["advisors", "顧問"],
+  ["full_time", "專任研究人員"],
+  ["part_time", "兼任研究人員"],
+];
+
+/** 組織成員頁（organization.html）由前端讀 data.json 的 team 產生：依組別列出姓名、職稱、簡介與聯絡方式。 */
+export function parseCcsTeam(json: string): { title: string; bodyHtml: string } {
+  const team = required(ccsData(json).team as Record<string, unknown> | undefined, "data.json team");
+  const parts: string[] = [];
+  for (const [key, label] of CCS_TEAM_GROUPS) {
+    const members = Array.isArray(team[key]) ? (team[key] as Record<string, unknown>[]) : [];
+    if (members.length === 0) continue;
+    parts.push(`<h2>${label}</h2>`);
+    for (const m of members) {
+      const fields = [
+        str(m.name),
+        str(m.position) && `職務：${str(m.position)}`,
+        str(m.bio) && `簡介：${str(m.bio)}`,
+        str(m.email) && `電子郵件：${str(m.email)}`,
+        str(m.phone) && `電話：${str(m.phone)}`,
+      ].filter(Boolean);
+      if (fields.length) parts.push(`<p>${fields.map(escapeHtml).join("；")}</p>`);
+    }
+  }
+  return { title: "組織成員", bodyHtml: required(parts.join(""), "team members") };
+}
+
 // ── 商學院與所屬學系的網站（同一套 PHP 系統，伺服器端產生 HTML）────────────────────────────
 // 商學院 www.aacsb.ntpu.edu.tw（使用者 2026-10-13 指定）；企管系、金融系、會計系、統計系（2026-10-14 指定）。
 // 最新消息列表沒有分頁、只列最新約 20 則；內文頁 view.php?id=（企管系是 nid=）是流水號的 base64，
@@ -275,12 +448,14 @@ export interface CollegeSiteSpec {
   listQuery?: Record<string, string>;
   /** 最小流水號（企管系從 1000001 起編）。 */
   firstNumber: number;
+  /** 網站放在子目錄時的路徑前綴（金融科技中心是 /fintech）；listPath 要自行包含。 */
+  basePath?: string;
 }
 
 /** 補齊歷史公告時列出的最大數量（避免流水號異常時產生過多項目）。 */
 const COLLEGE_MAX_ITEMS = 20_000;
 
-export function collegeId(spec: CollegeSiteSpec, n: number): string {
+export function collegeId(spec: Pick<CollegeSiteSpec, "idPrefix">, n: number): string {
   return `${spec.idPrefix}${String(n).padStart(7, "0")}`;
 }
 
@@ -309,10 +484,11 @@ const VIEW_COUNTER = /<center>\s*預覽人數[:：]\s*\d+\s*<\/center>|預覽人
 
 export function collegeSite(spec: CollegeSiteSpec): HtmlSite {
   const linkRe = new RegExp(`view\\.php\\?${spec.idParam}=([A-Za-z0-9+/%]{2,20}(?:={0,2}|(?:%3D){0,2}))`, "g");
+  const view = `${spec.basePath ?? ""}/view.php`;
   return {
     origin: spec.origin,
     listPath: spec.listPath,
-    detailPath: "/view.php",
+    detailPath: view,
 
     listRequest() {
       const q = spec.listQuery;
@@ -322,11 +498,11 @@ export function collegeSite(spec: CollegeSiteSpec): HtmlSite {
 
     detailRequest(id) {
       const param = collegeParam(collegeNumber(spec, id));
-      return { target: `/view.php?${spec.idParam}=${param}`, path: "/view.php", method: "GET", query: { [spec.idParam]: param } };
+      return { target: `${view}?${spec.idParam}=${param}`, path: view, method: "GET", query: { [spec.idParam]: param } };
     },
 
     detailUrl(id) {
-      return `${spec.origin}/view.php?${spec.idParam}=${collegeParam(collegeNumber(spec, id))}`;
+      return `${spec.origin}${view}?${spec.idParam}=${collegeParam(collegeNumber(spec, id))}`;
     },
 
     parseList(html) {
@@ -359,7 +535,7 @@ export function collegeSite(spec: CollegeSiteSpec): HtmlSite {
       const files = posts
         .querySelectorAll("a[href]")
         .filter((a) => FILE_EXT.test(a.getAttribute("href") ?? "") || (a.getAttribute("href") ?? "").includes("uploads/file/"));
-      const attachments = collectFiles(files, `${spec.origin}/`, (a) => a.text);
+      const attachments = collectFiles(files, `${spec.origin}${spec.basePath ?? ""}/`, (a) => a.text);
       return { title, date, bodyHtml, attachments };
     },
   };
@@ -376,6 +552,9 @@ export const COLLEGE_SITES = {
   lsm: { origin: "https://lsm.ntpu.edu.tw", idParam: "id", idPrefix: "l", pagePrefix: "lsmp", listPath: "/news.php", firstNumber: 1 },
   giib: { origin: "https://giib.ntpu.edu.tw", idParam: "id", idPrefix: "g", pagePrefix: "giibp", listPath: "/index.php", firstNumber: 1 },
   dma: { origin: "https://www.dma.ntpu.edu.tw", idParam: "id", idPrefix: "m", pagePrefix: "dmap", listPath: "/index.php", firstNumber: 1 },
+  // 2026-11-03 加入（使用者指定）：碩士在職專班 IEMBA、金融科技暨綠色金融研究中心（商學院網站的 /fintech/ 子目錄）
+  iemba: { origin: "https://iemba.ntpu.edu.tw", idParam: "id", idPrefix: "i", pagePrefix: "iembap", listPath: "/index.php", firstNumber: 1 },
+  fintech: { origin: "https://www.aacsb.ntpu.edu.tw", basePath: "/fintech", idParam: "id", idPrefix: "f", pagePrefix: "fintechp", listPath: "/fintech/index.php", firstNumber: 1 },
 } as const satisfies Record<string, CollegeSiteSpec>;
 
 export type CollegeSiteKey = keyof typeof COLLEGE_SITES;
@@ -398,7 +577,7 @@ export interface SitePage {
   bodyHtml: string;
 }
 
-export function parseCollegeGroup(html: string, group: number, pagePrefix: string): SitePage[] {
+export function parseCollegeGroup(html: string, group: number, pagePrefix: string, basePath = ""): SitePage[] {
   // 各網站常有沒正確關閉的標籤（商學院 USR 計畫頁、統計系與會計系師資頁），用 DOM 解析分頁會被截斷或互相包住：
   // 改在原始 HTML 上，以每個 tab-pane 的開頭切段，到下一個 tab-pane 或頁尾為止。
   const raw = html.replace(VIEW_COUNTER, "").replace(/<!--[\s\S]*?-->/g, "");
@@ -429,7 +608,7 @@ export function parseCollegeGroup(html: string, group: number, pagePrefix: strin
     pages.push({
       key: `${pagePrefix}${String(group).padStart(3, "0")}t${String(index + 1).padStart(2, "0")}`,
       title: label,
-      path: `/page.php?id=${group}&ids=${index + 1}`,
+      path: `${basePath}/page.php?id=${group}&ids=${index + 1}`,
       bodyHtml: raw.slice(pane.end, next),
     });
   });
@@ -446,6 +625,8 @@ export interface InlineNews {
   title: string;
   date: string;
   bodyHtml: string;
+  /** 每則有自己的內文頁時（企業永續中心）；沒有則指向列表頁。 */
+  url?: string;
 }
 
 /**
@@ -567,6 +748,9 @@ export const HTML_SITES = {
   "stat-php": collegeSite(COLLEGE_SITES.stat),
   "giib-php": collegeSite(COLLEGE_SITES.giib),
   "dma-php": collegeSite(COLLEGE_SITES.dma),
+  "iemba-php": collegeSite(COLLEGE_SITES.iemba),
+  "fintech-php": collegeSite(COLLEGE_SITES.fintech),
+  "gmba-jsp": gmbaSite,
   "mis-wp": misSite,
 } as const;
 

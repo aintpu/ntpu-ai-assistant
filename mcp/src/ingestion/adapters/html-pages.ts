@@ -3,7 +3,21 @@ import { IngestionError, safeMessage } from "../../shared/errors";
 import { PageSchema } from "../../shared/schemas";
 import { htmlToText } from "../html-text";
 import type { SourceDefinition } from "../types";
-import { COLLEGE_SITES, type CollegeSiteKey, clean, librarySiteFor, misSite, parseCollegeGroup, parseLcPage, parseLibraryPage, parseMisPage } from "./html-sites";
+import {
+  COLLEGE_SITES,
+  type CollegeSiteKey,
+  clean,
+  librarySiteFor,
+  misSite,
+  parseCcsPage,
+  parseCcsTeam,
+  parseCollegeGroup,
+  parseGmbaPage,
+  parseGoogleSitesPage,
+  parseLcPage,
+  parseLibraryPage,
+  parseMisPage,
+} from "./html-sites";
 import type { Adapter, AdapterRecord, RejectedRecord, Step, StepOutcome } from "./types";
 import { decodeUtf8 } from "./types";
 
@@ -32,13 +46,14 @@ function linksOf(html: string, base: string): { name: string; url: string }[] {
 }
 
 function groupStep(source: SourceDefinition, site: CollegeSiteKey, group: number, last: boolean): Step {
-  const spec = COLLEGE_SITES[site];
-  const path = "/page.php";
+  const spec: (typeof COLLEGE_SITES)[CollegeSiteKey] & { basePath?: string } = COLLEGE_SITES[site];
+  const base = spec.basePath ?? "";
+  const path = `${base}/page.php`;
   return {
     request: { target: `${path}?id=${group}&ids=1`, path, method: "GET", query: { id: String(group), ids: "1" } },
     fatal: false,
     async handle(bytes) {
-      const pages = parseCollegeGroup(decodeUtf8(bytes), group, spec.pagePrefix);
+      const pages = parseCollegeGroup(decodeUtf8(bytes), group, spec.pagePrefix, base);
       if (pages.length === 0) throw new IngestionError("PARSER_DRIFT", `page group ${group} has no tabs`);
       const records: AdapterRecord[] = [];
       const rejected: RejectedRecord[] = [];
@@ -57,7 +72,7 @@ function groupStep(source: SourceDefinition, site: CollegeSiteKey, group: number
           // 網站沒有提供修改時間：留空，不以抓取時間冒充來源修訂時間（老師建議 四-2）
           updatedAt: "",
           bodyText: body,
-          links: linksOf(p.bodyHtml, `${spec.origin}/`),
+          links: linksOf(p.bodyHtml, `${spec.origin}${base}/`),
           sourceUrl: `${spec.origin}${p.path}`,
         };
         const parsed = PageSchema.safeParse(candidate);
@@ -203,32 +218,49 @@ function libraryListStep(source: SourceDefinition, svc: string, page: number, ca
   };
 }
 
-const LC_ORIGIN = "https://lc.ntpu.edu.tw";
+type SinglePageSite = "lc" | "gmba" | "ebrc" | "ccs";
 
-/** 語言中心內容頁：編號 lcp + 路徑與參數去掉符號後的雜湊。 */
-function lcPageStep(source: SourceDefinition, page: { path: string; query?: Record<string, string> }, last: boolean): Step {
+/** 企業永續發展研究中心的組織成員頁：資料在 data.json，官方連結指向顯示它的頁面。 */
+const CCS_DATA_PATH = "/backend/data.json";
+const CCS_TEAM_PAGE = "/pages/about/organization.html";
+
+const SINGLE_PAGE_PARSERS: Record<SinglePageSite, (html: string, path: string) => { title: string; bodyHtml: string }> = {
+  lc: parseLcPage,
+  gmba: parseGmbaPage,
+  ebrc: parseGoogleSitesPage,
+  ccs: (text, path) => (path === CCS_DATA_PATH ? parseCcsTeam(text) : parseCcsPage(text)),
+};
+
+/** 一頁一筆的內容頁：編號 <site>p + 路徑與參數去掉符號後的雜湊（語言中心沿用 lcp）。 */
+function singlePageStep(
+  source: SourceDefinition,
+  site: SinglePageSite,
+  page: { path: string; query?: Record<string, string>; title?: string },
+  last: boolean,
+): Step {
   const qs = page.query ? `?${new URLSearchParams(page.query)}` : "";
   const full = `${page.path}${qs}`;
   let h = 0x811c9dc5;
   for (let i = 0; i < full.length; i++) h = Math.imul(h ^ full.charCodeAt(i), 0x01000193) >>> 0;
-  const id = `lcp${page.path.replace(/[^A-Za-z0-9]/g, "").slice(0, 40)}${h.toString(16).padStart(8, "0")}`;
+  const id = `${site}p${page.path.replace(/[^A-Za-z0-9]/g, "").slice(0, 40)}${h.toString(16).padStart(8, "0")}`;
+  const shown = page.path === CCS_DATA_PATH ? CCS_TEAM_PAGE : full;
   return {
     request: { target: full, path: page.path, method: "GET", ...(page.query ? { query: page.query } : {}) },
     fatal: false,
     async handle(bytes) {
-      const parsed = parseLcPage(decodeUtf8(bytes));
+      const parsed = SINGLE_PAGE_PARSERS[site](decodeUtf8(bytes), page.path);
       const body = htmlToText(parsed.bodyHtml);
       if (body.length < MIN_CHARS) return { parsed: 1, records: [], rejected: [], skipped: 1, listComplete: last };
       const result = PageSchema.safeParse({
         id,
         unit: source.sourceUnit,
-        path: full,
-        title: parsed.title,
-        // JSP 頁面沒有公開修改時間：留空，不以抓取時間冒充（老師建議 四-2）
+        path: shown,
+        title: page.title ?? parsed.title,
+        // 這些網站沒有公開修改時間：留空，不以抓取時間冒充（老師建議 四-2）
         updatedAt: "",
         bodyText: body,
-        links: linksOf(parsed.bodyHtml, `${LC_ORIGIN}${page.path}`),
-        sourceUrl: `${LC_ORIGIN}${full}`,
+        links: linksOf(parsed.bodyHtml, `${source.origin}${page.path}`),
+        sourceUrl: `${source.origin}${shown}`,
       });
       if (!result.success) {
         return { parsed: 1, records: [], rejected: [{ id, reason: safeMessage(result.error).slice(0, 200), countsTowardDrift: true }], skipped: 0, listComplete: last };
@@ -253,11 +285,12 @@ export const htmlPagesAdapter: Adapter = {
   start(source) {
     const cfg = source.adapter;
     if (cfg.kind !== "html-pages") throw new IngestionError("INTERNAL_ERROR", "wrong adapter");
-    if (cfg.site === "lc") {
+    if (cfg.site === "lc" || cfg.site === "gmba" || cfg.site === "ebrc" || cfg.site === "ccs") {
+      const site = cfg.site;
       if (cfg.pages.length === 0 || cfg.pages.length > 60 || !cfg.pages.every((p) => source.entrypoints.includes(p.path))) {
-        throw new IngestionError("URL_NOT_ALLOWED", `invalid lc pages for ${source.id}`);
+        throw new IngestionError("URL_NOT_ALLOWED", `invalid ${site} pages for ${source.id}`);
       }
-      return cfg.pages.map((p, i) => lcPageStep(source, p, i === cfg.pages.length - 1));
+      return cfg.pages.map((p, i) => singlePageStep(source, site, p, i === cfg.pages.length - 1));
     }
     if (cfg.site === "library") {
       const all = [...cfg.pages, ...cfg.lists.map((svc) => `/multiplehtml/${svc}`)];
@@ -277,6 +310,7 @@ export const htmlPagesAdapter: Adapter = {
       }
       return paths.map((p, i) => misStep(source, p, i === paths.length - 1));
     }
+    if (!("groups" in cfg)) throw new IngestionError("INTERNAL_ERROR", "wrong html-pages config");
     const groups = cfg.groups;
     if (groups.length === 0 || groups.length > 30 || !groups.every((g) => Number.isInteger(g) && g > 0 && g < 1000)) {
       throw new IngestionError("URL_NOT_ALLOWED", `invalid page groups for ${source.id}`);

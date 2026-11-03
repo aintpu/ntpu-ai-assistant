@@ -52,6 +52,11 @@ class QueryDomain(str, Enum):
     LSM = "LSM"  # 休閒運動管理學系（只有 MCP 資料）
     GIIB = "GIIB"  # 國際企業研究所（只有 MCP 資料）
     DMA = "DMA"  # 數位行銷進修學士學位學程（只有 MCP 資料）
+    IEMBA = "IEMBA"  # 商學院碩士在職專班（只有 MCP 資料）
+    GMBA = "GMBA"  # 財務金融英語碩士學位學程（只有 MCP 資料）
+    FINTECH = "FINTECH"  # 金融科技暨綠色金融研究中心（只有 MCP 資料）
+    EBRC = "EBRC"  # 電子商務研究中心（只有 MCP 資料）
+    CCS = "CCS"  # 企業永續發展研究中心（只有 MCP 資料）
     OTHER = "OTHER"
 
 
