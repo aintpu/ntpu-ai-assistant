@@ -126,20 +126,22 @@ export class FakeSites {
       return item ? html(lcDetailHtml(item)) : new Response("not found", { status: 404 });
     }
     if (url.hostname === "www.aacsb.ntpu.edu.tw") {
-      // 商學院：最新消息列表只連到 3 號；2 號是已刪除的空白頁；內容頁每組一個分頁
+      // 商學院：最新消息列表只連到 3 號；2 號是已刪除的空白頁；內容頁每組一個分頁。
+      // 金融科技中心在 /fintech/ 子目錄，同一套版型（列表是 /fintech/index.php）
       const main = (inner: string) => `<html><body><div role="main" class="main">${inner}</div></body></html>`;
-      if (url.pathname === "/news.php") return html(main(`<a href="view.php?id=${btoa("3")}">最新</a>`));
-      if (url.pathname === "/view.php") {
+      const path = url.pathname.replace(/^\/fintech(?=\/)/, "");
+      if (path === "/news.php" || (path === "/index.php" && path !== url.pathname)) return html(main(`<a href="view.php?id=${btoa("3")}">最新</a>`));
+      if (path === "/view.php") {
         const n = Number(atob(url.searchParams.get("id") ?? ""));
         if (n === 2) return html(main(`<div class="blog-posts"><h3>最新消息</h3></div>`));
         return html(main(`<div class="blog-posts"><h3>最新消息</h3><article class="post"><div class="post-content"><h3>商學院公告 ${n}</h3></div></article><p>商學院第 ${n} 則公告內文。</p><p>刊登時間：2026-10-0${n} 10:00:00</p></div>`));
       }
-      if (url.pathname === "/page.php") {
+      if (path === "/page.php") {
         const g = url.searchParams.get("id");
         return html(main(`<ul class="nav nav-tabs"><li class="active"><a href="#t1">第 ${g} 組</a></li></ul><div class="tab-pane active" id="t1">${"商學院介紹內容。".repeat(10)}</div>`));
       }
     }
-    if (["www.dba.ntpu.edu.tw", "coop.ntpu.edu.tw", "www.stat.ntpu.edu.tw", "www.acc.ntpu.edu.tw", "lsm.ntpu.edu.tw", "giib.ntpu.edu.tw", "www.dma.ntpu.edu.tw"].includes(url.hostname)) {
+    if (["www.dba.ntpu.edu.tw", "coop.ntpu.edu.tw", "www.stat.ntpu.edu.tw", "www.acc.ntpu.edu.tw", "lsm.ntpu.edu.tw", "giib.ntpu.edu.tw", "www.dma.ntpu.edu.tw", "iemba.ntpu.edu.tw"].includes(url.hostname)) {
       // 商學院所屬學系：首頁連到最新一則（企管系 nid 從 1000001 起編）；會計系最新消息直接在列表頁
       const main = (inner: string) => `<html><body><div role="main" class="main">${inner}</div></body></html>`;
       const nid = url.hostname.startsWith("www.dba");
@@ -171,6 +173,39 @@ export class FakeSites {
       const post = /^\/(\d{4})\/(\d{2})\/(\d{2})\//.exec(url.pathname);
       if (post) return html(page(`資管所公告 ${post[1]}`, "post-content", "<p>資管所公告內文。</p>"));
       return html(page(`資管所頁面 ${url.pathname}`, "x", `${"資訊管理研究所介紹。".repeat(10)}`));
+    }
+    if (url.hostname === "www.gmba.ntpu.edu.tw") {
+      // GMBA（JSP）：最新消息一頁兩則；內容頁都回同一個版型
+      const page = (title: string, body: string) =>
+        `<html><body><div class="right"><div class="right_title"><h1> ${title}</h1></div><div class="text_area">${body}</div></div></body></html>`;
+      if (url.pathname === "/web/news/news.jsp") {
+        return html(
+          `<div class="list"><div class="list_in"><div class="title"><a href="news_in.jsp?np_id=NP1791882343315"> 公告一</a></div></div></div>` +
+            `<div class="list"><div class="list_in"><div class="title"><a href="https://example.com/x"> 外部連結</a></div></div></div>`,
+        );
+      }
+      if (url.pathname === "/web/news/news_in.jsp") return html(page(`GMBA 公告 ${url.searchParams.get("np_id")}`, "<p>GMBA 公告內文。</p>"));
+      return html(page("GMBA 頁面", "財務金融英語碩士學位學程介紹。".repeat(10)));
+    }
+    if (url.hostname === "ebrc.gm.ntpu.edu.tw") {
+      return html(
+        `<html><body><section><div role="main"><h1>工作計畫</h1></div></section><section>${"電子商務研究中心工作計畫。".repeat(10)}</section></body></html>`,
+      );
+    }
+    if (url.hostname === "ccs.ntpu.edu.tw") {
+      if (url.pathname === "/backend/data.json") {
+        return new Response(
+          JSON.stringify({
+            news: [{ id: 27, title: "永續公告", date: "2024-11-05", content: "永續公告內文\n第二段" }],
+            team: {
+              center_members: [{ name: "王小明 教授", position: "主任", email: "x@gm.ntpu.edu.tw", bio: "國立臺北大學金融與合作經營學系特聘教授，研究永續金融。" }],
+              advisors: [{ name: "李大華 博士", position: "諮詢顧問", phone: "(02)86741111分機66971" }],
+            },
+          }),
+          { headers: { "content-type": "application/json" } },
+        );
+      }
+      return html(`<html><head><title>企業永續頁面 - NTPU CCS</title></head><body><header>頁首</header><main>${"企業永續發展研究中心介紹。".repeat(10)}</main><footer>頁尾</footer></body></html>`);
     }
     return new Response("unexpected host", { status: 599 });
   };

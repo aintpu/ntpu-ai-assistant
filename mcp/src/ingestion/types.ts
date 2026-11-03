@@ -71,7 +71,19 @@ export interface AttachmentsConfig {
 /** 伺服器端產生的 HTML 公告網站：列表頁翻頁，再逐則抓內文。 */
 export interface HtmlNewsConfig {
   kind: "html-news";
-  site: "library-ewpt" | "lc-jsp" | "aacsb-php" | "dba-php" | "coop-php" | "stat-php" | "giib-php" | "dma-php" | "mis-wp";
+  site:
+    | "library-ewpt"
+    | "lc-jsp"
+    | "aacsb-php"
+    | "dba-php"
+    | "coop-php"
+    | "stat-php"
+    | "giib-php"
+    | "dma-php"
+    | "iemba-php"
+    | "fintech-php"
+    | "gmba-jsp"
+    | "mis-wp";
   /** 每次執行最多抓幾則內文；其餘留到下一次（避免超過單次執行的子請求上限）。 */
   maxDetailsPerRun: number;
   /** 內文多久沒重新驗證就要重抓。 */
@@ -123,15 +135,22 @@ export type ManualAdapterConfig = ManualRegulationsConfig | ManualRegulationCata
 export type HtmlPagesConfig =
   | {
       kind: "html-pages";
-      site: "aacsb" | "dba" | "coop" | "acc" | "stat" | "lsm" | "giib" | "dma";
+      site: "aacsb" | "dba" | "coop" | "acc" | "stat" | "lsm" | "giib" | "dma" | "iemba" | "fintech";
       /** page.php?id= 的組別編號。 */
       groups: number[];
     }
   | {
       kind: "html-pages";
-      site: "lc";
-      /** 頁面（路徑＋查詢參數，例如 /web/qa/qa.jsp?dm_id=…）；路徑必須在 entrypoints，參數依 queryRules。 */
-      pages: { path: string; query?: Record<string, string> }[];
+      /**
+       * 一頁一筆的網站：語言中心、GMBA（JSP）、電子商務研究中心（Google 協作平台）、企業永續發展研究中心
+       * （靜態 HTML；/backend/data.json 產生組織成員頁）。
+       */
+      site: "lc" | "gmba" | "ebrc" | "ccs";
+      /**
+       * 頁面（路徑＋查詢參數，例如 /web/qa/qa.jsp?dm_id=…）；路徑必須在 entrypoints，參數依 queryRules。
+       * title：頁面本身的標題不足以辨識時（協作平台首頁的標題只有「臺北大學」）改用這個。
+       */
+      pages: { path: string; query?: Record<string, string>; title?: string }[];
     }
   | {
       kind: "html-pages";
@@ -151,7 +170,8 @@ export type HtmlPagesConfig =
 /** 最新消息全文直接顯示在列表頁、沒有內文頁的網站（會計系）：只收列表上看得到的公告。 */
 export interface InlineNewsConfig {
   kind: "inline-news";
-  site: "acc" | "lsm";
+  /** ccs：企業永續發展研究中心的 /backend/data.json（news）。 */
+  site: "acc" | "lsm" | "ccs";
   /** 要抓的列表頁路徑，都必須列在 entrypoints；查詢參數依 queryRules。 */
   pages: { path: string; query?: Record<string, string> }[];
 }

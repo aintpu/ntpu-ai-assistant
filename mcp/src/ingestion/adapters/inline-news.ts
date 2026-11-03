@@ -1,9 +1,16 @@
 import { IngestionError } from "../../shared/errors";
 import { AnnouncementSchema } from "../../shared/schemas";
 import type { SourceDefinition } from "../types";
-import { bodyText, COLLEGE_SITES, collegeId, parseAccNews, taiwanDateToIso } from "./html-sites";
+import { bodyText, COLLEGE_SITES, collegeId, type InlineNews, parseAccNews, parseCcsNews, taiwanDateToIso } from "./html-sites";
 import type { Adapter, AdapterRecord, StepOutcome } from "./types";
 import { decodeUtf8 } from "./types";
+
+/** 各網站的公告編號前綴、網址與列表解析（企業永續發展研究中心的公告在 data.json）。 */
+const INLINE_SITES: Record<"acc" | "lsm" | "ccs", { origin: string; idPrefix: string; parse: (text: string) => InlineNews[] }> = {
+  acc: { ...COLLEGE_SITES.acc, parse: parseAccNews },
+  lsm: { ...COLLEGE_SITES.lsm, parse: parseAccNews },
+  ccs: { origin: "https://ccs.ntpu.edu.tw", idPrefix: "v", parse: parseCcsNews },
+};
 
 /**
  * 最新消息全文直接顯示在列表頁的網站（會計系 news.php、r_news.php）：每頁抓一次，列表上的每則直接成為一筆公告。
@@ -14,7 +21,7 @@ export const inlineNewsAdapter: Adapter = {
   start(source: SourceDefinition) {
     const cfg = source.adapter;
     if (cfg.kind !== "inline-news") throw new IngestionError("INTERNAL_ERROR", "wrong adapter");
-    const spec = COLLEGE_SITES[cfg.site];
+    const spec = INLINE_SITES[cfg.site];
     if (cfg.pages.length === 0 || cfg.pages.length > 10 || !cfg.pages.every((p) => source.entrypoints.includes(p.path))) {
       throw new IngestionError("URL_NOT_ALLOWED", `invalid list pages for ${source.id}`);
     }
@@ -26,7 +33,7 @@ export const inlineNewsAdapter: Adapter = {
         // 第一頁（最新消息）失敗代表網站異常，整次中止；第二頁之後失敗只記錄
         fatal: index === 0,
         async handle(bytes): Promise<StepOutcome> {
-          const items = parseAccNews(decodeUtf8(bytes));
+          const items = spec.parse(decodeUtf8(bytes));
           if (index === 0 && items.length === 0) throw new IngestionError("PARSER_DRIFT", "news list has no items");
           const outcome: StepOutcome = { parsed: items.length, records: [], rejected: [], skipped: 0, listComplete: index === cfg.pages.length - 1 };
           for (const item of items) {
@@ -43,7 +50,7 @@ export const inlineNewsAdapter: Adapter = {
               publishedAt: taiwanDateToIso(item.date),
               bodyText: bodyText(item.bodyHtml),
               attachments: [],
-              sourceUrl: `${spec.origin}${target}`,
+              sourceUrl: item.url ?? `${spec.origin}${target}`,
             });
             if (!parsed.success) {
               const fields = parsed.error.issues.map((i) => i.path.join(".") || "(root)").join(", ");

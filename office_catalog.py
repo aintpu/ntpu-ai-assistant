@@ -42,11 +42,24 @@ MCP_ONLY_OFFICES = {
              ("國際企業研究所", "國企所", "國企所所長", "國企所老師", "國企所師資", "國企所招生", "國企所公告", "國企所課程")),
     "dma": ("數位行銷進修學士學位學程", "Bachelor Program of Digital Marketing",
             ("數位行銷進修學士學位學程", "數位行銷學程", "數位行銷學士學程", "數位行銷學位學程", "數位行銷學程主任", "數位行銷學程招生")),
+    # 2026-11-03 加入（使用者指定）。「碩士在職專班」是進修推廣部的專屬關鍵字（碩專班選課等），
+    # IEMBA 不放含這個詞的關鍵字，否則它不再專屬、「碩士在職專班怎麼選課」會失去改歸進修推廣部的規則
+    "iemba": ("商學院在職專班（IEMBA）", "IEMBA Program, College of Business",
+              ("iemba", "emba", "商學院在職專班", "商學院碩專班")),
+    "gmba": ("財務金融英語碩士學位學程（GMBA）", "MBA in Finance (GMBA)",
+             ("gmba", "mba in finance", "財務金融英語碩士", "財金英語碩士", "財務金融英語學程")),
+    "fintech": ("金融科技暨綠色金融研究中心", "FinTech and Green Finance Research Center",
+                ("金融科技暨綠色金融研究中心", "金融科技暨綠色金融", "金融科技研究中心", "綠色金融研究中心", "金融科技中心")),
+    "ebrc": ("電子商務研究中心", "E-Business Research Center",
+             ("電子商務研究中心", "電子商務中心", "電商中心", "電商研究中心", "e-business research")),
+    "ccs": ("企業永續發展研究中心", "Center for Corporate Sustainability",
+            ("企業永續發展研究中心", "企業永續發展中心", "企業永續中心", "seed評鑑", "seed 評鑑", "臺灣永續投資調查", "台灣永續投資調查")),
 }
 MCP_ONLY_OFFICE_NAMES = {code: spec[0] for code, spec in MCP_ONLY_OFFICES.items()}
 
 # 單位的上級（學系、研究所 → 學院）：寫進範圍判斷的提示詞，也供介紹頁依層級排列。新增系所時在這裡登記所屬學院。
-OFFICE_PARENTS = {"mis": "cob", "dba": "cob", "coop": "cob", "acc": "cob", "stat": "cob", "lsm": "cob", "giib": "cob", "dma": "cob"}
+OFFICE_PARENTS = {"mis": "cob", "dba": "cob", "coop": "cob", "acc": "cob", "stat": "cob", "lsm": "cob", "giib": "cob", "dma": "cob",
+                  "iemba": "cob", "gmba": "cob", "fintech": "cob", "ebrc": "cob", "ccs": "cob"}
 
 # Offices whose retrieval also covers other offices' FAQ.  A question about
 # the vice presidents without naming one routes to 校長室, so 校長室 searches
