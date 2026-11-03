@@ -29,6 +29,12 @@ const HTML_FETCH: FetchPolicy = {
   minIntervalMs: 1_000,
 };
 
+/**
+ * 商學院所屬網站的公告內文：圖片常以 base64 直接嵌在內文（企管系 nid=1000024、1000026 約 5.4 MB），
+ * 超過 3 MB 上限會讓整次抓取失敗、這兩則永遠重試。內文頁放寬到 8 MB（列表與內容頁不變）。
+ */
+const COLLEGE_NEWS_FETCH: FetchPolicy = { ...HTML_FETCH, maxResponseBytes: 8 * 1024 * 1024 };
+
 /** 資管所 WordPress：文章列表是 sitemap（application/xml），其餘同 HTML_FETCH。 */
 const MIS_FETCH: FetchPolicy = { ...HTML_FETCH, methods: ["GET"], acceptedContentTypes: ["text/html", "application/xml"] };
 
@@ -253,6 +259,7 @@ function collegeDeptSources(d: (typeof COLLEGE_DEPTS)[number]): SourceDefinition
           allowedPathPrefixes: [`${b}/index.php`, `${b}/view.php`],
           entrypoints: [`${b}/index.php`, `${b}/view.php`],
           queryRules: { [`${b}/view.php`]: { [d.news.idParam]: /^[A-Za-z0-9+/]{2,16}={0,2}$/ } },
+          fetch: COLLEGE_NEWS_FETCH,
           parser: "html-news",
           adapter: {
             kind: "html-news",
