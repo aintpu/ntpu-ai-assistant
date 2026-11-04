@@ -90,7 +90,7 @@ from collections import Counter, defaultdict
 _rate_lock = threading.Lock()
 _request_times: dict = defaultdict(list)
 RATE_LIMIT_WINDOW = 60   # 秒
-RATE_LIMIT_MAX    = 15   # 每 IP 每 60 秒最多 15 次請求
+RATE_LIMIT_MAX    = 60   # 每 IP 每 60 秒最多 60 次請求（2026-11-04 使用者指定提高：校內教室共用同一個對外 IP）
 
 def _check_rate_limit(ip: str) -> bool:
     """回傳 True 表示允許，False 表示超出頻率限制"""
@@ -4691,7 +4691,7 @@ app.add_middleware(
     allow_origins=allowed_origins, allow_methods=["*"], allow_headers=["*"]
 )
 
-_RATE_MSG = "您的提問頻率過高，請稍候再試（每分鐘最多 15 次）。"
+_RATE_MSG = f"您的提問頻率過高，請稍候再試（每分鐘最多 {RATE_LIMIT_MAX} 次）。"
 
 class ChatRequest(BaseModel):
     question: str = ""

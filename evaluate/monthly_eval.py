@@ -8,7 +8,7 @@ KPI：
 - 有據正確率 = 正確且回答附有支持答案的官方來源的題數 ÷ 一般抽查題數（應拒答題：正確拒答或說明查無即算有據正確）
 - 重大錯誤率 = 高風險題中的重大錯誤題數 ÷ 高風險題數（重大錯誤：關鍵事實錯誤或編造，例如期限、金額、資格、人名職務）
 
-正式站每個 IP 每分鐘最多 15 次請求：預設同時 3 題、遇到頻率限制就等候重試。
+正式站每個 IP 每分鐘最多 60 次請求：預設同時 3 題、遇到頻率限制就等候重試。
 題目以 session_id「eval-…」送出，查詢紀錄裡可與真實使用者區分。評分只供參考，重大錯誤要人工確認後逐案列管。
 """
 import argparse
@@ -84,7 +84,7 @@ def ask(base, item, retries=6):
             time.sleep(20)
             continue
         if d.get("status") == "blocked" and "頻率" in (d.get("message") or ""):
-            time.sleep(30)  # 每分鐘 15 次的限制
+            time.sleep(30)  # 每分鐘 60 次的限制
             continue
         return {"answer": d.get("answer") or d.get("message") or "", "sources": d.get("sources") or [],
                 "status": d.get("status"), "scope_status": d.get("scope_status"),
