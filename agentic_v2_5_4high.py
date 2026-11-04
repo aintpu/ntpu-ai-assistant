@@ -4768,9 +4768,18 @@ def _sse_payload(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
+def _client_ip(request: Request) -> str:
+    """使用者的真實 IP。容器只接受 Cloudflare Worker 轉來的請求，request.client.host 是 Worker 的內部位址、
+    所有人都一樣（2026-11-04 課堂上多人同時提問，整站共用每分鐘 15 次而被擋）；改用 Cloudflare 邊緣設定、
+    使用者無法偽造的 CF-Connecting-IP。"""
+    ip = (request.headers.get("cf-connecting-ip") or "").strip()
+    if ip:
+        return ip
+    return request.client.host if request.client else "unknown"
+
+
 def _is_rate_limited(request: Request) -> bool:
-    ip = request.client.host if request.client else "unknown"
-    return not _check_rate_limit(ip)
+    return not _check_rate_limit(_client_ip(request))
 
 
 MAX_IMAGE_BYTES = int(os.getenv("MAX_IMAGE_BYTES", str(15 * 1024 * 1024)))
