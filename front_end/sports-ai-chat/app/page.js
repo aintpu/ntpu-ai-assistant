@@ -23,6 +23,16 @@ const LABELS = {
     welcome: "有什麼我能幫你的？",
     welcomeSub: "支援 35 個單位：體育室・通識教育中心・語言中心・教務處・學務處・人事室・總務處・研究發展處・主計室・圖書館・資訊中心・國際事務處・進修暨推廣部・校友中心・永續辦公室・高等教育深耕計畫辦公室・秘書室・學術副校長室・行政副校長室・財務暨永續發展副校長室・校長室・商學院・資訊管理研究所・企業管理學系・金融與合作經營學系・會計學系・統計學系・休閒運動管理學系・國際企業研究所・數位行銷進修學士學位學程・商學院在職專班（IEMBA）・財務金融英語碩士學位學程（GMBA）・金融科技暨綠色金融研究中心・電子商務研究中心・企業永續發展研究中心。回答範圍以已匯入資料為限。",
     uploadTitle: "上傳圖片",
+    inputLabel: "輸入問題",
+    sendLabel: "送出訊息",
+    removeImage: "移除圖片",
+    uploadedImage: "使用者上傳的圖片",
+    imagePreviewAlt: "待送出的圖片預覽",
+    chatLog: "對話紀錄",
+    answering: "正在查詢資料並產生回答，請稍候。",
+    answerReady: "已收到回答。",
+    fbCommentLabel: "補充說明（選填）",
+    settingsLabel: "設定選單",
     voiceTitle: "語音輸入",
     recording: "錄音中，再按一次停止…",
     voiceLabel: "（語音輸入）",
@@ -68,6 +78,16 @@ const LABELS = {
     welcomeSub:
       "Ask about 35 university units, including Research and Development, Accounting, the Library and Information Center. See About for full coverage.",
     uploadTitle: "Upload image",
+    inputLabel: "Type your question",
+    sendLabel: "Send message",
+    removeImage: "Remove image",
+    uploadedImage: "Image uploaded by the user",
+    imagePreviewAlt: "Preview of the image to send",
+    chatLog: "Conversation",
+    answering: "Searching and generating an answer, please wait.",
+    answerReady: "Answer received.",
+    fbCommentLabel: "Additional comments (optional)",
+    settingsLabel: "Settings menu",
     voiceTitle: "Voice input",
     recording: "Recording… click again to stop",
     voiceLabel: "(Voice input)",
@@ -207,7 +227,7 @@ function buildTheme(isDark) {
         root:           "bg-[#0f1117] text-gray-100",
         sidebar:        "bg-[#1a2035] border-gray-700",
         sidebarBtn:     "text-gray-300 hover:bg-[#252d47]",
-        sidebarMeta:    "text-gray-500",
+        sidebarMeta:    "text-gray-400",
         sidebarCurrent: "bg-[#252d47] text-gray-200",
         sidebarBorder:  "border-gray-700",
         header:         "bg-[#0f1117] border-gray-700",
@@ -218,26 +238,26 @@ function buildTheme(isDark) {
         quickBtn:       "border-gray-600 text-gray-300 hover:border-blue-400 hover:text-blue-300 bg-transparent",
         bubbleUser:     "bg-[#1e3a6e] text-white",
         bubbleAi:       "bg-[#1e2433] text-gray-100",
-        bubbleStatus:   "text-gray-500 italic animate-pulse",
+        bubbleStatus:   "text-gray-400 italic animate-pulse",
         bubbleError:    "bg-red-900/30 text-red-400 border border-red-800",
         typing:         "bg-[#1e2433]",
         typingDot:      "bg-gray-500",
         sourceWrap:     "text-gray-400",
         sourceLink:     "text-blue-400 hover:underline",
-        sourceText:     "text-gray-500",
+        sourceText:     "text-gray-400",
         footer:         "bg-[#0f1117] border-gray-700",
         inputBorder:    "border-gray-600",
         inputBg:        "bg-[#1e2433]",
         inputText:      "text-gray-100",
         inputDisabled:  "bg-[#1a2035]",
         inputFocus:     "focus:ring-blue-500",
-        iconBtn:        "text-gray-500 hover:text-gray-200",
+        iconBtn:        "text-gray-400 hover:text-gray-200",
         sendEnabled:    "bg-[#1e3a6e] hover:bg-[#163059] text-white",
         sendDisabled:   "bg-gray-700 text-gray-500",
-        disclaimer:     "text-gray-600",
+        disclaimer:     "text-gray-400",
         clearBtnImg:    "bg-gray-600 hover:bg-red-600 text-white",
         audioBtn:       "text-blue-400 hover:underline",
-        placeholder:    "placeholder-gray-500",
+        placeholder:    "placeholder-gray-400",
         settingsPanel:  "bg-[#252d47] border-gray-600 shadow-black/40",
         settingsDivider:"border-gray-700",
         settingsItem:   "text-gray-300 hover:bg-[#2f3a55]",
@@ -246,37 +266,37 @@ function buildTheme(isDark) {
         root:           "bg-white text-gray-900",
         sidebar:        "bg-[#f5f7fa] border-gray-200",
         sidebarBtn:     "text-gray-700 hover:bg-gray-200",
-        sidebarMeta:    "text-gray-400",
+        sidebarMeta:    "text-gray-600",
         sidebarCurrent: "bg-gray-200 text-gray-600",
         sidebarBorder:  "border-gray-200",
         header:         "bg-white border-gray-200",
         headerText:     "text-gray-900",
         main:           "bg-white",
         welcomeTitle:   "text-gray-900",
-        welcomeSub:     "text-gray-400",
+        welcomeSub:     "text-gray-600",
         quickBtn:       "border-gray-200 text-gray-600 hover:border-[#1e3a6e] hover:text-[#1e3a6e] bg-white",
         bubbleUser:     "bg-[#1e3a6e] text-white",
         bubbleAi:       "bg-gray-100 text-gray-900",
-        bubbleStatus:   "text-gray-400 italic animate-pulse",
+        bubbleStatus:   "text-gray-600 italic animate-pulse",
         bubbleError:    "bg-red-50 text-red-600 border border-red-200",
         typing:         "bg-gray-100",
         typingDot:      "bg-gray-400",
         sourceWrap:     "text-gray-500",
         sourceLink:     "text-[#1e3a6e] hover:underline",
-        sourceText:     "text-gray-400",
+        sourceText:     "text-gray-600",
         footer:         "bg-white border-gray-200",
         inputBorder:    "border-gray-300",
         inputBg:        "bg-white",
         inputText:      "text-gray-900",
         inputDisabled:  "bg-gray-50",
         inputFocus:     "focus:ring-[#1e3a6e]",
-        iconBtn:        "text-gray-400 hover:text-gray-700",
+        iconBtn:        "text-gray-600 hover:text-gray-900",
         sendEnabled:    "bg-[#1e3a6e] hover:bg-[#163059] text-white",
         sendDisabled:   "bg-gray-300 text-white",
-        disclaimer:     "text-gray-400",
+        disclaimer:     "text-gray-600",
         clearBtnImg:    "bg-gray-700 hover:bg-red-600 text-white",
         audioBtn:       "text-[#1e3a6e] hover:underline",
-        placeholder:    "placeholder-gray-400",
+        placeholder:    "placeholder-gray-500",
         settingsPanel:  "bg-white border-gray-200 shadow-gray-200/80",
         settingsDivider:"border-gray-100",
         settingsItem:   "text-gray-700 hover:bg-gray-50",
@@ -287,7 +307,7 @@ function buildTheme(isDark) {
 
 function MicIcon({ className }) {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z" />
     </svg>
   );
@@ -295,7 +315,7 @@ function MicIcon({ className }) {
 
 function ImageIcon({ className }) {
   return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} aria-hidden="true" focusable="false">
       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
     </svg>
   );
@@ -303,7 +323,7 @@ function ImageIcon({ className }) {
 
 function PlusIcon({ className }) {
   return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true" focusable="false">
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
     </svg>
   );
@@ -311,7 +331,7 @@ function PlusIcon({ className }) {
 
 function MenuIcon({ className }) {
   return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true" focusable="false">
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
     </svg>
   );
@@ -319,7 +339,7 @@ function MenuIcon({ className }) {
 
 function CloseIcon({ className }) {
   return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true" focusable="false">
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
     </svg>
   );
@@ -327,7 +347,7 @@ function CloseIcon({ className }) {
 
 function SendIcon({ className }) {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
     </svg>
   );
@@ -335,7 +355,7 @@ function SendIcon({ className }) {
 
 function SunIcon({ className }) {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z" />
     </svg>
   );
@@ -343,7 +363,7 @@ function SunIcon({ className }) {
 
 function MoonIcon({ className }) {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z" />
     </svg>
   );
@@ -351,7 +371,7 @@ function MoonIcon({ className }) {
 
 function SettingsIcon({ className }) {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
     </svg>
   );
@@ -375,7 +395,7 @@ function ThumbDownIcon({ className }) {
 
 function InfoIcon({ className }) {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
     </svg>
   );
@@ -397,7 +417,7 @@ function NtpuLogo() {
     <div
       className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-[#1e3a6e]"
     >
-      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z" />
       </svg>
     </div>
@@ -460,6 +480,7 @@ function AnswerFeedback({ messageId, sessionId, lang, T }) {
           value={comment}
           onChange={e => setComment(e.target.value.slice(0, 500))}
           placeholder={labels.fbCommentPlaceholder}
+          aria-label={labels.fbCommentLabel}
           rows={2}
           className={`w-full resize-none rounded-lg border px-2 py-1.5 text-xs ${T.inputBorder} ${T.inputBg} ${T.inputText} ${T.placeholder} focus:outline-none focus:ring-1 ${T.inputFocus}`}
         />
@@ -512,7 +533,7 @@ function MessageBubble({ msg, lang, T, sessionId }) {
         <div className="max-w-[88%] sm:max-w-[75%]">
           {msg.imagePreview && (
             <div className="mb-1 flex justify-end">
-              <img src={msg.imagePreview} alt="uploaded" className="max-h-40 rounded-xl border border-blue-300/40" />
+              <img src={msg.imagePreview} alt={labels.uploadedImage} className="max-h-40 rounded-xl border border-blue-300/40" />
             </div>
           )}
           {msg.content && (
@@ -631,7 +652,7 @@ function MessageBubble({ msg, lang, T, sessionId }) {
 function TypingIndicator({ T }) {
   return (
     <div className="flex justify-start mb-4">
-      <div className={`rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1 items-center ${T.typing}`}>
+      <div className={`rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1 items-center ${T.typing}`} aria-hidden="true">
         <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:0ms] ${T.typingDot}`} />
         <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:150ms] ${T.typingDot}`} />
         <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:300ms] ${T.typingDot}`} />
@@ -802,7 +823,7 @@ export default function ChatPage() {
           setConversationState({});
           setMessages([]);
         } else {
-          setMessages(storedMessages);
+          setMessages(storedMessages.map((m) => (m.streaming ? { ...m, streaming: false } : m)));
         }
       }
       setSessionReady(true);
@@ -927,7 +948,7 @@ export default function ChatPage() {
         });
         if (!res.ok || !res.body) throw new Error("stream failed");
 
-        let current = { role: "assistant", status: "ok", content: "", rawAnswer: "", sources: [], statusText: "" };
+        let current = { role: "assistant", status: "ok", content: "", rawAnswer: "", sources: [], statusText: "", streaming: true };
         const push = () => setMessages([...nextMessages, { ...current }]);
 
         const reader = res.body.getReader();
@@ -953,10 +974,11 @@ export default function ChatPage() {
             else if (evt.type === "sources") { current.sources = evt.sources ?? []; push(); }
             else if (evt.type === "blocked") { current = { role: "assistant", status: "blocked", content: evt.message }; setLoading(false); push(); }
             else if (evt.type === "error")   { current = { role: "assistant", status: "error", content: evt.message }; setLoading(false); push(); }
-            else if (evt.type === "done")    { if (evt.answer) { current.content = evt.answer; current.rawAnswer = evt.answer; } if (evt.message_id) current.messageId = evt.message_id; current.dataUpdatedAt = evt.data_updated_at ?? null; current.statusText = ""; push(); }
+            else if (evt.type === "done")    { if (evt.answer) { current.content = evt.answer; current.rawAnswer = evt.answer; } if (evt.message_id) current.messageId = evt.message_id; current.dataUpdatedAt = evt.data_updated_at ?? null; current.statusText = ""; current.streaming = false; push(); }
           }
         }
         if (!gotAnything) throw new Error("empty stream");
+        if (current.streaming) { current.streaming = false; push(); }
         return;
       }
 
@@ -1014,6 +1036,12 @@ export default function ChatPage() {
   };
 
   const canSend = !loading && !isRecording && (!!input.trim() || !!imageBase64);
+  const lastMsg = messages[messages.length - 1];
+  const announcement = loading || (lastMsg?.role === "assistant" && lastMsg.status === "ok" && lastMsg.streaming)
+    ? labels.answering
+    : lastMsg?.role === "assistant"
+      ? (lastMsg.status === "ok" ? labels.answerReady : lastMsg.content)
+      : "";
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -1072,7 +1100,7 @@ export default function ChatPage() {
         <div className={`border-t p-3 relative ${T.sidebarBorder}`} ref={settingsRef}>
           {/* 展開面板（向上彈出） */}
           {showSettings && (
-            <div className={`absolute bottom-full left-3 right-3 mb-1 rounded-xl border shadow-lg overflow-hidden text-sm ${T.settingsPanel}`}>
+            <div id="settings-menu" role="group" aria-label={labels.settingsLabel} className={`absolute bottom-full left-3 right-3 mb-1 rounded-xl border shadow-lg overflow-hidden text-sm ${T.settingsPanel}`}>
               {/* 深淺色切換 */}
               <button
                 onClick={() => { setIsDark(d => !d); setShowSettings(false); }}
@@ -1111,6 +1139,9 @@ export default function ChatPage() {
 
           {/* 設定按鈕 */}
           <button
+            type="button"
+            aria-expanded={showSettings}
+            aria-controls="settings-menu"
             onClick={() => setShowSettings(s => !s)}
             className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors ${T.sidebarBtn} ${showSettings ? T.sidebarCurrent : ""}`}
           >
@@ -1135,11 +1166,13 @@ export default function ChatPage() {
             <MenuIcon className="h-5 w-5" />
           </button>
           <NtpuLogo />
-          <span className={`min-w-0 truncate font-semibold ${T.headerText}`}>{labels.title}</span>
+          <h1 className={`min-w-0 truncate text-base font-semibold ${T.headerText}`}>{labels.title}</h1>
         </header>
 
         {/* 對話紀錄區 */}
-        <main className={`flex-1 overflow-y-auto ${T.main}`}>
+        <main className={`flex-1 overflow-y-auto ${T.main}`} aria-label={labels.chatLog}>
+          {/* 螢幕閱讀器：查詢中、回答完成與錯誤訊息（逐字串流不逐字朗讀） */}
+          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</div>
           {messages.length === 0 ? (
             /* 歡迎畫面 */
             <div className="flex min-h-full flex-col items-center justify-center gap-5 px-4 py-8 sm:gap-6 sm:px-6">
@@ -1152,7 +1185,7 @@ export default function ChatPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   title={labels.aboutTitle}
-                  className={`mt-3 inline-flex items-center gap-1.5 text-xs underline underline-offset-4 transition-opacity hover:opacity-100 opacity-75 ${T.welcomeSub}`}
+                  className={`mt-3 inline-flex items-center gap-1.5 text-xs underline underline-offset-4 ${T.welcomeSub}`}
                 >
                   <InfoIcon className="w-3.5 h-3.5 shrink-0" />
                   {labels.about}
@@ -1191,12 +1224,14 @@ export default function ChatPage() {
             {imagePreview && (
               <div className="mb-2">
                 <div className="relative inline-block">
-                  <img src={imagePreview} alt="preview" className="h-16 rounded-lg border border-gray-300/40 object-cover" />
+                  <img src={imagePreview} alt={labels.imagePreviewAlt} className="h-16 rounded-lg border border-gray-300/40 object-cover" />
                   <button
+                    type="button"
+                    aria-label={labels.removeImage}
                     onClick={clearImage}
                     className={`absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full text-xs flex items-center justify-center transition-colors ${T.clearBtnImg}`}
                   >
-                    ✕
+                    <span aria-hidden="true">✕</span>
                   </button>
                 </div>
               </div>
@@ -1206,20 +1241,25 @@ export default function ChatPage() {
             <div className="flex items-end gap-1 sm:gap-2">
               {/* 圖片上傳 */}
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={loading || isRecording}
                 title={labels.uploadTitle}
+                aria-label={labels.uploadTitle}
                 className={`p-2 shrink-0 transition-colors disabled:opacity-40 ${T.iconBtn}`}
               >
                 <ImageIcon className="w-5 h-5" />
               </button>
-              <input ref={fileInputRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={(e) => handleImageSelect(e.target.files?.[0])} />
+              <input ref={fileInputRef} type="file" accept="image/*,.heic,.heif" className="hidden" tabIndex={-1} aria-hidden="true" onChange={(e) => handleImageSelect(e.target.files?.[0])} />
 
               {/* 語音 */}
               <button
+                type="button"
                 onClick={toggleRecording}
                 disabled={loading}
                 title={isRecording ? labels.recording : labels.voiceTitle}
+                aria-label={labels.voiceTitle}
+                aria-pressed={isRecording}
                 className={`p-2 shrink-0 transition-colors ${isRecording ? "text-red-500 animate-pulse" : `${T.iconBtn} disabled:opacity-40`}`}
               >
                 <MicIcon className="w-5 h-5" />
@@ -1230,6 +1270,7 @@ export default function ChatPage() {
                 rows={1}
                 className={`max-h-32 min-w-0 flex-1 resize-none rounded-xl border px-3 py-2.5 text-base leading-relaxed transition-colors focus:border-transparent focus:outline-none focus:ring-2 sm:text-sm ${T.inputBorder} ${T.inputBg} ${T.inputText} ${T.inputFocus} ${T.placeholder} ${loading || isRecording ? T.inputDisabled : ""}`}
                 placeholder={isRecording ? labels.recording : labels.placeholder}
+                aria-label={labels.inputLabel}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onCompositionStart={() => { isComposingRef.current = true; }}
@@ -1240,8 +1281,11 @@ export default function ChatPage() {
 
               {/* 送出按鈕 */}
               <button
+                type="button"
                 onClick={() => sendMessage()}
                 disabled={!canSend}
+                aria-label={labels.sendLabel}
+                title={labels.sendLabel}
                 className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${canSend ? T.sendEnabled : T.sendDisabled}`}
               >
                 <SendIcon className="w-4 h-4" />
