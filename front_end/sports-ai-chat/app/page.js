@@ -823,7 +823,7 @@ export default function ChatPage() {
           setConversationState({});
           setMessages([]);
         } else {
-          setMessages(storedMessages.map((m) => (m.streaming ? { ...m, streaming: false } : m)));
+          setMessages(storedMessages);
         }
       }
       setSessionReady(true);
