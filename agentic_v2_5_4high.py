@@ -3030,6 +3030,15 @@ def _agentic_answer_events(user_query: str, language: str, history: list,
     )
     dynamic_system_prompt = SYSTEM_STYLE + _date_ctx + f"\n\n【⚠️ 強制輸出語系指示】\n系統偵測到目前應使用的回覆語系為：「{target_lang_str}」。請你【務必】以此語言生成最終回答，不可擅自切換語言。"
     dynamic_system_prompt += answer_evidence.QUOTE_INSTRUCTION  # 老師建議 二-2：標出支持答案的原文
+    # 回答末尾一律附上承辦單位的官方聯絡方式（contact_footer）。電話常只寫在官網頁尾、沒進資料庫：
+    # 檢索資料沒寫時不要回「無法確認電話」，否則與末尾列出的電話互相矛盾
+    if UNIT_CONTACTS.get(dept or "", {}).get("phone") or UNIT_CONTACTS.get(dept or "", {}).get("email"):
+        dynamic_system_prompt += (
+            f"\n\n【聯絡方式】系統會在你的回答之後，自動附上{DEPT_NAMES.get(dept, dept)}的官方聯絡電話與承辦人分機連結。"
+            "使用者問這個單位的電話、分機或聯絡方式，而檢索資料沒有寫出時，"
+            "不要說「查不到」或「無法確認」電話，改說「單位的聯絡電話請見下方承辦單位資訊」；"
+            "檢索資料有寫出特定業務的聯絡人或分機時，照原文列出。"
+        )
     # 老師建議 三-2：比對上一輪回答，錯了要先更正。改問另一個人（「誰是宋明謙？」）時不比對，提更正反而偏題
     other_person = asked_person(user_query)
     roster_fixes = []
