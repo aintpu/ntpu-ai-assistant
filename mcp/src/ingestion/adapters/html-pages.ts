@@ -17,6 +17,9 @@ import {
   parseLcPage,
   parseLibraryPage,
   parseMisPage,
+  parseRpagePage,
+  parseRpageTab,
+  type RpageTab,
 } from "./html-sites";
 import type { Adapter, AdapterRecord, RejectedRecord, Step, StepOutcome } from "./types";
 import { decodeUtf8 } from "./types";
@@ -163,7 +166,7 @@ function pageRecord(source: SourceDefinition, id: string, path: string, title: s
     updatedAt: "",
     bodyText: body,
     links: linksOf(bodyHtml, base),
-    sourceUrl: `${LIBRARY_ORIGIN}${path}`,
+    sourceUrl: `${source.origin}${path}`,
   });
   if (!parsed.success) {
     return { parsed: 1, records: [], rejected: [{ id, reason: safeMessage(parsed.error).slice(0, 200), countsTowardDrift: true }], skipped: 0 };
@@ -277,6 +280,46 @@ function singlePageStep(
   };
 }
 
+/** Rpage 選單頁（經濟系）：先抓頁面，再依序抓頁上各分頁區塊（POST、帶本頁 Referer），最後合成一筆。 */
+function rpagePageStep(source: SourceDefinition, path: string, last: boolean): Step {
+  const id = `rpagep${path.replace(/[^A-Za-z0-9]/g, "").slice(0, 40)}`;
+  const tabStep = (title: string, parts: string[], tabs: RpageTab[], index: number): Step => {
+    const tab = tabs[index]!;
+    const query = { Action: "mobileloadmod", Type: tab.type, Nbr: tab.nbr };
+    return {
+      request: {
+        target: `/app/index.php?${new URLSearchParams(query)}`,
+        path: "/app/index.php",
+        query,
+        method: "POST",
+        body: "Lang=zh-tw",
+        contentType: "application/x-www-form-urlencoded",
+        refererPath: path,
+      },
+      fatal: false,
+      async handle(bytes) {
+        const html = parseRpageTab(decodeUtf8(bytes));
+        const next = [...parts, `<h2>${tab.label}</h2>${html}`];
+        if (index + 1 < tabs.length) {
+          return { parsed: 0, records: [], rejected: [], skipped: 0, next: [tabStep(title, next, tabs, index + 1)] };
+        }
+        return { ...pageRecord(source, id, path, title, next.join("\n"), `${source.origin}${path}`), listComplete: last };
+      },
+    };
+  };
+  return {
+    request: { target: path, path, method: "GET" },
+    fatal: false,
+    async handle(bytes) {
+      const parsed = parseRpagePage(decodeUtf8(bytes));
+      if (parsed.tabs.length === 0 || parsed.tabs.length > 12) {
+        return { ...pageRecord(source, id, path, parsed.title, parsed.bodyHtml, `${source.origin}${path}`), listComplete: last };
+      }
+      return { parsed: 0, records: [], rejected: [], skipped: 0, next: [tabStep(parsed.title, [parsed.bodyHtml], parsed.tabs, 0)] };
+    },
+  };
+}
+
 /**
  * 內容頁網站：商學院與所屬學系（page.php，每組抓一次、依分頁切成多筆）與
  * 資管所（www.mis.ntpu.edu.tw 的 WordPress 固定頁面，一頁一筆）。請求間隔依來源設定。
@@ -302,6 +345,12 @@ export const htmlPagesAdapter: Adapter = {
         ...cfg.lists.map((svc) => libraryListStep(source, svc, 1, LIBRARY_LIST_NAMES[svc] ?? "")),
         ...cfg.pages.map((p, i) => libraryPageStep(source, p, i === cfg.pages.length - 1)),
       ];
+    }
+    if (cfg.site === "rpage") {
+      if (cfg.pages.length === 0 || cfg.pages.length > 60 || !cfg.pages.every((p) => source.entrypoints.includes(p))) {
+        throw new IngestionError("URL_NOT_ALLOWED", `invalid rpage pages for ${source.id}`);
+      }
+      return cfg.pages.map((p, i) => rpagePageStep(source, p, i === cfg.pages.length - 1));
     }
     if (cfg.site === "mis") {
       const paths = cfg.paths;

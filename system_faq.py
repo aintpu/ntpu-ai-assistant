@@ -58,6 +58,7 @@ class QueryDomain(str, Enum):
     EBRC = "EBRC"  # 電子商務研究中心（只有 MCP 資料）
     CCS = "CCS"  # 企業永續發展研究中心（只有 MCP 資料）
     COSS = "COSS"  # 社會科學學院（只有 MCP 資料）
+    ECON = "ECON"  # 經濟學系（只有 MCP 資料）
     OTHER = "OTHER"
 
 

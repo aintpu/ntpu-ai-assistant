@@ -83,6 +83,7 @@ export interface HtmlNewsConfig {
     | "iemba-php"
     | "fintech-php"
     | "gmba-jsp"
+    | "econ-rpage"
     | "mis-wp";
   /** 每次執行最多抓幾則內文；其餘留到下一次（避免超過單次執行的子請求上限）。 */
   maxDetailsPerRun: number;
@@ -159,6 +160,12 @@ export type HtmlPagesConfig =
       pages: string[];
       /** 列表型服務（常見問題、相關法規等）：翻完列表再逐則抓內文 singlehtml/<svc>?cntId=。 */
       lists: string[];
+    }
+  | {
+      kind: "html-pages";
+      /** Rpage CMS 選單頁（經濟系）：頁面上的分頁區塊另以 POST 載入後併入同一筆。 */
+      site: "rpage";
+      pages: string[];
     }
   | {
       kind: "html-pages";
@@ -244,6 +251,11 @@ export interface SourceRequest {
   method?: HttpMethod;
   body?: string;
   contentType?: "application/json" | "application/x-www-form-urlencoded";
+  /**
+   * 帶 Referer 標頭（某些 CMS 的 ajax 介面只回應從自己頁面發出的請求，例如經濟系 Rpage 的分頁內容）。
+   * 必須是同一來源登記過的 entrypoint，由 fetch-source 組成完整網址，不接受外部網址。
+   */
+  refererPath?: string;
 }
 
 export interface RawSnapshot {

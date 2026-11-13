@@ -256,6 +256,124 @@ export const lcSite: HtmlSite = {
   },
 };
 
+// ── Rpage CMS（經濟學系 econ.ntpu.edu.tw；2026-11-13 加入）──────────────────────────────
+// 公告列表 /p/403-<站號>-<分類>-<頁>.php（totalPage 寫在頁面程式裡），內文 /p/406-<站號>-<編號>.php（沒有日期，日期取自列表）。
+// 選單頁 /p/412-<站號>-<編號>.php；有分頁標籤的區塊（相關辦法、常見問題、相關表格等）內容由
+// /app/index.php?Action=mobileloadmod&Type=…&Nbr=… 以 POST 載入，且只回應帶本站 Referer 的請求。
+
+export interface RpageSpec {
+  origin: string;
+  /** 網站編號（經濟系 1001）。 */
+  siteNo: string;
+  /** 公告列表分類（經濟系「所有公告」；「榮譽榜」另有幾則不在其中，但列表與內文都沒有日期，無法收錄）。 */
+  listCategory: number;
+  /** 公告編號前綴（econ0001384）。 */
+  idPrefix: string;
+}
+
+export const RPAGE_DETAIL_PATH = /^\/p\/406-\d{3,5}-\d{1,7}\.php$/;
+
+function rpageNumber(spec: RpageSpec, id: string): number {
+  const m = new RegExp(`^${spec.idPrefix}(\\d{7})$`).exec(id);
+  if (!m) throw new IngestionError("INTERNAL_ERROR", `bad rpage news id: ${id}`);
+  return Number(m[1]);
+}
+
+export function rpageSite(spec: RpageSpec): HtmlSite {
+  const listPath = (cat: number, page: number) => `/p/403-${spec.siteNo}-${cat}-${page}.php`;
+  const detailPath = (id: string) => `/p/406-${spec.siteNo}-${rpageNumber(spec, id)}.php`;
+  const linkRe = new RegExp(`/p/406-${spec.siteNo}-(\\d{1,7})(?:,r\\d+)?\\.php`);
+  return {
+    origin: spec.origin,
+    listPath: listPath(spec.listCategory, 1),
+    detailPath: `/p/406-${spec.siteNo}-`,
+
+    listRequest(page) {
+      const path = listPath(spec.listCategory, page);
+      return { target: path, path, method: "GET" };
+    },
+
+    detailRequest(id) {
+      const path = detailPath(id);
+      return { target: path, path, method: "GET" };
+    },
+
+    detailUrl(id) {
+      return `${spec.origin}${detailPath(id)}`;
+    },
+
+    parseList(html) {
+      const module = required(dom(html).querySelector("div.module-rcglist"), "div.module-rcglist");
+      const items: ListItem[] = [];
+      let external = 0;
+      for (const row of module.querySelectorAll("div.mtitle")) {
+        const a = row.querySelector("a[href]");
+        const n = linkRe.exec(a?.getAttribute("href") ?? "")?.[1];
+        if (!n) {
+          external++;
+          continue;
+        }
+        items.push({
+          id: `${spec.idPrefix}${n.padStart(7, "0")}`,
+          title: clean(a?.text),
+          date: taiwanDate(row.querySelector("i.mdate")?.text ?? ""),
+        });
+      }
+      const totalPages = Math.max(1, Number(/totalPage:\s*(\d+)/.exec(html)?.[1] ?? 1));
+      return { items, external, totalPages };
+    },
+
+    parseDetail(html) {
+      const root = dom(html);
+      const title = clean(required(root.querySelector("div.mpgtitle h2"), "div.mpgtitle h2").text);
+      const body = required(root.querySelector("div.mpgdetail"), "div.mpgdetail");
+      for (const el of body.querySelectorAll("script, style")) el.remove();
+      const files = [
+        ...body.querySelectorAll("a[href]").filter((a) => FILE_EXT.test(a.getAttribute("href") ?? "") || (a.getAttribute("href") ?? "").includes("/var/file/")),
+        // 內文常以 iframe 嵌入 PDF（榜單、海報）
+        ...body.querySelectorAll("iframe[src]").filter((f) => FILE_EXT.test(f.getAttribute("src") ?? "")),
+      ];
+      for (const f of files) if (!f.getAttribute("href") && f.getAttribute("src")) f.setAttribute("href", f.getAttribute("src")!);
+      const attachments = collectFiles(files, `${spec.origin}/`, (a) => a.getAttribute("title") || a.text);
+      return { title, date: "", bodyHtml: body.innerHTML, attachments };
+    },
+  };
+}
+
+/** 選單頁上以 ajax 載入的分頁區塊。 */
+export interface RpageTab {
+  label: string;
+  type: string;
+  nbr: string;
+}
+
+/** Rpage 選單頁：標題取 <title>，內文是 <main> 去掉麵包屑、選單、列印分享列；有分頁標籤時列出各分頁要另外載入的區塊。 */
+export function parseRpagePage(html: string): { title: string; bodyHtml: string; tabs: RpageTab[] } {
+  const root = dom(html);
+  const title = clean(required(root.querySelector("title"), "title").text);
+  const main = required(root.querySelector("main"), "main");
+  // 分頁區塊的載入網址寫在 <script> 裡（DOM 解析時不保留 script 內容）：在原始 HTML 上依 tab-pane 切段找
+  const labels = new Map<string, string>();
+  for (const a of main.querySelectorAll("div.module-complex nav a[href^='#']")) labels.set(a.getAttribute("href")!.slice(1), clean(a.text));
+  const tabs: RpageTab[] = [];
+  const panes = [...html.matchAll(/<div[^>]*class="tab-pane[^"]*"[^>]*id="([^"]+)"|<div[^>]*id="([^"]+)"[^>]*class="tab-pane[^"]*"/g)];
+  panes.forEach((pane, i) => {
+    const seg = html.slice(pane.index!, panes[i + 1]?.index ?? html.length);
+    const m = /Type=(mobile_[a-z_]{3,30})&(?:amp;)?Nbr=(\d{1,5})/.exec(seg);
+    const id = pane[1] ?? pane[2]!;
+    if (m && labels.has(id)) tabs.push({ label: labels.get(id)!, type: m[1]!, nbr: m[2]! });
+  });
+  for (const el of main.querySelectorAll("script, style, nav, div.module-path, div.module-um, div.module-misc")) el.remove();
+  return { title: required(title, "title"), bodyHtml: main.innerHTML, tabs };
+}
+
+/** 分頁區塊（ajax 回應）：通常是檔案或頁面連結清單，連同區塊標題一起保留。 */
+export function parseRpageTab(html: string): string {
+  const root = dom(html);
+  for (const el of root.querySelectorAll("script, style")) el.remove();
+  return root.innerHTML;
+}
+
 // ── 財務金融英語碩士學位學程 GMBA www.gmba.ntpu.edu.tw（JSP，與語言中心同一家廠商、版型不同；2026-11-03 加入）──
 // 列表 news.jsp?npage=（每頁 12 則）只顯示月、日；內文頁 news_in.jsp?np_id=NP + 建立時間（毫秒），日期取自編號。
 
@@ -751,6 +869,7 @@ export const HTML_SITES = {
   "iemba-php": collegeSite(COLLEGE_SITES.iemba),
   "fintech-php": collegeSite(COLLEGE_SITES.fintech),
   "gmba-jsp": gmbaSite,
+  "econ-rpage": rpageSite({ origin: "https://econ.ntpu.edu.tw", siteNo: "1001", listCategory: 32, idPrefix: "econ" }),
   "mis-wp": misSite,
 } as const;
 

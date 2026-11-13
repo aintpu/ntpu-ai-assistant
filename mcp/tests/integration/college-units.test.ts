@@ -28,6 +28,28 @@ const rows = (unit: string) =>
     `SELECT entity_type, stable_key, title, source_url, payload_json FROM entities WHERE source_unit = '${unit}' AND status = 'active' ORDER BY stable_key`,
   );
 
+describe("Department of Economics (Rpage CMS) added 2026-11-13", () => {
+  it("dates come from the list; embedded PDFs become attachments", async () => {
+    await runIngestion(deps, { sourceIds: ["econ-announcements"], trigger: "test" });
+    const news = rows("econ");
+    expect(news.map((r) => r.stable_key)).toEqual(["econ:econ0001381", "econ:econ0001384"]);
+    const first = news.find((r) => r.stable_key === "econ:econ0001384")!;
+    expect(first.source_url).toBe("https://econ.ntpu.edu.tw/p/406-1001-1384.php");
+    const payload = JSON.parse(first.payload_json);
+    expect(payload.publishedAt).toBe("2026-10-13T16:00:00.000Z");
+    expect(payload.attachments.map((a: { url: string }) => a.url)).toContain("https://econ.ntpu.edu.tw/var/file/1/1001/img/1.pdf");
+  });
+
+  it("menu pages merge their ajax tab blocks (POST with the page as Referer) into one record", async () => {
+    await runIngestion(deps, { sourceIds: ["econ-site-pages"], trigger: "test" });
+    const regs = rows("econ").find((r) => r.source_url === "https://econ.ntpu.edu.tw/p/412-1001-111.php")!;
+    const body = JSON.parse(regs.payload_json).bodyText as string;
+    expect(body).toContain("經濟學系學生事務委員會組織章程");
+    expect(body).not.toContain("友善列印");
+    expect(rows("econ").length).toBeGreaterThan(30);
+  });
+});
+
 describe("College of Business units added 2026-11-03", () => {
   it("fintech pages and news live under /fintech/ on the College of Business host", async () => {
     await runIngestion(deps, { sourceIds: ["fintech-site-pages", "fintech-announcements"], trigger: "test" });
