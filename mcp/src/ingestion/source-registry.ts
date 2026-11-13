@@ -1,6 +1,6 @@
 import { validateSourceDefinition } from "./url-policy";
 import { ATTACHMENT_HOST, ATTACHMENT_PATH } from "./adapters/attachments";
-import { MIS_POST_PATH } from "./adapters/html-sites";
+import { MIS_POST_PATH, RPAGE_DETAIL_PATH } from "./adapters/html-sites";
 import { OFFICIALS } from "./officials";
 import type { FetchPolicy, PersonalDataGuard, SourceDefinition } from "./types";
 
@@ -181,6 +181,15 @@ const CCS_PAGES = [
   { path: CCS_DATA, title: "組織成員名單" },
 ];
 const CCS_PATHS = CCS_PAGES.map((p) => p.path);
+
+/**
+ * 經濟學系 econ.ntpu.edu.tw（Rpage CMS；使用者 2026-11-13 指定，社會科學學院所屬）：主選單的內容頁。
+ * 期刊全文、專題討論等外部連結或空殼頁照抓，字數太少的不收。
+ */
+const ECON_PAGES = [
+  106, 105, 112, 118, 95, 107, 108, 110, 111, 94, 119, 121, 124, 129, 130, 304, 113, 115, 117, 182, 298, 120, 305, 98, 122, 123, 125,
+  127, 128, 131, 102, 151, 150, 142, 143, 144, 196, 145, 146, 91, 135, 136,
+].map((n) => `/p/412-1001-${n}.php`);
 
 /**
  * 全部公告來源的個資過濾模式。使用者 2026-10-03 決定全部放行（官網本來就公開）。
@@ -418,6 +427,7 @@ export const UNIT_NAMES: Record<string, string> = {
   fintech: "金融科技暨綠色金融研究中心",
   ebrc: "電子商務研究中心",
   ccs: "企業永續發展研究中心",
+  econ: "經濟學系",
   "social-sciences": "社會科學學院",
 };
 
@@ -941,6 +951,51 @@ const WEB_SOURCES: SourceDefinition[] = [
     entityType: "announcement",
     enabled: true,
     fetch: CCS_FETCH,
+    freshness: DAILY,
+  },
+  {
+    // 經濟學系（Rpage CMS）：「所有公告」（分類 32，約 60 則）
+    id: "econ-announcements",
+    sourceUnit: "econ",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://econ.ntpu.edu.tw/p/403-1001-32-1.php",
+    newsUrlBase: "https://econ.ntpu.edu.tw/p/406-1001-",
+    origin: "https://econ.ntpu.edu.tw",
+    // 實際可抓的路徑由 entrypoints 與 pathRules 限定
+    allowedPathPrefixes: ["/p/"],
+    entrypoints: ["/p/403-1001-32-1.php"],
+    pathRules: [/^\/p\/403-1001-32-\d{1,2}\.php$/, RPAGE_DETAIL_PATH],
+    parser: "html-news",
+    adapter: {
+      kind: "html-news",
+      site: "econ-rpage",
+      maxDetailsPerRun: 60,
+      reverifyAfterSeconds: 30 * 86_400,
+      personalDataGuard: PERSONAL_DATA_GUARD,
+    },
+    entityType: "announcement",
+    enabled: true,
+    fetch: HTML_FETCH,
+    freshness: DAILY,
+  },
+  {
+    // 經濟學系選單頁；分頁區塊（相關辦法、常見問題、相關表格等）以 POST /app/index.php 載入
+    id: "econ-site-pages",
+    sourceUnit: "econ",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://econ.ntpu.edu.tw/",
+    newsUrlBase: "https://econ.ntpu.edu.tw",
+    origin: "https://econ.ntpu.edu.tw",
+    allowedPathPrefixes: [...ECON_PAGES, "/app/index.php"],
+    entrypoints: [...ECON_PAGES, "/app/index.php"],
+    queryRules: { "/app/index.php": { Action: /^mobileloadmod$/, Type: /^mobile_[a-z_]{3,30}$/, Nbr: /^\d{1,5}$/ } },
+    parser: "html-pages",
+    adapter: { kind: "html-pages", site: "rpage", pages: ECON_PAGES },
+    entityType: "page",
+    enabled: true,
+    fetch: HTML_FETCH,
     freshness: DAILY,
   },
 ];

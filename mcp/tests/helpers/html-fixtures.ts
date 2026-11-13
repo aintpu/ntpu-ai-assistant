@@ -207,6 +207,29 @@ export class FakeSites {
       }
       return html(`<html><head><title>企業永續頁面 - NTPU CCS</title></head><body><header>頁首</header><main>${"企業永續發展研究中心介紹。".repeat(10)}</main><footer>頁尾</footer></body></html>`);
     }
+    if (url.hostname === "econ.ntpu.edu.tw") {
+      // 經濟系 Rpage：所有公告（分類 32）兩則；選單頁 111 有一個以 ajax 載入的分頁區塊
+      const row = (n: number, date: string) =>
+        `<div class="mtitle">${date ? `<i class="mdate before">${date}</i>` : ""}<a href="https://econ.ntpu.edu.tw/p/406-1001-${n},r12.php?Lang=zh-tw">經濟系公告 ${n}</a></div>`;
+      const list = (rows: string) => `<script>var o={totalPage:1}</script><div class="module module-rcglist"><section class="mb">${rows}</section></div>`;
+      if (url.pathname === "/p/403-1001-32-1.php") return html(list(row(1384, "2026-10-14") + row(1381, "2026-10-01")));
+      const detail = /^\/p\/406-1001-(\d+)\.php$/.exec(url.pathname);
+      if (detail) {
+        return html(`<div class="mpgtitle"><h2 class="hdline">經濟系公告 ${detail[1]}</h2></div><div class="mpgdetail"><div class="meditor"><p>經濟系公告內文。</p><iframe src="/var/file/1/1001/img/1.pdf"></iframe></div></div>`);
+      }
+      if (url.pathname === "/app/index.php") {
+        if (request.method !== "POST" || !(request.headers.get("referer") ?? "").startsWith("https://econ.ntpu.edu.tw/p/412-1001-")) {
+          return new Response("", { status: 404 });
+        }
+        return html(`<div class="module"><h2 class="mt-title">相關辦法 - 組織章程</h2><ul><li><a href="/var/file/1/1001/img/2.pdf">經濟學系學生事務委員會組織章程</a></li><li><a href="/var/file/1/1001/img/3.pdf">經濟學系系務會議組織章程</a></li><li><a href="/var/file/1/1001/img/4.pdf">經濟學系課程委員會組織章程</a></li></ul></div>`);
+      }
+      if (url.pathname.startsWith("/p/412-1001-")) {
+        const tabs = url.pathname === "/p/412-1001-111.php"
+          ? `<div class="module module-complex"><nav><ul><li><a href="#cmb_12_0">組織章程</a></li></ul></nav><div class="tab-content"><div class="tab-pane" id="cmb_12_0"><script>$.hajaxOpenUrl('/app/index.php?Action=mobileloadmod&Type=mobile_mnu_mstr&Nbr=39','#x')</script></div></div></div>`
+          : `<div class="module module-cglist"><div class="meditor">${"經濟學系介紹內容。".repeat(10)}</div></div>`;
+        return html(`<html><head><title>經濟系頁面 </title></head><body><main><div class="module module-path">首頁 > 頁面</div>${tabs}<div class="module module-misc">友善列印</div></main></body></html>`);
+      }
+    }
     return new Response("unexpected host", { status: 599 });
   };
 }

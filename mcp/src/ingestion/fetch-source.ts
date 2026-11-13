@@ -112,6 +112,7 @@ export async function fetchSource(
           "User-Agent": policy.userAgent,
           Accept: policy.acceptedContentTypes.join(", "),
           ...(request.body ? { "Content-Type": request.contentType ?? "application/json" } : {}),
+          ...(request.refererPath ? { Referer: resolveRequestUrl(source, { path: request.refererPath }).toString() } : {}),
         },
         ...(method === "POST" && request.body ? { body: request.body } : {}),
       };

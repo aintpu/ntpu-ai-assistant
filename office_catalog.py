@@ -56,6 +56,10 @@ MCP_ONLY_OFFICES = {
     "coss": ("社會科學學院", "College of Social Sciences",
              ("社會科學學院", "社科院", "社會科學院", "社科學院", "社科院院長", "社科院辦公室", "臺灣發展研究中心", "台灣發展研究中心",
               "iseps", "社科院學分學程", "社科院英語學程")),
+    # 社科院所屬學系（2026-11-13 加入）
+    "econ": ("經濟學系", "Department of Economics",
+             ("經濟學系", "經濟系", "北大經濟", "經濟系主任", "經濟系老師", "經濟系教授", "經濟系師資", "經濟系招生", "經濟系公告",
+              "經濟系修業", "經濟系課程", "林錫埼", "經濟研究期刊")),
     "ccs": ("企業永續發展研究中心", "Center for Corporate Sustainability",
             ("企業永續發展研究中心", "企業永續發展中心", "企業永續中心", "seed評鑑", "seed 評鑑", "臺灣永續投資調查", "台灣永續投資調查")),
 }
@@ -63,7 +67,8 @@ MCP_ONLY_OFFICE_NAMES = {code: spec[0] for code, spec in MCP_ONLY_OFFICES.items(
 
 # 單位的上級（學系、研究所 → 學院）：寫進範圍判斷的提示詞，也供介紹頁依層級排列。新增系所時在這裡登記所屬學院。
 OFFICE_PARENTS = {"mis": "cob", "dba": "cob", "coop": "cob", "acc": "cob", "stat": "cob", "lsm": "cob", "giib": "cob", "dma": "cob",
-                  "iemba": "cob", "gmba": "cob", "fintech": "cob", "ebrc": "cob", "ccs": "cob"}
+                  "iemba": "cob", "gmba": "cob", "fintech": "cob", "ebrc": "cob", "ccs": "cob",
+                  "econ": "coss"}
 
 # Offices whose retrieval also covers other offices' FAQ.  A question about
 # the vice presidents without naming one routes to 校長室, so 校長室 searches
