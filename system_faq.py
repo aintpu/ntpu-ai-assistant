@@ -57,6 +57,7 @@ class QueryDomain(str, Enum):
     FINTECH = "FINTECH"  # 金融科技暨綠色金融研究中心（只有 MCP 資料）
     EBRC = "EBRC"  # 電子商務研究中心（只有 MCP 資料）
     CCS = "CCS"  # 企業永續發展研究中心（只有 MCP 資料）
+    COSS = "COSS"  # 社會科學學院（只有 MCP 資料）
     OTHER = "OTHER"
 
 

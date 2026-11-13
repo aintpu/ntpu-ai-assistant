@@ -418,6 +418,7 @@ export const UNIT_NAMES: Record<string, string> = {
   fintech: "金融科技暨綠色金融研究中心",
   ebrc: "電子商務研究中心",
   ccs: "企業永續發展研究中心",
+  "social-sciences": "社會科學學院",
 };
 
 /**
@@ -441,6 +442,8 @@ const STRAPI_ANNOUNCEMENT_UNITS: { unit: string; siteKey: string; newsUrlBase?: 
   { unit: "ope", siteKey: "ope_ntpu" },
   { unit: "cge", siteKey: "cge_ntpu" },
   { unit: "op", siteKey: "op_ntpu" },
+  // 2026-11-13 加入（使用者指定）：社會科學學院。site key 用底線、網址路徑用連字號
+  { unit: "social-sciences", siteKey: "social_sciences_ntpu" },
 ];
 
 /**
@@ -478,6 +481,8 @@ const SITE_PAGE_PREFIXES: { id: string; unit: string; prefix: string }[] = [
   { id: "ope", unit: "ope", prefix: "/ope/" },
   { id: "cge", unit: "cge", prefix: "/cge/" },
   { id: "library", unit: "library", prefix: "/library/" },
+  // 含臺灣發展研究中心（/social-sciences/taiwan-development/）與國際博士學程 ISEPS（/social-sciences/iseps/）
+  { id: "social-sciences", unit: "social-sciences", prefix: "/social-sciences/" },
 ];
 
 /** 公告附件檔案（cms-carrier.ntpu.edu.tw/uploads/）：每個請求間隔 0.5 秒，單檔上限 15 MB。 */
@@ -507,7 +512,7 @@ const ATTACHMENT_FETCH: FetchPolicy = {
  * 學校官網各處室的檔案庫（表單、法規、會議紀錄、統計等；strapi documents）。
  * 使用者 2026-10-15 指定這些處室（取代移除的爬蟲轉 FAQ 裡出自「表單下載」「法規」等頁面的內容）。
  */
-const DOCUMENT_SITES: { unit: string; site: string }[] = [
+const DOCUMENT_SITES: { unit: string; site: string; siteKey?: string }[] = [
   { unit: "ord", site: "ord" }, { unit: "osa", site: "osa" }, { unit: "oaa", site: "oaa" }, { unit: "oga", site: "oga" },
   { unit: "oa", site: "oa" }, { unit: "cic", site: "cic" }, { unit: "oia", site: "oia" }, { unit: "eec", site: "eec" },
   { unit: "alumni", site: "alumni" }, { unit: "edusp", site: "edusp" }, { unit: "os", site: "os" }, { unit: "op", site: "op" },
@@ -515,6 +520,7 @@ const DOCUMENT_SITES: { unit: string; site: string }[] = [
   { unit: "ope", site: "ope" }, { unit: "cge", site: "cge" },
   // 學校官網上的商學院、圖書館、永續辦公室檔案庫（各自網站之外另放的檔案）
   { unit: "business", site: "business" }, { unit: "library", site: "library" }, { unit: "sustainable", site: "sustainable" },
+  { unit: "social-sciences", site: "social-sciences", siteKey: "social_sciences_ntpu" },
 ];
 
 const strapiOrigin = {
@@ -564,7 +570,7 @@ const WEB_SOURCES: SourceDefinition[] = [
     }),
   ),
   ...DOCUMENT_SITES.map(
-    ({ unit, site }): SourceDefinition => ({
+    ({ unit, site, siteKey }): SourceDefinition => ({
       id: `${unit}-documents`,
       sourceUnit: unit,
       sourceType: "official_api",
@@ -573,7 +579,7 @@ const WEB_SOURCES: SourceDefinition[] = [
       newsUrlBase: `https://new.ntpu.edu.tw/${site}`,
       ...strapiOrigin,
       parser: "strapi-documents",
-      adapter: { kind: "strapi-documents", siteKey: `${site}_ntpu`, sitePath: site },
+      adapter: { kind: "strapi-documents", siteKey: siteKey ?? `${site}_ntpu`, sitePath: site },
       entityType: "page",
       enabled: true,
       fetch: STRAPI_FETCH,
