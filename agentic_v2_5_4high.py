@@ -2732,7 +2732,7 @@ SYSTEM_STYLE = (
     "- 國立臺北大學商學院相關業務（學院簡介、系所與研究中心介紹、師資、學生專區、獎助學金、學程、國際交流、產學合作、最新消息等）\n"
     "- 國立臺北大學資訊管理研究所相關業務（所簡介、沿革、師資、招生、修業規則、課程、學術研究、實習徵才、捐款、產學合作、最新消息等）\n"
     "- 國立臺北大學企業管理學系、金融與合作經營學系、會計學系、統計學系、休閒運動管理學系、國際企業研究所、數位行銷進修學士學位學程相關業務（系所簡介、師資、課程、招生、修業規定、獎學金、系友、最新消息等）\n"
-    "- 國立臺北大學商學院在職專班（IEMBA）、財務金融英語碩士學位學程（GMBA）相關業務（招生、課程、師資、論文考試、校友、最新消息等）\n"
+    "- 國立臺北大學國際財務金融碩士在職專班（IEMBA）、財務金融英語碩士學位學程（GMBA）相關業務（招生、課程、師資、論文考試、校友、最新消息等）\n"
     "- 國立臺北大學金融科技暨綠色金融研究中心、電子商務研究中心、企業永續發展研究中心相關業務（中心介紹、成員、研究計畫、活動、ESG 評鑑與指數、課程、最新消息等）\n"
     "- 體育、運動、健身相關的一般知識\n"
 
@@ -4619,7 +4619,9 @@ def _build_exclusive_keywords() -> dict:
         if len(offices) != 1:
             continue
         office = next(iter(offices))
-        if any(o != office and (w in w2 or w2 in w) for w2, o in pairs):
+        # 其他單位有「更短」的關鍵字包含在 w 裡：w 不夠專屬。其他單位有「更長」的名稱包含 w
+        # （IEMBA 的「國際財務金融碩士在職專班」包含進修推廣部的「碩士在職專班」）仍算專屬，比對時再看問題有沒有寫到較長名稱
+        if any(o != office and w2 in w for w2, o in pairs):
             continue
         out[w] = office
     return out
@@ -4641,6 +4643,10 @@ def exclusive_keyword_office(query: str, chosen: str | None):
     hits = {}
     for w, office in _EXCLUSIVE_KEYWORDS.items():
         if w in q and office != chosen:
+            # 問題寫的是其他單位包含這個詞的較長名稱（「國際財務金融碩士在職專班」）：不算這個單位的專屬關鍵字
+            if any(o != office and w != str(w2) and w in str(w2) and str(w2) in q
+                   for o, words in OFFICE_KEYWORDS.items() for w2 in words):
+                continue
             hits.setdefault(office, w)
     if len(hits) != 1:
         return None
