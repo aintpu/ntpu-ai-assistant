@@ -182,6 +182,42 @@ DEPT_NAMES = {"ope": "體育室", "ge": "通識教育中心", "lc": "語言中�
               "oga": "總務處"}
 DEPT_NAMES.update(FAQ_OFFICE_NAMES)
 DEPT_NAMES.update(MCP_ONLY_OFFICE_NAMES)  # 商學院與所屬系所：只有 MCP 資料（官網公告、內容頁）
+DEPT_NAMES_EN = {"ope": "Physical Education Office", "ge": "Center for General Education", "lc": "Language Center",
+                 "oaa": "Office of Academic Affairs", "osa": "Office of Student Affairs", "hr": "Personnel Office",
+                 "oga": "Office of General Affairs"}
+DEPT_NAMES_EN.update({code: spec[1] for code, spec in {**FAQ_OFFICES, **MCP_ONLY_OFFICES}.items()})
+
+# 回答末尾的「承辦單位與聯絡方式」（2026-11 林道通校長建議：仿 ChatGPT 附資料來源、單位名稱、聯絡電話或分機）。
+# 電話一律取自 unit_contacts.json（官網抄錄、附出處）；官網沒有單位總機的單位只附成員介紹連結，不自行編寫。
+try:
+    with open(os.path.join(BASE_DIR, "unit_contacts.json"), encoding="utf-8") as _f:
+        UNIT_CONTACTS = json.load(_f).get("units", {})
+except (OSError, ValueError) as _e:
+    print(f"[系統] 讀取 unit_contacts.json 失敗（{_e}），回答不附承辦單位聯絡方式")
+    UNIT_CONTACTS = {}
+
+
+def contact_footer(dept: str | None, lang: str = "zh") -> str:
+    """回答末尾的承辦單位區塊（Markdown）；沒有對應單位（跨單位、系統說明）時回傳空字串。"""
+    info = UNIT_CONTACTS.get(dept or "")
+    name = DEPT_NAMES.get(dept or "")
+    if not info or not name:
+        return ""
+    en = lang == "en"
+    parts = [f"**{'Responsible unit' if en else '承辦單位'}**：{DEPT_NAMES_EN.get(dept, name) if en else name}"]
+    if info.get("phone"):
+        parts.append(f"{'Phone' if en else '電話'}：{info['phone']}")
+    if info.get("email") and not info.get("phone"):
+        parts.append(f"Email：{info['email']}")
+    line = "｜".join(parts)
+    if info.get("members"):
+        label = "staff directory and extensions" if en else "各業務承辦人與分機"
+        line += f"\n\n{'See' if en else '請見'} [{label}]({info['members']})"
+    elif not info.get("phone"):
+        line += f"\n\n[{'Unit website' if en else '單位網站'}]({info['source']})"
+    return f"\n\n---\n{line}"
+
+
 FAQ_PAGE_URLS = {
     "ope": "https://new.ntpu.edu.tw/ope/faq",
     "ge":  "https://new.ntpu.edu.tw/cge/faq",
@@ -2758,6 +2794,9 @@ SYSTEM_STYLE = (
     "6. 當資訊不足時，請優先提供『目前查到最接近的資訊』，並用自然語氣說明限制，不要反覆使用固定的道歉句。\n"
     "7. 請使用清晰的條列式重點與 Markdown 語法來排版你的回應。\n"
     "8. 如有連結需要呈現，【必須】使用 Markdown 語法將連結嵌入標題文字中，格式為 [標題文字](URL)，不可以直接貼出原始 URL。\n"
+    "9. 若檢索資料明確寫出這件事的承辦組別、承辦人或分機（例如公告的「聯絡人：…　聯絡電話：…」），"
+    "請在回答最後以「聯絡窗口」列出，組別、人名與號碼必須與原文逐字一致；資料沒有寫就不要列，"
+    "也不要自行補上單位總機（系統會在回答後自動附上承辦單位的官方聯絡方式）。\n"
 
     "【文檔依據回答規則】\n"
     "1. 若問題可由知識庫文件回答，請優先直接根據檢索到的文件內容作答，不要自行補充過多通用常識。\n"
@@ -4884,6 +4923,7 @@ async def chat_endpoint(req: ChatRequest, request: Request):
         scope=decision["scope"],
         selected_office=decision["office"],
     )
+    answer += contact_footer(decision["office"], answer_language(q))
     sources = get_last_sources()
     return {
         "status": "ok", "answer": answer, "sources": sources,
@@ -4989,6 +5029,10 @@ async def chat_stream_endpoint(req: ChatRequest, request: Request):
         except Exception as e:
             yield _sse_payload({"type": "error", "message": str(e)})
             return
+        footer = contact_footer(decision["office"], answer_language(q))
+        if footer and full_answer:
+            full_answer += footer
+            yield _sse_payload({"type": "delta", "text": footer})
         sources = get_last_sources()
         yield _sse_payload({"type": "sources", "sources": sources})
         yield _sse_payload({
