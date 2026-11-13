@@ -413,7 +413,7 @@ export const UNIT_NAMES: Record<string, string> = {
   lsm: "休閒運動管理學系",
   giib: "國際企業研究所",
   dma: "數位行銷進修學士學位學程",
-  iemba: "商學院在職專班 IEMBA",
+  iemba: "國際財務金融碩士在職專班 IEMBA",
   gmba: "財務金融英語碩士學位學程 GMBA",
   fintech: "金融科技暨綠色金融研究中心",
   ebrc: "電子商務研究中心",
