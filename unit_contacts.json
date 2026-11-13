@@ -1,40 +1,186 @@
 {
   "_note": "各單位聯絡電話：2026-11-13 逐一由官網頁尾或首頁聯絡區塊抄錄（source 為出處）。官網沒有單位總機、只列各承辦人分機的單位不填 phone，只附成員介紹連結。回答末尾的「承辦單位」區塊使用（林道通校長建議）。",
   "units": {
-    "oaa": {"phone": "註冊相關 02-8674-1111 #66102；課務相關 #66111；招生相關 #66119", "source": "https://new.ntpu.edu.tw/oaa", "members": "https://new.ntpu.edu.tw/oaa/organizations"},
-    "osa": {"phone": "02-8674-1111 #66193～66195", "source": "https://new.ntpu.edu.tw/osa", "members": "https://new.ntpu.edu.tw/osa/members"},
-    "hr": {"phone": "", "source": "https://new.ntpu.edu.tw/op", "members": "https://new.ntpu.edu.tw/op/members"},
-    "oga": {"phone": "", "source": "https://new.ntpu.edu.tw/oga", "members": "https://new.ntpu.edu.tw/oga/members"},
-    "ord": {"phone": "02-8674-1111 #66150", "source": "https://new.ntpu.edu.tw/ord", "members": "https://new.ntpu.edu.tw/ord/members"},
-    "oa": {"phone": "02-8674-1111 #66063；直撥 02-8671-8042", "source": "https://new.ntpu.edu.tw/oa", "members": "https://new.ntpu.edu.tw/oa/members"},
-    "lib": {"phone": "02-8674-1111 轉 68351～68352；專線 02-8671-2574", "source": "https://library.ntpu.edu.tw/", "members": ""},
-    "cic": {"phone": "02-8674-1111 #68202（週一至週五 08:30–17:30）", "source": "https://new.ntpu.edu.tw/cic", "members": "https://new.ntpu.edu.tw/cic/members"},
-    "oia": {"phone": "", "source": "https://new.ntpu.edu.tw/oia", "members": "https://new.ntpu.edu.tw/oia/members"},
-    "eec": {"phone": "臺北總機 02-2502-4654", "source": "https://new.ntpu.edu.tw/eec", "members": "https://new.ntpu.edu.tw/eec/members"},
-    "alu": {"phone": "直撥 02-8671-8047；02-8674-1111 #66079", "source": "https://new.ntpu.edu.tw/alumni", "members": "https://new.ntpu.edu.tw/alumni/members"},
-    "sus": {"phone": "", "source": "https://new.ntpu.edu.tw/sustainable", "members": ""},
-    "edusp": {"phone": "02-8674-1111 #66702", "source": "https://new.ntpu.edu.tw/edusp/members", "members": "https://new.ntpu.edu.tw/edusp/members"},
-    "os": {"phone": "02-8674-1111 #66042", "source": "https://new.ntpu.edu.tw/os", "members": "https://new.ntpu.edu.tw/os/members"},
-    "pres": {"phone": "", "source": "https://new.ntpu.edu.tw/president", "members": ""},
-    "vpa": {"phone": "", "source": "https://new.ntpu.edu.tw/vice-president-academic", "members": ""},
-    "vpad": {"phone": "", "source": "https://new.ntpu.edu.tw/vice-president-administration", "members": ""},
-    "vpf": {"phone": "", "source": "https://new.ntpu.edu.tw/vice-president-financial", "members": ""},
-    "ope": {"phone": "02-8674-1111 教學研究組 #68511、競賽活動組 #68515、場地器材組 #68500", "source": "https://new.ntpu.edu.tw/ope", "members": "https://new.ntpu.edu.tw/ope/members"},
-    "ge": {"phone": "02-8674-1111 #66170", "source": "https://new.ntpu.edu.tw/cge", "members": "https://new.ntpu.edu.tw/cge/members"},
-    "lc": {"phone": "02-8674-1111 #66477", "source": "https://lc.ntpu.edu.tw/home.jsp?lang=tw", "members": "https://lc.ntpu.edu.tw/web/about/administration.jsp"},
-    "cob": {"phone": "02-8674-1111 #66302", "source": "https://www.aacsb.ntpu.edu.tw/", "members": "https://www.aacsb.ntpu.edu.tw/page.php?id=1&ids=8"},
-    "mis": {"phone": "02-8674-1111 #66894", "source": "https://www.mis.ntpu.edu.tw/", "members": ""},
-    "dba": {"phone": "三峽 02-8674-1111 #66553；臺北 02-2502-4654 #18102", "source": "https://www.dba.ntpu.edu.tw/", "members": ""},
-    "coop": {"phone": "三峽 02-8674-1111 #66852；臺北 02-2502-4654 #18066", "source": "https://coop.ntpu.edu.tw/", "members": "https://coop.ntpu.edu.tw/page.php?id=4&ids=4"},
-    "acc": {"phone": "三峽 02-8671-5910；臺北 02-2508-0495", "source": "https://www.acc.ntpu.edu.tw/", "members": ""},
-    "stat": {"phone": "02-8671-5906", "source": "https://www.stat.ntpu.edu.tw/", "members": "https://www.stat.ntpu.edu.tw/page.php?id=158&ids=2"},
-    "lsm": {"phone": "02-8674-1111 #66533～66537", "source": "https://lsm.ntpu.edu.tw/", "members": ""},
-    "giib": {"phone": "02-8674-1111 #66849", "source": "https://giib.ntpu.edu.tw/", "members": ""},
-    "dma": {"phone": "三峽 02-8674-1111 #66314；臺北 #18072", "source": "https://www.dma.ntpu.edu.tw/", "members": ""},
-    "iemba": {"phone": "三峽 02-8674-1111 #66312；民生 02-2502-4654 #18071", "source": "https://iemba.ntpu.edu.tw/", "members": "https://iemba.ntpu.edu.tw/page.php?id=1&ids=2"},
-    "gmba": {"phone": "02-8674-1111 #67209", "source": "https://www.gmba.ntpu.edu.tw/web/contact/contact.jsp", "members": ""},
-    "fintech": {"phone": "02-8674-1111 #66773", "source": "https://www.aacsb.ntpu.edu.tw/fintech/", "members": "https://www.aacsb.ntpu.edu.tw/fintech/page.php?id=1&ids=1"},
-    "ebrc": {"phone": "", "email": "ebrc@gm.ntpu.edu.tw", "source": "https://ebrc.gm.ntpu.edu.tw/home", "members": ""},
-    "ccs": {"phone": "02-8674-1111 #66974", "source": "https://ccs.ntpu.edu.tw/pages/contact/contact.html", "members": "https://ccs.ntpu.edu.tw/pages/about/organization.html"}
+    "oaa": {
+      "phone": "註冊相關 02-8674-1111 #66102；課務相關 #66111；招生相關 #66119",
+      "source": "https://new.ntpu.edu.tw/oaa",
+      "members": "https://new.ntpu.edu.tw/oaa/organizations"
+    },
+    "osa": {
+      "phone": "02-8674-1111 #66193～66195",
+      "source": "https://new.ntpu.edu.tw/osa",
+      "members": "https://new.ntpu.edu.tw/osa/members"
+    },
+    "hr": {
+      "phone": "",
+      "source": "https://new.ntpu.edu.tw/op",
+      "members": "https://new.ntpu.edu.tw/op/members"
+    },
+    "oga": {
+      "phone": "",
+      "source": "https://new.ntpu.edu.tw/oga",
+      "members": "https://new.ntpu.edu.tw/oga/members"
+    },
+    "ord": {
+      "phone": "02-8674-1111 #66150",
+      "source": "https://new.ntpu.edu.tw/ord",
+      "members": "https://new.ntpu.edu.tw/ord/members"
+    },
+    "oa": {
+      "phone": "02-8674-1111 #66063；直撥 02-8671-8042",
+      "source": "https://new.ntpu.edu.tw/oa",
+      "members": "https://new.ntpu.edu.tw/oa/members"
+    },
+    "lib": {
+      "phone": "02-8674-1111 轉 68351～68352；專線 02-8671-2574",
+      "source": "https://library.ntpu.edu.tw/",
+      "members": ""
+    },
+    "cic": {
+      "phone": "02-8674-1111 #68202（週一至週五 08:30–17:30）",
+      "source": "https://new.ntpu.edu.tw/cic",
+      "members": "https://new.ntpu.edu.tw/cic/members"
+    },
+    "oia": {
+      "phone": "",
+      "source": "https://new.ntpu.edu.tw/oia",
+      "members": "https://new.ntpu.edu.tw/oia/members"
+    },
+    "eec": {
+      "phone": "臺北總機 02-2502-4654",
+      "source": "https://new.ntpu.edu.tw/eec",
+      "members": "https://new.ntpu.edu.tw/eec/members"
+    },
+    "alu": {
+      "phone": "直撥 02-8671-8047；02-8674-1111 #66079",
+      "source": "https://new.ntpu.edu.tw/alumni",
+      "members": "https://new.ntpu.edu.tw/alumni/members"
+    },
+    "sus": {
+      "phone": "",
+      "source": "https://new.ntpu.edu.tw/sustainable",
+      "members": ""
+    },
+    "edusp": {
+      "phone": "02-8674-1111 #66702",
+      "source": "https://new.ntpu.edu.tw/edusp/members",
+      "members": "https://new.ntpu.edu.tw/edusp/members"
+    },
+    "os": {
+      "phone": "02-8674-1111 #66042",
+      "source": "https://new.ntpu.edu.tw/os",
+      "members": "https://new.ntpu.edu.tw/os/members"
+    },
+    "pres": {
+      "phone": "",
+      "source": "https://new.ntpu.edu.tw/president",
+      "members": ""
+    },
+    "vpa": {
+      "phone": "",
+      "source": "https://new.ntpu.edu.tw/vice-president-academic",
+      "members": ""
+    },
+    "vpad": {
+      "phone": "",
+      "source": "https://new.ntpu.edu.tw/vice-president-administration",
+      "members": ""
+    },
+    "vpf": {
+      "phone": "",
+      "source": "https://new.ntpu.edu.tw/vice-president-financial",
+      "members": ""
+    },
+    "ope": {
+      "phone": "02-8674-1111 教學研究組 #68511、競賽活動組 #68515、場地器材組 #68500",
+      "source": "https://new.ntpu.edu.tw/ope",
+      "members": "https://new.ntpu.edu.tw/ope/members"
+    },
+    "ge": {
+      "phone": "02-8674-1111 #66170",
+      "source": "https://new.ntpu.edu.tw/cge",
+      "members": "https://new.ntpu.edu.tw/cge/members"
+    },
+    "lc": {
+      "phone": "02-8674-1111 #66477",
+      "source": "https://lc.ntpu.edu.tw/home.jsp?lang=tw",
+      "members": "https://lc.ntpu.edu.tw/web/about/administration.jsp"
+    },
+    "cob": {
+      "phone": "02-8674-1111 #66302",
+      "source": "https://www.aacsb.ntpu.edu.tw/",
+      "members": "https://www.aacsb.ntpu.edu.tw/page.php?id=1&ids=8"
+    },
+    "mis": {
+      "phone": "02-8674-1111 #66894",
+      "source": "https://www.mis.ntpu.edu.tw/",
+      "members": ""
+    },
+    "dba": {
+      "phone": "三峽 02-8674-1111 #66553；臺北 02-2502-4654 #18102",
+      "source": "https://www.dba.ntpu.edu.tw/",
+      "members": ""
+    },
+    "coop": {
+      "phone": "三峽 02-8674-1111 #66852；臺北 02-2502-4654 #18066",
+      "source": "https://coop.ntpu.edu.tw/",
+      "members": "https://coop.ntpu.edu.tw/page.php?id=4&ids=4"
+    },
+    "acc": {
+      "phone": "三峽 02-8671-5910；臺北 02-2508-0495",
+      "source": "https://www.acc.ntpu.edu.tw/",
+      "members": ""
+    },
+    "stat": {
+      "phone": "02-8671-5906",
+      "source": "https://www.stat.ntpu.edu.tw/",
+      "members": "https://www.stat.ntpu.edu.tw/page.php?id=158&ids=2"
+    },
+    "lsm": {
+      "phone": "02-8674-1111 #66533～66537",
+      "source": "https://lsm.ntpu.edu.tw/",
+      "members": ""
+    },
+    "giib": {
+      "phone": "02-8674-1111 #66849",
+      "source": "https://giib.ntpu.edu.tw/",
+      "members": ""
+    },
+    "dma": {
+      "phone": "三峽 02-8674-1111 #66314；臺北 #18072",
+      "source": "https://www.dma.ntpu.edu.tw/",
+      "members": ""
+    },
+    "iemba": {
+      "phone": "三峽 02-8674-1111 #66312；民生 02-2502-4654 #18071",
+      "source": "https://iemba.ntpu.edu.tw/",
+      "members": "https://iemba.ntpu.edu.tw/page.php?id=1&ids=2"
+    },
+    "gmba": {
+      "phone": "02-8674-1111 #67209",
+      "source": "https://www.gmba.ntpu.edu.tw/web/contact/contact.jsp",
+      "members": ""
+    },
+    "fintech": {
+      "phone": "02-8674-1111 #66773",
+      "source": "https://www.aacsb.ntpu.edu.tw/fintech/",
+      "members": "https://www.aacsb.ntpu.edu.tw/fintech/page.php?id=1&ids=1"
+    },
+    "ebrc": {
+      "phone": "",
+      "email": "ebrc@gm.ntpu.edu.tw",
+      "source": "https://ebrc.gm.ntpu.edu.tw/home",
+      "members": ""
+    },
+    "ccs": {
+      "phone": "02-8674-1111 #66974",
+      "source": "https://ccs.ntpu.edu.tw/pages/contact/contact.html",
+      "members": "https://ccs.ntpu.edu.tw/pages/about/organization.html"
+    },
+    "coss": {
+      "phone": "02-2502-4654",
+      "source": "https://new.ntpu.edu.tw/social-sciences",
+      "members": "https://new.ntpu.edu.tw/social-sciences/members"
+    }
   }
 }

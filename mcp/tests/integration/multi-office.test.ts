@@ -31,10 +31,10 @@ describe("all offices", () => {
   it("registers every office with announcements, each with its own site key", () => {
     // 官網來源（公告與介紹頁）；人工整理檔（法規、FAQ）另有測試。
     const sources = enabledSources().filter((s) => s.entityType === "announcement" || s.entityType === "page");
-    expect(new Set(sources.map((s) => s.sourceUnit)).size).toBe(35);
+    expect(new Set(sources.map((s) => s.sourceUnit)).size).toBe(36);
     const strapi = sources.flatMap((s) => (s.adapter.kind === "strapi-publications" ? [s.adapter.siteKey] : []));
-    expect(strapi).toHaveLength(15);
-    expect(new Set(strapi).size).toBe(15);
+    expect(strapi).toHaveLength(16);
+    expect(new Set(strapi).size).toBe(16);
     expect(sources.map((s) => s.sourceUnit)).toEqual(expect.arrayContaining(["op", "library", "lc", "president"]));
   });
 
@@ -74,7 +74,7 @@ describe("all offices", () => {
     const [row] = db.rows<{ source_url: string }>("SELECT source_url FROM entities");
     expect(row!.source_url).toBe(`https://esdg.ntpu.edu.tw/news/${publication(5)._id}`);
     for (const source of enabledSources().filter((s) => s.parser === "strapi-publications")) {
-      expect(source.newsUrlBase).toMatch(/^https:\/\/[a-z]+\.ntpu\.edu\.tw\/[a-z/]+[^/]$/);
+      expect(source.newsUrlBase).toMatch(/^https:\/\/[a-z]+\.ntpu\.edu\.tw\/[a-z/-]+[^/]$/);
     }
   });
 
