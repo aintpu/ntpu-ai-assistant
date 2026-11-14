@@ -186,6 +186,21 @@
       "phone": "三峽 02-8674-1111 #67160、67161；臺北（進修學士班）02-2502-4654 #18120～18122",
       "source": "https://econ.ntpu.edu.tw/p/412-1001-118.php",
       "members": "https://econ.ntpu.edu.tw/p/412-1001-110.php"
+    },
+    "soc": {
+      "phone": "三峽 02-8674-1111 #67046～67050；臺北 #18081",
+      "source": "https://sociology.ntpu.edu.tw/",
+      "members": "https://sociology.ntpu.edu.tw/teacher?cate=7"
+    },
+    "sw": {
+      "phone": "02-8674-1111 #67012～67016",
+      "source": "https://www.sw.ntpu.edu.tw/",
+      "members": "https://www.sw.ntpu.edu.tw/index.php?option=members&lang=cht&task=showlist&id=3"
+    },
+    "crm": {
+      "phone": "02-8674-1111 #67083～67087",
+      "source": "https://crm.ntpu.edu.tw/",
+      "members": "https://crm.ntpu.edu.tw/index.php?option=module&lang=cht&task=showlist&id=76"
     }
   }
 }

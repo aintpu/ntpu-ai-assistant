@@ -1,3 +1,4 @@
+import { makePdf } from "./attachment-fixtures";
 /**
  * 依 2026-10-03 實際抓到的圖書館、語言中心頁面結構所寫的最小 HTML 樣本
  * （只保留 adapter 用到的元素與屬性，加上一些干擾用的外層結構）。
@@ -85,6 +86,21 @@ const html = (body: string) =>
   new Response(body, { status: 200, headers: { "content-type": "text/html;charset=UTF-8" } });
 
 /** 模擬圖書館與語言中心網站；記錄收到的請求。 */
+/** 把一般物件編成 Nuxt 的 __NUXT_DATA__（devalue：每個值放進陣列、以索引互相參照）。 */
+function nuxtPage(data: Record<string, unknown>): string {
+  const arr: unknown[] = [];
+  const put = (v: unknown): number => {
+    const i = arr.length;
+    arr.push(null);
+    if (Array.isArray(v)) arr[i] = v.map(put);
+    else if (v && typeof v === "object") arr[i] = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, put(x)]));
+    else arr[i] = v ?? null;
+    return i;
+  };
+  put({ data });
+  return `<html><body><div id="__nuxt"></div><script type="application/json" id="__NUXT_DATA__" data-ssr="true">${JSON.stringify(arr)}</script></body></html>`;
+}
+
 export class FakeSites {
   requests: string[] = [];
   constructor(
@@ -229,6 +245,64 @@ export class FakeSites {
           : `<div class="module module-cglist"><div class="meditor">${"經濟學系介紹內容。".repeat(10)}</div></div>`;
         return html(`<html><head><title>經濟系頁面 </title></head><body><main><div class="module module-path">首頁 > 頁面</div>${tabs}<div class="module module-misc">友善列印</div></main></body></html>`);
       }
+    }
+    if (url.hostname === "sociology.ntpu.edu.tw") {
+      // 社會系 Nuxt：每個分類第一頁一則公告（第 8 類是外部連結）；內容頁都回同一份分類內容
+      const cate = Number(url.searchParams.get("cate") ?? 0);
+      if (url.pathname === "/news") {
+        const item = cate === 8
+          ? { id: 900, urltag: "ExtLink0001", title: "外部連結", post_date: "2026-11-01", url: "https://example.com" }
+          : { id: 580 + cate, urltag: `TagNews${cate}00`, title: `社會系公告 ${cate}`, post_date: `2026-10-0${cate}`, url: null };
+        return html(nuxtPage({ "resListzh-TW": { data: [item], total: 1 } }));
+      }
+      const news = /^\/news\/(TagNews\d00)$/.exec(url.pathname);
+      if (news) {
+        return html(nuxtPage({ "resDatazh-TW": { data: { title: `社會系公告 ${news[1]}`, post_date: "2026-10-01", content: [{ title: null, content: "<p>社會系公告內文。</p>" }] } } }));
+      }
+      if (url.pathname === "/teacher") {
+        return html(nuxtPage({ "resCategoryzh-TW": { data: [{ id: 1, name: "專任教師" }] }, "resListzh-TW": { data: [{ name: "王社會", title: "教授", school: "國立臺灣大學社會學博士", phone: "67100", email: "a@gm.ntpu.edu.tw", skillName: "社會階層、社會研究方法" }] } }));
+      }
+      if (url.pathname.startsWith("/page/")) {
+        return html(nuxtPage({ customDatanCCvQttlhMCN: { data: { name: "募款專區", content: [{ title: null, content: `<p>${"支持社會系發展。".repeat(10)}</p>` }] } } }));
+      }
+      return html(
+        nuxtPage({
+          dataType: { data: { name: "系所介紹" } },
+          dataCategory: { data: [{ id: cate || 1, name: "沿革與現況", content: [{ title: "本系沿革", content: `<p>${"社會學系介紹內容。".repeat(10)}</p>` }], files: [] }] },
+          dataList: { data: [{ title: "碩士論文一", sub_title: null, date_at: "2026-09-09 00:00:00", files: [{ title: "論文摘要", file_path: "https://sociology.ntpu.edu.tw/storage/media/a.pdf" }] }] },
+        }),
+      );
+    }
+    if (url.hostname === "www.sw.ntpu.edu.tw" || url.hostname === "crm.ntpu.edu.tw") {
+      // 社工系（div#in_content、li 列表）與犯罪所（div.pageright、dl 列表）；第一個分類兩頁
+      const sw = url.hostname.startsWith("www.sw");
+      const q = url.searchParams;
+      const wrap = (inner: string) => (sw ? `<div id="in_content">${inner}</div>` : `<div class="pageright"><ol class="breadcrumb"><li>首頁</li></ol>${inner}</div>`);
+      const page = (title: string, inner: string) => `<html><head><title>${title}-國立臺北大學</title></head><body>${wrap(inner)}</body></html>`;
+      const link = (id: number) => `${url.origin}/index.php?option=module&lang=cht&task=pageinfo&id=${id}`;
+      if (q.get("task") === "showlist" && q.get("option") === "module" && ["5", "6", "7", "5430", "95", "78", "79"].includes(q.get("id")!)) {
+        const list = Number(q.get("id"));
+        const p = Number(q.get("pages") ?? 1);
+        const n = list * 10 + p;
+        const row = sw ? `<li><span class="date">2026-10-0${p}</span><a href="${link(n)}">公告 ${n}</a></li>` : `<dl><dt>2026-10-0${p}</dt><dd><a href="${link(n)}">公告 ${n}</a></dd></dl>`;
+        const pager = list === 5 || list === 95 ? `<div class="pagenum"><a href="${url.origin}/index.php?option=module&lang=cht&task=showlist&id=${list}&pages=2">2</a></div>` : "";
+        return html(page("最新消息", `${sw ? `<ul>${row}</ul>` : row}${pager}`));
+      }
+      if (q.get("task") === "pageinfo") {
+        const id = q.get("id")!;
+        const body = sw
+          ? `<div class="newstitle02">公告 ${id}<h1>2026-10-01</h1></div><div class="edit"><p>${"系所公告內文。".repeat(10)}</p></div>`
+          : `<div class="newslist3"><dl><dt>2026-10-01</dt><dd>公告 ${id}</dd></dl></div><div class="newscontent"><p>${"系所公告內文。".repeat(10)}</p></div><div class="newscontent_dl"><a href="${url.origin}/index.php?option=module&lang=cht&task=dfile&id=${id}&i=1" download="附件">附件</a></div>`;
+        return html(page(`公告 ${id}`, body));
+      }
+      // 內容頁：課程資訊（社工系 38）是子頁連結清單
+      if (sw && q.get("id") === "38") {
+        return html(page("課程資訊", `<ul><li><a href="${link(7001)}">學士班課程</a></li><li><a href="https://www.sw.ntpu.edu.tw/index.php?option=module&lang=cht&task=showlist&id=21">系主任的話</a></li></ul>`));
+      }
+      return html(page("系所頁面", `<div class="edit">${"系所介紹內容。".repeat(10)}</div><div class="backbox">上一頁</div>`));
+    }
+    if (url.hostname === "cms-carrier.ntpu.edu.tw" && url.pathname === "/uploads/_531a116c2f.pdf") {
+      return new Response(makePdf("Aging and Community Research Center introduction. ".repeat(4)), { headers: { "content-type": "application/pdf" } });
     }
     return new Response("unexpected host", { status: 599 });
   };

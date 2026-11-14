@@ -59,6 +59,9 @@ class QueryDomain(str, Enum):
     CCS = "CCS"  # 企業永續發展研究中心（只有 MCP 資料）
     COSS = "COSS"  # 社會科學學院（只有 MCP 資料）
     ECON = "ECON"  # 經濟學系（只有 MCP 資料）
+    SOC = "SOC"  # 社會學系（只有 MCP 資料）
+    SW = "SW"  # 社會工作學系（只有 MCP 資料）
+    CRM = "CRM"  # 犯罪學研究所（只有 MCP 資料）
     OTHER = "OTHER"
 
 

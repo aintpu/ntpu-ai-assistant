@@ -22,7 +22,7 @@ const LABELS = {
     langLabel: "語言",
     welcome: "有什麼我能幫你的？",
     coverageNote: "已收錄行政單位及部分學術單位資訊，學術單位資料持續擴增中。",
-    welcomeSub: "支援 37 個單位：體育室・通識教育中心・語言中心・教務處・學務處・人事室・總務處・研究發展處・主計室・圖書館・資訊中心・國際事務處・進修暨推廣部・校友中心・永續辦公室・高等教育深耕計畫辦公室・秘書室・學術副校長室・行政副校長室・財務暨永續發展副校長室・校長室・商學院・資訊管理研究所・企業管理學系・金融與合作經營學系・會計學系・統計學系・休閒運動管理學系・國際企業研究所・數位行銷進修學士學位學程・國際財務金融碩士在職專班（IEMBA）・財務金融英語碩士學位學程（GMBA）・金融科技暨綠色金融研究中心・電子商務研究中心・企業永續發展研究中心・社會科學學院・經濟學系。回答範圍以已匯入資料為限。",
+    welcomeSub: "支援 40 個單位：體育室・通識教育中心・語言中心・教務處・學務處・人事室・總務處・研究發展處・主計室・圖書館・資訊中心・國際事務處・進修暨推廣部・校友中心・永續辦公室・高等教育深耕計畫辦公室・秘書室・學術副校長室・行政副校長室・財務暨永續發展副校長室・校長室・商學院・資訊管理研究所・企業管理學系・金融與合作經營學系・會計學系・統計學系・休閒運動管理學系・國際企業研究所・數位行銷進修學士學位學程・國際財務金融碩士在職專班（IEMBA）・財務金融英語碩士學位學程（GMBA）・金融科技暨綠色金融研究中心・電子商務研究中心・企業永續發展研究中心・社會科學學院・經濟學系・社會學系・社會工作學系・犯罪學研究所。回答範圍以已匯入資料為限。",
     uploadTitle: "上傳圖片",
     inputLabel: "輸入問題",
     sendLabel: "送出訊息",
@@ -78,7 +78,7 @@ const LABELS = {
     welcome: "How can I help you?",
     coverageNote: "Covers administrative offices and some academic units; academic-unit coverage is expanding.",
     welcomeSub:
-      "Ask about 37 university units, including Research and Development, Accounting, the Library and Information Center. See About for full coverage.",
+      "Ask about 40 university units, including Research and Development, Accounting, the Library and Information Center. See About for full coverage.",
     uploadTitle: "Upload image",
     inputLabel: "Type your question",
     sendLabel: "Send message",

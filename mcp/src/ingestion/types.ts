@@ -84,6 +84,9 @@ export interface HtmlNewsConfig {
     | "fintech-php"
     | "gmba-jsp"
     | "econ-rpage"
+    | "soc-nuxt"
+    | "sw-module"
+    | "crm-module"
     | "mis-wp";
   /** 每次執行最多抓幾則內文；其餘留到下一次（避免超過單次執行的子請求上限）。 */
   maxDetailsPerRun: number;
@@ -146,7 +149,7 @@ export type HtmlPagesConfig =
        * 一頁一筆的網站：語言中心、GMBA（JSP）、電子商務研究中心（Google 協作平台）、企業永續發展研究中心
        * （靜態 HTML；/backend/data.json 產生組織成員頁）。
        */
-      site: "lc" | "gmba" | "ebrc" | "ccs";
+      site: "lc" | "gmba" | "ebrc" | "ccs" | "sociology";
       /**
        * 頁面（路徑＋查詢參數，例如 /web/qa/qa.jsp?dm_id=…）；路徑必須在 entrypoints，參數依 queryRules。
        * title：頁面本身的標題不足以辨識時（協作平台首頁的標題只有「臺北大學」）改用這個。
@@ -166,6 +169,21 @@ export type HtmlPagesConfig =
       /** Rpage CMS 選單頁（經濟系）：頁面上的分頁區塊另以 POST 載入後併入同一筆。 */
       site: "rpage";
       pages: string[];
+    }
+  | {
+      kind: "html-pages";
+      /**
+       * 社工系、犯罪所（index.php?option=module 系統）：每頁是一組查詢參數；頁面內容若是子頁連結清單
+       * （課程資訊、新生園地等），再跟進其中的 showlist／pageinfo 連結（一層、每頁最多 25 個）。
+       */
+      site: "module-cms";
+      pages: Record<string, string>[];
+    }
+  | {
+      kind: "html-pages";
+      /** 單份 PDF 當內容頁（學校檔案伺服器 cms-carrier 上的介紹文件）；路徑必須在 entrypoints。 */
+      site: "pdf";
+      pages: { path: string; title: string }[];
     }
   | {
       kind: "html-pages";

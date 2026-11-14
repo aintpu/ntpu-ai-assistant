@@ -39,6 +39,7 @@ DEPT_TO_MCP_UNIT = {
     "iemba": "iemba", "gmba": "gmba", "fintech": "fintech", "ebrc": "ebrc", "ccs": "ccs",
     "coss": "social-sciences",  # 社會科學學院（new.ntpu.edu.tw/social-sciences）
     "econ": "econ",  # 經濟學系（econ.ntpu.edu.tw）
+    "soc": "sociology", "sw": "sw", "crm": "crm",  # 社會學系、社會工作學系、犯罪學研究所
 }
 
 
@@ -83,6 +84,9 @@ DEPT_TO_MCP_RECORD_UNITS = {
     "ccs": (None, None),
     "coss": (None, None),
     "econ": (None, None),
+    "soc": (None, None),
+    "sw": (None, None),
+    "crm": (None, None),
 }
 
 
@@ -127,6 +131,7 @@ DEPT_TO_MCP_PAGE_UNIT = {
     "iemba": "iemba", "gmba": "gmba", "fintech": "fintech", "ebrc": "ebrc", "ccs": "ccs",
     "coss": "social-sciences",
     "econ": "econ",
+    "soc": "sociology", "sw": "sw", "crm": "crm",
 }
 
 
