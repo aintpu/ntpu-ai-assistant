@@ -118,6 +118,13 @@ describe("College of Social Sciences departments added 2026-11-14", () => {
     expect(crm[0]!.source_url).toMatch(/^https:\/\/crm\.ntpu\.edu\.tw\/index\.php\?option=module&lang=cht&task=pageinfo&id=\d+$/);
   });
 
+  it("a module-cms news page without a title field falls back to the page <title>", async () => {
+    const { HTML_SITES } = await import("../../src/ingestion/adapters/html-sites");
+    const site = HTML_SITES["crm-module"];
+    const res = await new FakeSites().fetch(new Request(site.detailUrl("crm0008798")));
+    expect(site.parseDetail(await res.text(), "crm0008798")).toMatchObject({ title: "課程公告", date: "2026-06-12" });
+  });
+
   it("module-cms pages follow sub-page links one level, without re-fetching configured pages", async () => {
     await runIngestion(deps, { sourceIds: ["sw-site-pages"], trigger: "test" });
     const urls = rows("sw").map((r) => r.source_url);

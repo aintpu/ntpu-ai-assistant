@@ -290,6 +290,8 @@ export class FakeSites {
       }
       if (q.get("task") === "pageinfo") {
         const id = q.get("id")!;
+        // 犯罪所 8798：沒有標題欄，標題只在 <title>
+        if (id === "8798") return html(page("課程公告", `<div class="newslist3"><dl><dt>2026-06-12</dt></dl></div><div class="newscontent"><p>${"上課時間表。".repeat(10)}</p></div>`));
         const body = sw
           ? `<div class="newstitle02">公告 ${id}<h1>2026-10-01</h1></div><div class="edit"><p>${"系所公告內文。".repeat(10)}</p></div>`
           : `<div class="newslist3"><dl><dt>2026-10-01</dt><dd>公告 ${id}</dd></dl></div><div class="newscontent"><p>${"系所公告內文。".repeat(10)}</p></div><div class="newscontent_dl"><a href="${url.origin}/index.php?option=module&lang=cht&task=dfile&id=${id}&i=1" download="附件">附件</a></div>`;

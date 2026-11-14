@@ -454,12 +454,15 @@ export function moduleCmsSite(spec: ModuleCmsSpec): HtmlSite {
     },
 
     parseDetail(html) {
-      const box = moduleCmsContent(dom(html));
+      const root = dom(html);
+      // 有些公告（犯罪所的課程公告等）沒有標題欄，只寫在 <title>
+      const pageTitle = clean(root.querySelector("title")?.text.replace(/-國立臺北大學.*$/, ""));
+      const box = moduleCmsContent(root);
       // 社工系：div.newstitle02（標題＋h1 日期）、div.edit；犯罪所：div.newslist3 dt 日期／dd 標題、div.newscontent
       const head = box.querySelector("div.newstitle02");
       const date = taiwanDate(head?.querySelector("h1")?.text ?? box.querySelector("div.newslist3 dt")?.text ?? "");
       for (const el of head?.querySelectorAll("h1") ?? []) el.remove();
-      const title = clean(head?.text ?? box.querySelector("div.newslist3 dd")?.text);
+      const title = clean(head?.text ?? box.querySelector("div.newslist3 dd")?.text) || pageTitle;
       const body = box.querySelector("div.edit") ?? box.querySelector("div.newscontent") ?? box;
       const files = box
         .querySelectorAll("a[href]")
