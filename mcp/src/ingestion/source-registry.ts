@@ -1103,7 +1103,8 @@ const WEB_SOURCES: SourceDefinition[] = [
     adapter: { kind: "html-pages", site: "sociology", pages: SOC_PAGES },
     entityType: "page",
     enabled: true,
-    fetch: { ...HTML_FETCH, methods: ["GET"] },
+    // 碩士論文清單頁把全部論文（數百篇）放在頁面資料裡，約 3～5 MB
+    fetch: { ...HTML_FETCH, methods: ["GET"], maxResponseBytes: 8 * 1024 * 1024 },
     freshness: DAILY,
   },
   ...moduleCmsSources("sw", "https://www.sw.ntpu.edu.tw", "sw-module", SW_PAGES),
