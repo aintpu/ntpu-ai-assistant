@@ -33,7 +33,9 @@ export interface HtmlSite {
   origin: string;
   listPath: string;
   detailPath: string;
-  listRequest(page: number): SourceRequest;
+  /** 有幾個各自翻頁的列表（預設 1；社工系、犯罪所的公告分好幾個分類）。 */
+  listCount?: number;
+  listRequest(page: number, list?: number): SourceRequest;
   detailRequest(id: string, item?: ListItem): SourceRequest;
   detailUrl(id: string, item?: ListItem): string;
   parseList(html: string): ListPage;
@@ -372,6 +374,257 @@ export function parseRpageTab(html: string): string {
   const root = dom(html);
   for (const el of root.querySelectorAll("script, style")) el.remove();
   return root.innerHTML;
+}
+
+// ── 社工系 www.sw.ntpu.edu.tw、犯罪學研究所 crm.ntpu.edu.tw（同一套 index.php?option=module 系統、版型不同；2026-11-14 加入）──
+// 列表 task=showlist&id=<分類>&pages=<頁>，內文 task=pageinfo&id=<編號>，附件 task=dfile&id=<編號>&i=<序號>。
+// 內容區：社工系 div#in_content；犯罪所 div.pageright（去掉麵包屑與「上一頁」）。
+
+export interface ModuleCmsSpec {
+  origin: string;
+  /** 公告分類（showlist 的 id），依序翻完。 */
+  newsLists: number[];
+  /** 公告編號前綴（sw0009020）。 */
+  idPrefix: string;
+}
+
+export const MODULE_CMS_QUERY = {
+  option: /^(module|members|contact)$/,
+  lang: /^cht$/,
+  task: /^(showlist|pageinfo)$/,
+  id: /^\d{1,6}$/,
+  pages: /^\d{1,3}$/,
+};
+
+/** 內容區（兩種版型）；去掉麵包屑、上一頁按鈕、登入表單與程式。 */
+function moduleCmsContent(root: HTMLElement): HTMLElement {
+  const box = required(root.querySelector("div#in_content") ?? root.querySelector("div.pageright"), "div#in_content / div.pageright");
+  for (const el of box.querySelectorAll("script, style, ol.breadcrumb, div.backbox, div.box100, div.pagenum, form, div.modal")) el.remove();
+  return box;
+}
+
+function moduleCmsQuery(task: "showlist" | "pageinfo", id: string, page?: number): Record<string, string> {
+  return { option: "module", lang: "cht", task, id, ...(page && page > 1 ? { pages: String(page) } : {}) };
+}
+
+export function moduleCmsSite(spec: ModuleCmsSpec): HtmlSite {
+  const idOf = (n: string) => `${spec.idPrefix}${n.padStart(7, "0")}`;
+  const numberOf = (id: string) => {
+    const m = new RegExp(`^${spec.idPrefix}(\\d{7})$`).exec(id);
+    if (!m) throw new IngestionError("INTERNAL_ERROR", `bad module-cms id: ${id}`);
+    return String(Number(m[1]));
+  };
+  const request = (query: Record<string, string>): SourceRequest => ({ target: `/index.php?${new URLSearchParams(query)}`, path: "/index.php", method: "GET", query });
+  return {
+    origin: spec.origin,
+    listPath: "/index.php",
+    detailPath: "/index.php",
+    listCount: spec.newsLists.length,
+
+    listRequest(page, list = 0) {
+      return request(moduleCmsQuery("showlist", String(spec.newsLists[list]), page));
+    },
+
+    detailRequest(id) {
+      return request(moduleCmsQuery("pageinfo", numberOf(id)));
+    },
+
+    detailUrl(id) {
+      return `${spec.origin}/index.php?${new URLSearchParams(moduleCmsQuery("pageinfo", numberOf(id)))}`;
+    },
+
+    parseList(html) {
+      const box = moduleCmsContent(dom(html));
+      const items: ListItem[] = [];
+      let external = 0;
+      const pager = dom(html).querySelector("div.pagenum")?.toString() ?? html;
+      const totalPages = Math.max(1, ...[...pager.matchAll(/[?&](?:amp;)?pages=(\d+)/g)].map((m) => Number(m[1])));
+      // 每則是 li（社工系：span.date + a）、dl（犯罪所：dt 日期、dd a）或活動卡片（犯罪所演講、研討會）
+      for (const row of box.querySelectorAll("li, dl, div.p_eventbox00")) {
+        const a = row.querySelector("a[href]");
+        if (!a) continue;
+        const n = /task=pageinfo&(?:amp;)?id=(\d{1,6})/.exec(a.getAttribute("href") ?? "")?.[1];
+        if (!n) {
+          external++;
+          continue;
+        }
+        items.push({ id: idOf(n), title: clean(a.text), date: taiwanDate(row.text) });
+      }
+      return { items, external, totalPages };
+    },
+
+    parseDetail(html) {
+      const box = moduleCmsContent(dom(html));
+      // 社工系：div.newstitle02（標題＋h1 日期）、div.edit；犯罪所：div.newslist3 dt 日期／dd 標題、div.newscontent
+      const head = box.querySelector("div.newstitle02");
+      const date = taiwanDate(head?.querySelector("h1")?.text ?? box.querySelector("div.newslist3 dt")?.text ?? "");
+      for (const el of head?.querySelectorAll("h1") ?? []) el.remove();
+      const title = clean(head?.text ?? box.querySelector("div.newslist3 dd")?.text);
+      const body = box.querySelector("div.edit") ?? box.querySelector("div.newscontent") ?? box;
+      const files = box
+        .querySelectorAll("a[href]")
+        .filter((a) => /task=dfile/.test(a.getAttribute("href") ?? "") || FILE_EXT.test(a.getAttribute("href") ?? "") || (a.getAttribute("href") ?? "").includes("/userfiles/"));
+      const attachments = collectFiles(files, `${spec.origin}/`, (a) => a.getAttribute("download") || a.text);
+      return { title: required(title, "news title"), date, bodyHtml: body.innerHTML, attachments };
+    },
+  };
+}
+
+/** 社工系、犯罪所的內容頁（showlist／pageinfo／members）：標題取 <title> 的「-」之前，內文是內容區。 */
+export function parseModuleCmsPage(html: string): { title: string; bodyHtml: string } {
+  const root = dom(html);
+  const title = clean(required(root.querySelector("title"), "title").text.replace(/-國立臺北大學.*$/, ""));
+  const box = moduleCmsContent(root);
+  return { title: required(title, "title"), bodyHtml: box.innerHTML };
+}
+
+// ── 社會學系 sociology.ntpu.edu.tw（Nuxt；2026-11-14 加入）────────────────────────────────
+// 伺服器端輸出的頁面帶 __NUXT_DATA__（devalue 格式：陣列裡以索引互相參照）。後端 API 需要登入權杖，不使用；
+// 公告列表的翻頁只能經由 API，因此只收各分類第一頁（最新 10 則），之後每天同步累積。
+
+const DEVALUE_WRAPPERS = new Set(["Reactive", "ShallowReactive", "Ref", "ShallowRef"]);
+
+/** 解出 __NUXT_DATA__ 的 data 區（各頁資料以 key 區分，例如 resListzh-TW、dataCategory）。 */
+export function nuxtData(html: string): Record<string, unknown> {
+  const raw = /<script[^>]*id="__NUXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(html)?.[1];
+  let arr: unknown[];
+  try {
+    arr = JSON.parse(required(raw, "__NUXT_DATA__")) as unknown[];
+  } catch (err) {
+    if (err instanceof IngestionError) throw err;
+    throw new IngestionError("PARSER_DRIFT", "page structure changed: __NUXT_DATA__ is not JSON");
+  }
+  const memo = new Map<number, unknown>();
+  const revive = (i: number, depth = 0): unknown => {
+    if (depth > 60 || typeof i !== "number" || i < 0 || i >= arr.length) return null;
+    if (memo.has(i)) return memo.get(i);
+    const v = arr[i];
+    let out: unknown;
+    if (Array.isArray(v)) {
+      if (typeof v[0] === "string" && DEVALUE_WRAPPERS.has(v[0])) out = revive(v[1] as number, depth + 1);
+      else if (typeof v[0] === "string" && ["Date", "Set", "Map", "Error", "RegExp", "BigInt", "null", "undefined", "NaN"].includes(v[0])) {
+        out = v[0] === "Date" ? v[1] : null;
+      } else out = v.map((x) => revive(x as number, depth + 1));
+    } else if (v && typeof v === "object") {
+      out = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, revive(x as number, depth + 1)]));
+    } else out = v;
+    memo.set(i, out);
+    return out;
+  };
+  const root = revive(0) as Record<string, unknown> | null;
+  return required((root?.data as Record<string, unknown> | undefined) ?? null, "__NUXT_DATA__ data");
+}
+
+type Obj = Record<string, unknown>;
+const asObj = (v: unknown): Obj => (v && typeof v === "object" && !Array.isArray(v) ? (v as Obj) : {});
+const asArr = (v: unknown): Obj[] => (Array.isArray(v) ? v.map(asObj) : []);
+const txt = (v: unknown): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
+
+/** 內容區塊（title＋HTML）與附件清單 → HTML。 */
+function nuxtBlocks(blocks: unknown, files: unknown): string {
+  const parts = asArr(blocks).map((b) => `${txt(b.title) ? `<h3>${escapeHtml(txt(b.title))}</h3>` : ""}${txt(b.content)}`);
+  const list = asArr(files)
+    .filter((f) => txt(f.file_path ?? f.path ?? f.url))
+    .map((f) => `<li><a href="${escapeHtml(txt(f.file_path ?? f.path ?? f.url))}">${escapeHtml(txt(f.title ?? f.name) || "附件")}</a></li>`);
+  return parts.join("\n") + (list.length ? `<ul>${list.join("")}</ul>` : "");
+}
+
+const SOC_ORIGIN = "https://sociology.ntpu.edu.tw";
+
+export const sociologySite: HtmlSite = {
+  origin: SOC_ORIGIN,
+  listPath: "/news",
+  detailPath: "/news/",
+  // 8 個公告分類（學術演講、系上公告、招生公告、國際交流、畢業指南、學生榮譽、活動宣傳、職涯資訊）
+  listCount: 8,
+
+  listRequest(_page, list = 0) {
+    const query = { cate: String(list + 1) };
+    return { target: `/news?cate=${list + 1}`, path: "/news", method: "GET", query };
+  },
+
+  detailRequest(id, item) {
+    const path = socPath(id, item);
+    return { target: path, path, method: "GET" };
+  },
+
+  detailUrl(id, item) {
+    return `${SOC_ORIGIN}${socPath(id, item)}`;
+  },
+
+  parseList(html) {
+    const list = asObj(nuxtData(html)["resListzh-TW"]);
+    const items: ListItem[] = [];
+    let external = 0;
+    for (const n of asArr(required(Array.isArray(list.data) ? list.data : null, "resListzh-TW"))) {
+      const tag = txt(n.urltag);
+      const id = Number(n.id);
+      // 有外部網址的公告點了直接跳出去，沒有內文頁
+      if (!/^[A-Za-z0-9]{6,20}$/.test(tag) || !Number.isInteger(id) || id <= 0 || txt(n.url)) {
+        external++;
+        continue;
+      }
+      items.push({ id: `soc${String(id).padStart(7, "0")}`, title: clean(txt(n.title)), date: taiwanDate(txt(n.post_date)), path: `/news/${tag}` });
+    }
+    return { items, external, totalPages: 1 };
+  },
+
+  parseDetail(html) {
+    const d = asObj(asObj(nuxtData(html)["resDatazh-TW"]).data);
+    const title = clean(required(txt(d.title), "news title"));
+    const bodyHtml = nuxtBlocks(d.content, d.files);
+    const files = dom(bodyHtml).querySelectorAll("a[href]").filter((a) => FILE_EXT.test(a.getAttribute("href") ?? "") || (a.getAttribute("href") ?? "").includes("/storage/"));
+    return { title, date: taiwanDate(txt(d.post_date)), bodyHtml, attachments: collectFiles(files, `${SOC_ORIGIN}/`, (a) => a.text) };
+  },
+};
+
+export const SOC_NEWS_PATH = /^\/news\/[A-Za-z0-9]{6,20}$/;
+
+function socPath(id: string, item?: ListItem): string {
+  if (!item?.path || !SOC_NEWS_PATH.test(item.path)) throw new IngestionError("INTERNAL_ERROR", `sociology news path unknown: ${id}`);
+  return item.path;
+}
+
+/**
+ * 社會學系內容頁：/data/<類型>?cate=<分類>（分類內容＋附件＋該分類的文章清單）、/teacher?cate=<分類>（成員）、
+ * /page/<代碼>（自訂頁）。標題取分類或頁面名稱。
+ */
+export function parseSociologyPage(html: string, cate: string | undefined): { title: string; bodyHtml: string } {
+  const data = nuxtData(html);
+  const custom = Object.keys(data).find((k) => k.startsWith("customData"));
+  if (custom) {
+    const d = asObj(asObj(data[custom]).data);
+    return { title: clean(required(txt(d.name), "page name")), bodyHtml: nuxtBlocks(d.content, d.files) };
+  }
+  if (data["resListzh-TW"] && !data.dataCategory) {
+    const cats = asArr(asObj(data["resCategoryzh-TW"]).data);
+    const name = txt(cats.find((c) => String(c.id) === cate)?.name) || "系所成員";
+    const people = asArr(asObj(data["resListzh-TW"]).data).map((m) => {
+      const fields = [
+        txt(m.name),
+        txt(m.title),
+        txt(m.school) && `學歷：${txt(m.school)}`,
+        txt(m.skillName) && `專長：${txt(m.skillName)}`,
+        txt(m.duties) && `業務：${txt(m.duties)}`,
+        txt(m.office) && `研究室：${txt(m.office)}`,
+        txt(m.phone) && `電話：${txt(m.phone)}`,
+        txt(m.email) && `Email：${txt(m.email)}`,
+      ].filter(Boolean);
+      return `<p>${fields.map(escapeHtml).join("；")}</p>`;
+    });
+    return { title: name, bodyHtml: required(people.join("") || null, "members") };
+  }
+  const cats = asArr(asObj(data.dataCategory).data);
+  const typeName = txt(asObj(asObj(data.dataType).data).name);
+  const chosen = cate ? cats.filter((c) => String(c.id) === cate) : cats;
+  const blocks = (chosen.length ? chosen : cats).map((c) => `<h2>${escapeHtml(txt(c.name))}</h2>${nuxtBlocks(c.content, c.files)}`);
+  const entries = asArr(asObj(data.dataList).data).map((e) => {
+    const head = [txt(e.sub_title), txt(e.title)].filter(Boolean).join("｜");
+    const date = taiwanDate(txt(e.date_at));
+    return `<p>${escapeHtml(head)}${date ? `（${date}）` : ""}</p>${nuxtBlocks([], e.files)}`;
+  });
+  const name = txt(chosen[0]?.name) || typeName;
+  return { title: clean(required(name ? `${typeName && typeName !== name ? `${typeName}：` : ""}${name}` : null, "category name")), bodyHtml: blocks.join("\n") + entries.join("\n") };
 }
 
 // ── 財務金融英語碩士學位學程 GMBA www.gmba.ntpu.edu.tw（JSP，與語言中心同一家廠商、版型不同；2026-11-03 加入）──
@@ -869,6 +1122,9 @@ export const HTML_SITES = {
   "iemba-php": collegeSite(COLLEGE_SITES.iemba),
   "fintech-php": collegeSite(COLLEGE_SITES.fintech),
   "gmba-jsp": gmbaSite,
+  "soc-nuxt": sociologySite,
+  "sw-module": moduleCmsSite({ origin: "https://www.sw.ntpu.edu.tw", newsLists: [5, 6, 7, 5430], idPrefix: "sw" }),
+  "crm-module": moduleCmsSite({ origin: "https://crm.ntpu.edu.tw", newsLists: [95, 78, 79], idPrefix: "crm" }),
   "econ-rpage": rpageSite({ origin: "https://econ.ntpu.edu.tw", siteNo: "1001", listCategory: 32, idPrefix: "econ" }),
   "mis-wp": misSite,
 } as const;

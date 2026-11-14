@@ -104,3 +104,45 @@ describe("College of Business units added 2026-11-03", () => {
     expect(JSON.parse(news[0]!.payload_json).bodyText).toContain("第二段");
   });
 });
+
+describe("College of Social Sciences departments added 2026-11-14", () => {
+  it("social work and criminology walk every news category (with pages), dates and dfile attachments", async () => {
+    await runIngestion(deps, { sourceIds: ["sw-announcements", "crm-announcements"], trigger: "test" });
+    // 社工系 4 個分類（第一個兩頁）＝5 則；犯罪所 3 個分類（第一個兩頁）＝4 則
+    expect(rows("sw").map((r) => r.stable_key)).toHaveLength(5);
+    const crm = rows("crm");
+    expect(crm).toHaveLength(4);
+    const p = JSON.parse(crm[0]!.payload_json);
+    expect(p.publishedAt).toBe("2026-09-30T16:00:00.000Z");
+    expect(p.attachments[0].url).toContain("task=dfile");
+    expect(crm[0]!.source_url).toMatch(/^https:\/\/crm\.ntpu\.edu\.tw\/index\.php\?option=module&lang=cht&task=pageinfo&id=\d+$/);
+  });
+
+  it("module-cms pages follow sub-page links one level, without re-fetching configured pages", async () => {
+    await runIngestion(deps, { sourceIds: ["sw-site-pages"], trigger: "test" });
+    const urls = rows("sw").map((r) => r.source_url);
+    expect(urls).toContain("https://www.sw.ntpu.edu.tw/index.php?option=module&lang=cht&task=pageinfo&id=7001");
+    expect(urls.filter((u) => u.endsWith("task=showlist&id=21"))).toHaveLength(1);
+    expect(urls).toContain("https://www.sw.ntpu.edu.tw/index.php?option=members&lang=cht&task=showlist&id=1");
+  });
+
+  it("sociology reads the Nuxt payload: first page of each category, external links skipped, data and member pages", async () => {
+    await runIngestion(deps, { sourceIds: ["sociology-announcements", "sociology-site-pages"], trigger: "test" });
+    const got = rows("sociology");
+    const news = got.filter((r) => r.entity_type === "announcement");
+    expect(news).toHaveLength(7);
+    expect(news[0]!.source_url).toMatch(/^https:\/\/sociology\.ntpu\.edu\.tw\/news\/TagNews\d00$/);
+    const teacher = got.find((r) => r.source_url === "https://sociology.ntpu.edu.tw/teacher?cate=1")!;
+    expect(JSON.parse(teacher.payload_json).bodyText).toContain("王社會；教授；學歷：國立臺灣大學社會學博士");
+    const thesis = got.find((r) => r.source_url === "https://sociology.ntpu.edu.tw/data/18?cate=88")!;
+    expect(JSON.parse(thesis.payload_json).bodyText).toContain("碩士論文一（2026-09-09）");
+  });
+
+  it("the aging-and-community center PDF becomes a College of Social Sciences page", async () => {
+    await runIngestion(deps, { sourceIds: ["social-sciences-center-docs"], trigger: "test" });
+    const [page] = rows("social-sciences");
+    expect(page!.title).toBe("社會科學學院高齡與社區研究中心簡介");
+    expect(page!.source_url).toBe("https://cms-carrier.ntpu.edu.tw/uploads/_531a116c2f.pdf");
+    expect(JSON.parse(page!.payload_json).bodyText).toContain("Aging and Community Research Center");
+  });
+});

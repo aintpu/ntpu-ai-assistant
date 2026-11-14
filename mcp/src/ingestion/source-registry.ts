@@ -1,6 +1,6 @@
 import { validateSourceDefinition } from "./url-policy";
 import { ATTACHMENT_HOST, ATTACHMENT_PATH } from "./adapters/attachments";
-import { MIS_POST_PATH, RPAGE_DETAIL_PATH } from "./adapters/html-sites";
+import { MIS_POST_PATH, MODULE_CMS_QUERY, RPAGE_DETAIL_PATH, SOC_NEWS_PATH } from "./adapters/html-sites";
 import { OFFICIALS } from "./officials";
 import type { FetchPolicy, PersonalDataGuard, SourceDefinition } from "./types";
 
@@ -191,6 +191,41 @@ const ECON_PAGES = [
   127, 128, 131, 102, 151, 150, 142, 143, 144, 196, 145, 146, 91, 135, 136,
 ].map((n) => `/p/412-1001-${n}.php`);
 
+// ── 社會科學學院所屬系所（使用者 2026-11-14 指定）──────────────────────────────────
+
+/** 社會學系（sociology.ntpu.edu.tw，Nuxt）：主選單的內容頁（/data/<類型>?cate=、/teacher?cate=、/page/<代碼>）。 */
+const SOC_DATA: [number, number[]][] = [
+  [1, [1, 2, 3]], [5, [21]], [6, [25]], [15, []], [14, [60, 61, 62, 63, 64, 65]], [20, []], [18, [88, 89]], [17, [86]],
+  [24, [105]], [25, [109]], [26, [115]], [27, [121]], [28, [123]], [29, [126]], [30, [132]], [31, [137]], [32, [140]], [33, [144]],
+  [21, [96]], [22, [101]], [23, [104]], [10, [43, 156, 44, 45, 150, 155]], [13, [57]],
+];
+const SOC_PAGES: { path: string; query?: Record<string, string> }[] = [
+  ...SOC_DATA.flatMap(([type, cates]) =>
+    cates.length ? cates.map((cate) => ({ path: `/data/${type}`, query: { cate: String(cate) } })) : [{ path: `/data/${type}` }],
+  ),
+  ...[1, 2, 3, 4, 5, 6, 7].map((cate) => ({ path: "/teacher", query: { cate: String(cate) } })),
+  { path: "/page/nCCvQttlhMCN" },
+];
+const SOC_PATHS = [...new Set(SOC_PAGES.map((p) => p.path))];
+
+const moduleCmsPages = (ids: number[], extra: Record<string, string>[] = []) => [
+  ...ids.map((id) => ({ option: "module", lang: "cht", task: "showlist", id: String(id) })),
+  ...extra,
+];
+/** 社會工作學系（www.sw.ntpu.edu.tw）：系所介紹、成員、學生事務、招生、系友、系務規章。 */
+const SW_PAGES = moduleCmsPages(
+  [21, 4679, 3490, 30, 38, 3817, 1236, 96, 98, 97, 3806, 2948, 4037, 5441, 58, 6442, 6443, 763, 6444, 6445],
+  [1, 2, 3].map((id) => ({ option: "members", lang: "cht", task: "showlist", id: String(id) })),
+);
+/** 犯罪學研究所（crm.ntpu.edu.tw）：本所簡介、師資、課程、章程辦法、表格、招生、《臺灣犯罪學》期刊。 */
+const CRM_PAGES = moduleCmsPages(
+  [1803, 69, 68, 74, 76, 77, 80, 81, 82, 83, 8257, 8258, 8263, 8260, 8261, 8259, 8265, 8264, 86, 2555, 2557, 89, 90, 91, 92, 93],
+  [1, 71, 72].map((id) => ({ option: "module", lang: "cht", task: "pageinfo", id: String(id) })),
+);
+
+/** 社科院高齡與社區研究中心簡介（學校「研究中心介紹」頁連到的 PDF；使用者 2026-11-14 指定）。 */
+const COSS_PDFS = [{ path: "/uploads/_531a116c2f.pdf", title: "社會科學學院高齡與社區研究中心簡介" }];
+
 /**
  * 全部公告來源的個資過濾模式。使用者 2026-10-03 決定全部放行（官網本來就公開）。
  * 改成 "student-ids" 只擋含學號的名單（掃描約 13 則），"all" 連姓名名單也擋（約 77 則）。
@@ -296,6 +331,38 @@ function collegeDeptSources(d: (typeof COLLEGE_DEPTS)[number]): SourceDefinition
 
 
 const DAILY = { schedule: "daily", maxStalenessSeconds: 48 * 60 * 60 };
+
+function moduleCmsSources(unit: string, origin: string, site: "sw-module" | "crm-module", pages: Record<string, string>[]): SourceDefinition[] {
+  const common = { sourceUnit: unit, sourceType: "official_web" as const, trustLevel: "official" as const, origin, enabled: true, fetch: { ...HTML_FETCH, methods: ["GET" as const] }, freshness: DAILY };
+  return [
+    {
+      ...common,
+      id: `${unit}-announcements`,
+      homepageUrl: `${origin}/index.php?temp=news&lang=cht`,
+      newsUrlBase: `${origin}/index.php`,
+      allowedPathPrefixes: ["/index.php"],
+      entrypoints: ["/index.php"],
+      queryRules: { "/index.php": MODULE_CMS_QUERY },
+      parser: "html-news",
+      adapter: { kind: "html-news", site, maxDetailsPerRun: 60, reverifyAfterSeconds: 30 * 86_400, personalDataGuard: PERSONAL_DATA_GUARD },
+      entityType: "announcement",
+    },
+    {
+      ...common,
+      id: `${unit}-site-pages`,
+      homepageUrl: `${origin}/`,
+      newsUrlBase: `${origin}/index.php`,
+      allowedPathPrefixes: ["/index.php"],
+      entrypoints: ["/index.php"],
+      queryRules: { "/index.php": MODULE_CMS_QUERY },
+      parser: "html-pages",
+      adapter: { kind: "html-pages", site: "module-cms", pages },
+      entityType: "page",
+    },
+  ];
+}
+
+
 
 /** 人工整理檔：從 R2 manual/ 讀取，不連網站（見 manual-inbox.ts）。 */
 const MANUAL_FETCH: FetchPolicy = {
@@ -428,6 +495,9 @@ export const UNIT_NAMES: Record<string, string> = {
   ebrc: "電子商務研究中心",
   ccs: "企業永續發展研究中心",
   econ: "經濟學系",
+  sociology: "社會學系",
+  sw: "社會工作學系",
+  crm: "犯罪學研究所",
   "social-sciences": "社會科學學院",
 };
 
@@ -996,6 +1066,64 @@ const WEB_SOURCES: SourceDefinition[] = [
     entityType: "page",
     enabled: true,
     fetch: HTML_FETCH,
+    freshness: DAILY,
+  },
+  {
+    // 社會學系（Nuxt）：8 個公告分類的第一頁（最新 10 則；翻頁要經過需登入的 API，不使用）
+    id: "sociology-announcements",
+    sourceUnit: "sociology",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://sociology.ntpu.edu.tw/news",
+    newsUrlBase: "https://sociology.ntpu.edu.tw/news",
+    origin: "https://sociology.ntpu.edu.tw",
+    allowedPathPrefixes: ["/news"],
+    entrypoints: ["/news"],
+    queryRules: { "/news": { cate: /^[1-8]$/ } },
+    pathRules: [SOC_NEWS_PATH],
+    parser: "html-news",
+    adapter: { kind: "html-news", site: "soc-nuxt", maxDetailsPerRun: 60, reverifyAfterSeconds: 30 * 86_400, personalDataGuard: PERSONAL_DATA_GUARD },
+    entityType: "announcement",
+    enabled: true,
+    fetch: { ...HTML_FETCH, methods: ["GET"] },
+    freshness: DAILY,
+  },
+  {
+    id: "sociology-site-pages",
+    sourceUnit: "sociology",
+    sourceType: "official_web",
+    trustLevel: "official",
+    homepageUrl: "https://sociology.ntpu.edu.tw/",
+    newsUrlBase: "https://sociology.ntpu.edu.tw",
+    origin: "https://sociology.ntpu.edu.tw",
+    allowedPathPrefixes: SOC_PATHS,
+    entrypoints: SOC_PATHS,
+    queryRules: Object.fromEntries(SOC_PATHS.filter((p) => p !== "/page/nCCvQttlhMCN").map((p) => [p, { cate: /^\d{1,4}$/ }])),
+    parser: "html-pages",
+    adapter: { kind: "html-pages", site: "sociology", pages: SOC_PAGES },
+    entityType: "page",
+    enabled: true,
+    fetch: { ...HTML_FETCH, methods: ["GET"] },
+    freshness: DAILY,
+  },
+  ...moduleCmsSources("sw", "https://www.sw.ntpu.edu.tw", "sw-module", SW_PAGES),
+  ...moduleCmsSources("crm", "https://crm.ntpu.edu.tw", "crm-module", CRM_PAGES),
+  {
+    // 社科院研究中心介紹（PDF，放在學校檔案伺服器）
+    id: "social-sciences-center-docs",
+    sourceUnit: "social-sciences",
+    sourceType: "official_document",
+    trustLevel: "official",
+    homepageUrl: "https://new.ntpu.edu.tw/research-centers",
+    newsUrlBase: `https://${ATTACHMENT_HOST}/uploads`,
+    origin: `https://${ATTACHMENT_HOST}`,
+    allowedPathPrefixes: ["/uploads"],
+    entrypoints: COSS_PDFS.map((p) => p.path),
+    parser: "html-pages",
+    adapter: { kind: "html-pages", site: "pdf", pages: COSS_PDFS },
+    entityType: "page",
+    enabled: true,
+    fetch: { ...ATTACHMENT_FETCH, acceptedContentTypes: ["application/pdf", "application/octet-stream", "binary/octet-stream"] },
     freshness: DAILY,
   },
 ];

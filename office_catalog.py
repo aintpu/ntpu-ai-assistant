@@ -55,11 +55,20 @@ MCP_ONLY_OFFICES = {
     # 2026-11-13 加入（使用者指定）：社會科學學院（new.ntpu.edu.tw/social-sciences，含臺灣發展研究中心、ISEPS 國際博士學程）
     "coss": ("社會科學學院", "College of Social Sciences",
              ("社會科學學院", "社科院", "社會科學院", "社科學院", "社科院院長", "社科院辦公室", "臺灣發展研究中心", "台灣發展研究中心",
-              "iseps", "社科院學分學程", "社科院英語學程")),
+              "iseps", "社科院學分學程", "社科院英語學程", "高齡與社區研究中心", "學老誌")),
     # 社科院所屬學系（2026-11-13 加入）
     "econ": ("經濟學系", "Department of Economics",
              ("經濟學系", "經濟系", "北大經濟", "經濟系主任", "經濟系老師", "經濟系教授", "經濟系師資", "經濟系招生", "經濟系公告",
               "經濟系修業", "經濟系課程", "林錫埼", "經濟研究期刊")),
+    "soc": ("社會學系", "Department of Sociology",
+            ("社會學系", "社會系", "北大社會系", "社會系主任", "社會系老師", "社會系教授", "社會系師資", "社會系招生", "社會系公告",
+             "社會系課程", "三鶯研究", "社會系碩士在職專班")),
+    "sw": ("社會工作學系", "Department of Social Work",
+           ("社會工作學系", "社工系", "北大社工系", "社工系主任", "社工系老師", "社工系教授", "社工系師資", "社工系招生", "社工系公告",
+            "社工系實習", "社工系課程")),
+    "crm": ("犯罪學研究所", "Graduate Institute of Criminology",
+            ("犯罪學研究所", "犯罪所", "犯研所", "犯罪學", "犯罪所所長", "犯罪所老師", "犯罪所師資", "犯罪所招生", "犯罪所公告",
+             "臺灣犯罪學", "台灣犯罪學")),
     "ccs": ("企業永續發展研究中心", "Center for Corporate Sustainability",
             ("企業永續發展研究中心", "企業永續發展中心", "企業永續中心", "seed評鑑", "seed 評鑑", "臺灣永續投資調查", "台灣永續投資調查")),
 }
@@ -68,7 +77,7 @@ MCP_ONLY_OFFICE_NAMES = {code: spec[0] for code, spec in MCP_ONLY_OFFICES.items(
 # 單位的上級（學系、研究所 → 學院）：寫進範圍判斷的提示詞，也供介紹頁依層級排列。新增系所時在這裡登記所屬學院。
 OFFICE_PARENTS = {"mis": "cob", "dba": "cob", "coop": "cob", "acc": "cob", "stat": "cob", "lsm": "cob", "giib": "cob", "dma": "cob",
                   "iemba": "cob", "gmba": "cob", "fintech": "cob", "ebrc": "cob", "ccs": "cob",
-                  "econ": "coss"}
+                  "econ": "coss", "soc": "coss", "sw": "coss", "crm": "coss"}
 
 # Offices whose retrieval also covers other offices' FAQ.  A question about
 # the vice presidents without naming one routes to 校長室, so 校長室 searches

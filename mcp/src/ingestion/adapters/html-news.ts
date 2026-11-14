@@ -114,12 +114,14 @@ export const htmlNewsAdapter: Adapter = {
     const site = HTML_SITES[config.site];
     const listed = new Map<string, ListItem>();
 
-    const listStep = (page: number): Step => ({
-      request: site.listRequest(page),
+    const listCount = site.listCount ?? 1;
+    // 多個分類列表：一個翻完再翻下一個，全部走完才決定要抓哪些內文
+    const listStep = (page: number, listIndex = 0): Step => ({
+      request: site.listRequest(page, listIndex),
       fatal: true,
       async handle(bytes, ctx): Promise<StepOutcome> {
         const list = site.parseList(decodeUtf8(bytes));
-        if (page === 1 && list.items.length === 0 && (await ctx.activeCount()) > 0) {
+        if (page === 1 && listIndex === 0 && list.items.length === 0 && (await ctx.activeCount()) > 0) {
           throw new IngestionError("PARSER_DRIFT", "list returned zero items but canonical data exists");
         }
         for (const item of list.items) if (!listed.has(item.id)) listed.set(item.id, item);
@@ -132,7 +134,11 @@ export const htmlNewsAdapter: Adapter = {
         };
         if (page < list.totalPages) {
           if (page + 1 > MAX_LIST_PAGES) throw new IngestionError("PARSER_DRIFT", "list has too many pages");
-          outcome.next = [listStep(page + 1)];
+          outcome.next = [listStep(page + 1, listIndex)];
+          return outcome;
+        }
+        if (listIndex + 1 < listCount) {
+          outcome.next = [listStep(1, listIndex + 1)];
           return outcome;
         }
         // 列表走完：決定這次要抓哪些內文。
