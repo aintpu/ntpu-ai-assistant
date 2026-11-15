@@ -41,9 +41,9 @@ const MIS_FETCH: FetchPolicy = { ...HTML_FETCH, methods: ["GET"], acceptedConten
 /** 企業永續發展研究中心：最新消息與成員名單在 /backend/data.json（application/json，約 150 KB）。 */
 const CCS_FETCH: FetchPolicy = { ...HTML_FETCH, methods: ["GET"], acceptedContentTypes: ["text/html", "application/json"] };
 
-/** 資管所固定頁面（wp-sitemap-posts-page-1.xml；不含首頁、最新消息等列表頁）。 */
+/** 資管所固定頁面（wp-sitemap-posts-page-1.xml；不含首頁、最新消息等列表頁）。/description/ 2026-11 起轉址回首頁，已移除。 */
 const MIS_PAGES = [
-  "/about-mis/", "/description/", "/history/", "/professor/", "/faculty/", "/admissions/", "/studyrules/",
+  "/about-mis/", "/history/", "/professor/", "/faculty/", "/admissions/", "/studyrules/",
   "/rules/", "/courses/", "/research/", "/students/", "/intern/", "/social/", "/community/", "/chdonation/",
   "/donatemethod/", "/partnership/", "/activity/", "/historyen/", "/donation/", "/donation-methods/",
   "/business-partners/", "/event-achievements/",
