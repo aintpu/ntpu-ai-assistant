@@ -153,3 +153,27 @@ describe("College of Social Sciences departments added 2026-11-14", () => {
     expect(JSON.parse(page!.payload_json).bodyText).toContain("Aging and Community Research Center");
   });
 });
+
+describe("html news: one unparseable detail page", () => {
+  it("is quarantined instead of failing the run, and is not re-fetched on the next run", async () => {
+    const sites = new FakeSites();
+    const inner = sites.fetch;
+    // 金融系內文 2 號回傳沒有 div.main 的頁面
+    deps.fetch = routedFetch(new FakeStrapi([]), {
+      fetch: async (r: Request) => {
+        const u = new URL(r.url);
+        if (u.hostname === "coop.ntpu.edu.tw" && u.pathname === "/view.php" && atob(u.searchParams.get("id") ?? "") === "2") {
+          return new Response("<html><body>維護中</body></html>", { headers: { "content-type": "text/html" } });
+        }
+        return inner(r);
+      },
+    });
+    const first = await runIngestion(deps, { sourceIds: ["coop-announcements"], trigger: "test" });
+    expect(first.status).toBe("success");
+    expect(first.quarantined).toBe(1);
+    const reasons = db.rows<{ reason: string }>("SELECT reason FROM quarantined_records WHERE source_id = 'coop-announcements'");
+    expect(reasons[0]!.reason).toContain("unparseable detail");
+    const second = await runIngestion(deps, { sourceIds: ["coop-announcements"], trigger: "test" });
+    expect(second.fetched).toBe(1);
+  });
+});

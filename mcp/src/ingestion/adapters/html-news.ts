@@ -56,9 +56,19 @@ function detailStep(source: SourceDefinition, site: HtmlSite, config: HtmlNewsCo
     request: site.detailRequest(item.id, item),
     fatal: false,
     async handle(bytes): Promise<StepOutcome> {
-      const detail = site.parseDetail(decodeUtf8(bytes), item.id);
-      const text = bodyText(detail.bodyHtml);
       const outcome: StepOutcome = { parsed: 1, records: [], rejected: [], skipped: 0 };
+      let detail: ReturnType<HtmlSite["parseDetail"]>;
+      try {
+        detail = site.parseDetail(decodeUtf8(bytes), item.id);
+      } catch (err) {
+        // 單一則的版面解不開（例如金融系 #2373 從 Cloudflare 抓到的頁面沒有 div.main）：記入隔離區，
+        // 依 reverifyAfterSeconds 才再試，不讓同一則每輪都讓整個來源 partial。仍計入解析器漂移判斷：
+        // 整站改版時多數內文都會失敗，照樣中止並告警。
+        if (!(err instanceof IngestionError) || err.code !== "PARSER_DRIFT") throw err;
+        outcome.rejected.push({ id: item.id, reason: `unparseable detail: ${err.message}`.slice(0, 200), countsTowardDrift: true });
+        return outcome;
+      }
+      const text = bodyText(detail.bodyHtml);
       if (!detail.title && !item.title) {
         // 已刪除或不存在的編號（商學院依流水號補齊時會遇到）：記入隔離區，不算解析錯誤，之後不再重抓
         outcome.rejected.push({ id: item.id, reason: "not found (blank page)", countsTowardDrift: false });
