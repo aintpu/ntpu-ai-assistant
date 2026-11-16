@@ -177,7 +177,9 @@ class AddedOfficeTests(unittest.TestCase):
         for zh, en, _ in FAQ_OFFICES.values():
             self.assertIn(zh, about)
             self.assertIn(en, about)
-            self.assertIn(zh, page)
+        # 聊天首頁只放單位數與分類摘要（完整清單在系統說明頁，2026-11-16 使用者要求精簡）
+        self.assertIn(f'支援 {len(OFFICE_NAMES)} 個單位', page)
+        self.assertIn('系統說明', page)
 
 
 if __name__ == '__main__':
