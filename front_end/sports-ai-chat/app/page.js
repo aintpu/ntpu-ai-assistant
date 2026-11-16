@@ -10,6 +10,12 @@ const LABELS = {
   zh: {
     title: "NTPU AI Assistant",
     newChat: "新對話",
+    history: "對話紀錄",
+    historyNote: "對話紀錄只存在這台裝置的瀏覽器；共用電腦用完請清除。",
+    deleteChat: "刪除這段對話",
+    clearHistory: "清除全部紀錄",
+    clearConfirm: "確定要清除這台裝置上的全部對話紀錄嗎？",
+    untitled: "（未命名對話）",
     placeholder: "輸入訊息… (Enter 送出，Shift+Enter 換行)",
     send: "送出",
     disclaimer: "📌 回答由 AI 整理，最新資訊請以各單位官方公告為準。",
@@ -65,6 +71,12 @@ const LABELS = {
   en: {
     title: "NTPU AI Assistant",
     newChat: "New Chat",
+    history: "Chat history",
+    historyNote: "History is kept only in this browser. Clear it after using a shared computer.",
+    deleteChat: "Delete this chat",
+    clearHistory: "Clear all history",
+    clearConfirm: "Clear all chat history on this device?",
+    untitled: "(Untitled chat)",
     placeholder: "Type your message… (Enter to send, Shift+Enter for newline)",
     send: "Send",
     disclaimer: "📌 AI-generated answers. Please refer to official announcements for the latest information.",
@@ -623,6 +635,8 @@ function createConversationId() {
 const CONVERSATION_ID_STORAGE_KEY = "ntpu-ai-assistant:conversation-id";
 const CONVERSATION_STATE_STORAGE_PREFIX = "ntpu-ai-assistant:conversation-state:";
 const CONVERSATION_MESSAGES_STORAGE_PREFIX = "ntpu-ai-assistant:conversation-messages:";
+const CONVERSATION_INDEX_KEY = "ntpu-ai-assistant:conversations";
+const MAX_STORED_CONVERSATIONS = 30;
 const MAX_STORED_MESSAGES = 20;
 const MAX_STORED_MESSAGE_CHARS = 12000;
 
@@ -638,22 +652,73 @@ function getInitialConversationId() {
   return createConversationId();
 }
 
-function getInitialConversationState() {
-  if (typeof window !== "undefined") {
-    try {
-      const conversationId = window.sessionStorage.getItem(CONVERSATION_ID_STORAGE_KEY);
-      const rawState = conversationId
-        ? window.sessionStorage.getItem(`${CONVERSATION_STATE_STORAGE_PREFIX}${conversationId}`)
-        : null;
-      if (rawState) {
-        const state = JSON.parse(rawState);
-        if (state && typeof state === "object" && !Array.isArray(state)) return state;
-      }
-    } catch {
-      // A malformed or unavailable browser cache should not block chat.
+// 對話內容存 localStorage（關掉瀏覽器仍保留，可在側邊欄切換）；目前開著哪一段對話存 sessionStorage（各分頁各自）。
+// 舊版只存在 sessionStorage，讀取時兩邊都看。
+function readStored(key) {
+  try {
+    return window.localStorage.getItem(key) ?? window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function getStoredConversationState(conversationId) {
+  if (!conversationId || typeof window === "undefined") return {};
+  try {
+    const rawState = readStored(`${CONVERSATION_STATE_STORAGE_PREFIX}${conversationId}`);
+    if (rawState) {
+      const state = JSON.parse(rawState);
+      if (state && typeof state === "object" && !Array.isArray(state)) return state;
     }
+  } catch {
+    // A malformed or unavailable browser cache should not block chat.
   }
   return {};
+}
+
+function getInitialConversationState() {
+  if (typeof window === "undefined") return {};
+  try {
+    return getStoredConversationState(window.sessionStorage.getItem(CONVERSATION_ID_STORAGE_KEY));
+  } catch {
+    return {};
+  }
+}
+
+/** 對話清單：[{ id, title, updatedAt }]，新的在前。 */
+function readConversationIndex() {
+  if (typeof window === "undefined") return [];
+  try {
+    const list = JSON.parse(window.localStorage.getItem(CONVERSATION_INDEX_KEY) ?? "[]");
+    return Array.isArray(list)
+      ? list.filter((c) => c && typeof c.id === "string" && typeof c.title === "string").slice(0, MAX_STORED_CONVERSATIONS)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function removeStoredConversation(id) {
+  try {
+    for (const prefix of [CONVERSATION_STATE_STORAGE_PREFIX, CONVERSATION_MESSAGES_STORAGE_PREFIX]) {
+      window.localStorage.removeItem(`${prefix}${id}`);
+      window.sessionStorage.removeItem(`${prefix}${id}`);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+/** 更新清單（最多保留 30 段，超過的連內容一起刪除）；回傳新清單。 */
+function saveConversationIndex(list) {
+  const kept = list.slice(0, MAX_STORED_CONVERSATIONS);
+  for (const old of list.slice(MAX_STORED_CONVERSATIONS)) removeStoredConversation(old.id);
+  try {
+    window.localStorage.setItem(CONVERSATION_INDEX_KEY, JSON.stringify(kept));
+  } catch {
+    // ignore
+  }
+  return kept;
 }
 
 function sanitizeStoredMessages(value) {
@@ -701,9 +766,7 @@ function sanitizeStoredMessages(value) {
 function getStoredConversationMessages(conversationId) {
   if (!conversationId || typeof window === "undefined") return null;
   try {
-    const rawMessages = window.sessionStorage.getItem(
-      `${CONVERSATION_MESSAGES_STORAGE_PREFIX}${conversationId}`,
-    );
+    const rawMessages = readStored(`${CONVERSATION_MESSAGES_STORAGE_PREFIX}${conversationId}`);
     if (rawMessages === null) return null;
     return sanitizeStoredMessages(JSON.parse(rawMessages));
   } catch {
@@ -726,6 +789,7 @@ export default function ChatPage() {
   const [imageBase64, setImageBase64] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [sessionId, setSessionId] = useState(getInitialConversationId);
+  const [conversations, setConversations] = useState([]);
   const [conversationState, setConversationState] = useState(getInitialConversationState);
 
   const bottomRef = useRef(null);
@@ -778,6 +842,7 @@ export default function ChatPage() {
           setMessages(storedMessages);
         }
       }
+      setConversations(readConversationIndex());
       setSessionReady(true);
     }, 0);
     return () => window.clearTimeout(timer);
@@ -790,14 +855,19 @@ export default function ChatPage() {
     const timer = window.setTimeout(() => {
       try {
         window.sessionStorage.setItem(CONVERSATION_ID_STORAGE_KEY, sessionId);
-        window.sessionStorage.setItem(
+        const stored = sanitizeStoredMessages(messages);
+        if (stored.length === 0) return; // 還沒開始的新對話不進清單
+        window.localStorage.setItem(
           `${CONVERSATION_STATE_STORAGE_PREFIX}${sessionId}`,
           JSON.stringify(conversationState),
         );
-        window.sessionStorage.setItem(
+        window.localStorage.setItem(
           `${CONVERSATION_MESSAGES_STORAGE_PREFIX}${sessionId}`,
-          JSON.stringify(sanitizeStoredMessages(messages)),
+          JSON.stringify(stored),
         );
+        const title = (stored.find((m) => m.role === "user")?.content ?? "").replace(/\s+/g, " ").slice(0, 40);
+        const rest = readConversationIndex().filter((c) => c.id !== sessionId);
+        setConversations(saveConversationIndex([{ id: sessionId, title, updatedAt: Date.now() }, ...rest]));
       } catch {
         // The server-side Durable Object store remains the source of truth.
       }
@@ -825,6 +895,32 @@ export default function ChatPage() {
     setImagePreview(null);
     setImageBase64(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const openConversation = (id) => {
+    if (loading || id === sessionId) {
+      setSidebarOpen(false);
+      return;
+    }
+    setSessionId(id);
+    setConversationState(getStoredConversationState(id));
+    setMessages(getStoredConversationMessages(id) ?? []);
+    setInput("");
+    clearImage();
+    setSidebarOpen(false);
+  };
+
+  const deleteConversation = (id) => {
+    removeStoredConversation(id);
+    setConversations(saveConversationIndex(readConversationIndex().filter((c) => c.id !== id)));
+    if (id === sessionId) handleNewChat();
+  };
+
+  const clearAllConversations = () => {
+    if (!window.confirm(labels.clearConfirm)) return;
+    for (const c of readConversationIndex()) removeStoredConversation(c.id);
+    setConversations(saveConversationIndex([]));
+    handleNewChat();
   };
 
   const handleNewChat = () => {
@@ -1039,14 +1135,41 @@ export default function ChatPage() {
           </button>
         </div>
 
-        {/* 對話列表區 */}
-        <div className="flex-1 overflow-y-auto p-3">
-          {messages.length > 0 && (
-            <div className={`px-3 py-2 text-xs rounded-lg truncate ${T.sidebarCurrent}`}>
-              {messages.find(m => m.role === "user")?.content?.slice(0, 28) || "目前對話"}…
-            </div>
+        {/* 對話紀錄（存在這台裝置的瀏覽器） */}
+        <nav className="flex-1 overflow-y-auto p-3" aria-label={labels.history}>
+          {conversations.length > 0 && (
+            <>
+              <h2 className={`mb-1 px-1 text-xs font-medium ${T.sidebarMeta}`}>{labels.history}</h2>
+              <ul className="flex flex-col gap-0.5">
+                {conversations.map((c) => (
+                  <li key={c.id} className="group flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => openConversation(c.id)}
+                      aria-current={c.id === sessionId ? "true" : undefined}
+                      className={`min-w-0 flex-1 truncate rounded-lg px-3 py-2 text-left text-xs transition-colors ${c.id === sessionId ? T.sidebarCurrent : T.sidebarBtn}`}
+                    >
+                      {c.title || labels.untitled}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteConversation(c.id)}
+                      aria-label={`${labels.deleteChat}：${c.title || labels.untitled}`}
+                      title={labels.deleteChat}
+                      className={`shrink-0 rounded-md p-1.5 opacity-70 transition-opacity hover:opacity-100 focus:opacity-100 ${T.sidebarBtn}`}
+                    >
+                      <CloseIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className={`mt-3 px-1 text-[11px] leading-snug ${T.sidebarMeta}`}>{labels.historyNote}</p>
+              <button type="button" onClick={clearAllConversations} className={`mt-1 px-1 text-[11px] underline underline-offset-2 ${T.sidebarMeta}`}>
+                {labels.clearHistory}
+              </button>
+            </>
           )}
-        </div>
+        </nav>
 
         {/* 底部設定按鈕（點擊展開） */}
         <div className={`border-t p-3 relative ${T.sidebarBorder}`} ref={settingsRef}>

@@ -198,8 +198,8 @@
       "question_en": "How is my conversation handled?",
       "aliases_zh": ["會保存對話嗎", "隱私安全嗎", "可以輸入個資嗎", "對話紀錄", "你可以幫我查我的成績嗎", "可以查我的成績嗎", "可以查我的學籍嗎", "可以查我的帳務嗎"],
       "aliases_en": ["Is my chat saved?", "What about privacy?", "Can I enter personal data?", "How is chat history handled?", "Can you check my grades?", "Can this system access my student record?"],
-      "answer_zh": "系統無法登入校務系統，也不能存取或查詢個人成績、學籍、帳務或其他非公開資料；只能說明公開的查詢規定與辦理方式。系統會用 conversation ID 與結構化狀態維持同一對話的追問脈絡，並會產生操作與品質改善所需的服務日誌：提問、回答與查詢流程會長期保存在系統紀錄中，寫入前已遮罩電話、Email、身分證號等個人資料。問題與必要上下文會傳給設定的 AI 服務以產生回答。請勿輸入密碼、身分證字號、學號、金融資訊或其他敏感個資。",
-      "answer_en": "The system cannot sign in to university systems or access personal grades, student records, billing, or other non-public data; it can only explain public lookup rules and procedures. It uses a conversation ID and structured state to keep follow-up context, and service logs (questions, answers, and the lookup trace are kept long-term, with phone numbers, emails, and ID numbers masked before saving) may be produced for operation and quality improvement. Your question and necessary context are sent to the configured AI service to generate an answer. Do not enter passwords, ID or student numbers, financial information, or other sensitive personal data.",
+      "answer_zh": "系統無法登入校務系統，也不能存取或查詢個人成績、學籍、帳務或其他非公開資料；只能說明公開的查詢規定與辦理方式。系統會用 conversation ID 與結構化狀態維持同一對話的追問脈絡，並會產生操作與品質改善所需的服務日誌：提問、回答與查詢流程會長期保存在系統紀錄中，寫入前已遮罩電話、Email、身分證號等個人資料。側邊欄的「對話紀錄」只存在你這台裝置的瀏覽器（最多 30 段），可逐段刪除或一次清除；使用共用電腦後請清除。問題與必要上下文會傳給設定的 AI 服務以產生回答。請勿輸入密碼、身分證字號、學號、金融資訊或其他敏感個資。",
+      "answer_en": "The system cannot sign in to university systems or access personal grades, student records, billing, or other non-public data; it can only explain public lookup rules and procedures. It uses a conversation ID and structured state to keep follow-up context, and service logs (questions, answers, and the lookup trace are kept long-term, with phone numbers, emails, and ID numbers masked before saving) may be produced for operation and quality improvement. The sidebar chat history is kept only in your own browser (up to 30 chats); you can delete chats one by one or clear them all, and should clear it after using a shared computer. Your question and necessary context are sent to the configured AI service to generate an answer. Do not enter passwords, ID or student numbers, financial information, or other sensitive personal data.",
       "keywords": ["隱私", "個資", "保存", "對話紀錄", "個人成績", "個人學籍", "帳務", "privacy", "personal data", "student record", "grades", "saved"],
       "source": {"type": "system", "title_zh": "系統說明：使用須知", "title_en": "System Guide: Notice", "url": "https://aia.ntpu.edu.tw/about#notice"}
     },
@@ -210,8 +210,8 @@
       "question_en": "Can I ask follow-up questions?",
       "aliases_zh": ["能連續問嗎", "會記得上一題嗎", "有對話記憶嗎", "可以接著問嗎"],
       "aliases_en": ["Can I continue the conversation?", "Do you remember the previous question?", "Can I ask another question about the same topic?"],
-      "answer_zh": "可以。同一個對話會保存結構化的主題、處室與前次來源，短追問會先改寫成完整問題再檢索。若你換了主題，系統會重新判斷處室；若指代不清，系統可能先請你補充。開啟新對話後不會沿用舊對話脈絡。",
-      "answer_en": "Yes. Within one conversation, structured topic, office, and previous-source state is retained, and short follow-ups are rewritten into standalone questions before retrieval. A topic change triggers routing again; unclear references may prompt a clarification. Starting a new chat does not reuse the old context.",
+      "answer_zh": "可以。同一個對話會保存結構化的主題、處室與前次來源，短追問會先改寫成完整問題再檢索。若你換了主題，系統會重新判斷處室；若指代不清，系統可能先請你補充。開啟新對話後不會沿用舊對話脈絡；舊對話會留在側邊欄的「對話紀錄」，點選即可回到原對話繼續追問。",
+      "answer_en": "Yes. Within one conversation, structured topic, office, and previous-source state is retained, and short follow-ups are rewritten into standalone questions before retrieval. A topic change triggers routing again; unclear references may prompt a clarification. Starting a new chat does not reuse the old context; earlier chats stay in the sidebar history, and you can reopen one to continue it.",
       "keywords": ["追問", "上一題", "記得", "對話", "follow-up", "remember", "conversation"],
       "source": {"type": "system", "title_zh": "系統說明：如何使用", "title_en": "System Guide: How to Use", "url": "https://aia.ntpu.edu.tw/about#usage"}
     },
