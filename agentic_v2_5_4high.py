@@ -2190,6 +2190,7 @@ _WHO_RE = re.compile(r"是誰|誰是|哪位|現任|who|姓名", re.I)
 HEAD_PAGE_TERMS = ("行政團隊", "師資")
 # 問系所師資（有哪些老師、教授、師資陣容）：〈專任師資〉〈師資陣容〉頁面寫得最完整，「教師徵聘」公告會擠掉它們
 # （2026-10-15「企管系有什麼師資陣容」只拿到徵聘公告與〈歷史沿革〉）
+FACULTY_PAGE_TERMS = ("師資", "專任教師", "兼任教師")
 _FACULTY_QUESTION_RE = re.compile(r"師資|教授|老師|教師|專任|兼任|faculty|professor", re.I)
 # 問表單（XX 表、申請書、在哪下載）：處室檔案庫的〈表單〉頁列出檔名與下載連結，同時寫到這些詞的公告會擠掉它
 # （2026-10-15「進修推廣部的休學申請表在哪」：檔案庫有〈休退學申請書〉，前幾筆卻是減修公告）
@@ -2334,8 +2335,10 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
     if form_q:
         extra += [t for t in ("表單",) if t not in extra]
     if faculty_q:
-        # 即使模型關鍵字已有「師資」也單獨查一次：第一輪是全部關鍵字一起查，不會單查「師資」
-        extra += [t for t in ("師資",) if t not in extra]
+        # 即使模型關鍵字已有「師資」也單獨查一次：第一輪是全部關鍵字一起查，不會單查「師資」。
+        # 頁面標題也常寫「專任教師」「兼任教師」（2026-11-18「經濟系有哪些專任老師」：〈專任教師〉頁沒被查到，
+        # 回答只拿到月動態報導，說無法提供完整名單）
+        extra += [t for t in FACULTY_PAGE_TERMS if t not in extra]
     # 問題原文的詞一起查（不經過模型，同一題每次都一樣），與模型的關鍵字合併排序
     asked = next((q for q in user_queries if q), "")
     own = question_terms(asked, terms + extra)
@@ -4516,6 +4519,12 @@ def known_person_office(query: str):
             # 只是順帶提到名字（例如戴敏育同時出現在體育室的球賽名單與秘書室 FAQ），沒有文件標題寫明身分：
             # 不憑筆數猜處室，跨單位查詢（2026-10-11「戴敏育是誰」被分到體育室而查不到）
             return None, name
+        if depts and best_weight < 100:
+            # 本機只是順帶提到（例如體育室總檔裡的名單），官網頁面卻寫明身分時以官網為準
+            # （2026-11-17「林昭吟是誰」：體育室總檔有這個名字，社科院〈院長簡介〉寫明她是院長，卻被分到體育室）
+            found = _mcp_person_units(name)
+            if found:
+                return (found if found in DEPT_NAMES else None), name
         if depts:
             return depts.most_common(1)[0][0], name
         found = _mcp_person_units(name)
