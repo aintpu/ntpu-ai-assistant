@@ -2339,8 +2339,11 @@ def _records_from_mcp(search_query: str, keywords: str, dept: str, overview: boo
         # 頁面標題也常寫「專任教師」「兼任教師」（2026-11-18「經濟系有哪些專任老師」：〈專任教師〉頁沒被查到，
         # 回答只拿到月動態報導，說無法提供完整名單）
         extra += [t for t in FACULTY_PAGE_TERMS if t not in extra]
-    # 問題原文的詞一起查（不經過模型，同一題每次都一樣），與模型的關鍵字合併排序
     asked = next((q for q in user_queries if q), "")
+    # 問人（「林昭吟是誰」）：人名單獨查一次。模型關鍵字常把人名和「師資」「人員」綁在一起查，
+    # 本單位頁面同時含這些詞的找不到，退回全校後拿到別的資料（2026-11-18 社科院〈院長簡介〉沒被查到）
+    extra += [n for n in asked_person_names(asked) if n not in extra]
+    # 問題原文的詞一起查（不經過模型，同一題每次都一樣），與模型的關鍵字合併排序
     own = question_terms(asked, terms + extra)
     if own:
         extra += own
@@ -4483,6 +4486,16 @@ def _grounding_contents():
             if d.metadata.get("dept") in DEPT_NAMES
         ]
     return _content_index or []
+
+
+def asked_person_names(query: str) -> list:
+    """問「誰是 X」「X 老師」時，問題裡像人名的詞（2–3 字、常見姓氏開頭，排除單位名稱開頭）。"""
+    titled = [m.group(1) for m in _TITLED_NAME_RE.finditer(query or "") if m.group(1)[0] in _SURNAMES]
+    if not _PERSON_QUESTION_RE.search(query or "") and not titled:
+        return []
+    names = [r for r in _GROUNDING_BREAK_RE.split(query) if 2 <= len(r) <= 3 and r[0] in _SURNAMES]
+    return [r for r in dict.fromkeys(titled + names)
+            if not _NOT_A_NAME_RE.search(r) and not any(w.startswith(r) for w in _OFFICE_WORDS)]
 
 
 def known_person_office(query: str):

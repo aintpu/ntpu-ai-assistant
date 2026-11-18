@@ -33,6 +33,11 @@ class PersonRoutingTests(unittest.TestCase):
                 patch.object(core, "_mcp_person_units", return_value=None):
             self.assertEqual(core.known_person_office("林某某是誰"), ("ope", "林某某"))
 
+    def test_person_names_are_searched_on_their_own(self):
+        self.assertEqual(core.asked_person_names("林昭吟是誰"), ["林昭吟"])
+        self.assertEqual(core.asked_person_names("郭文忠老師的研究領域"), ["郭文忠"])
+        self.assertEqual(core.asked_person_names("經濟系有哪些專任老師？"), [])
+
     def test_faculty_questions_search_faculty_page_titles(self):
         self.assertIn("專任教師", core.FACULTY_PAGE_TERMS)
         self.assertIn("兼任教師", core.FACULTY_PAGE_TERMS)
